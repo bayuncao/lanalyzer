@@ -70,6 +70,8 @@ class EnhancedTaintTracker:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 code = f.read()
+                # 存储当前文件内容，用于上下文显示
+                self.current_file_contents = code
 
             # Parse the AST
             try:
@@ -467,19 +469,57 @@ class EnhancedTaintTracker:
             else:
                 print(f"Could not find function containing sink (line {sink_line})")
 
-        # 3. If source and sink are in the same function, return that function's info directly
+        # Get actual statement text for source and sink
+        source_stmt_info = self._get_statement_at_line(
+            visitor, source_line, context_lines=1
+        )
+        sink_stmt_info = self._get_statement_at_line(
+            visitor, sink_line, context_lines=1
+        )
+
+        # 3. First add the specific sink statement with detailed information
+        sink_operation = self._extract_operation_at_line(visitor, sink_line)
+        if sink_operation:
+            sink_stmt = {
+                "function": sink_operation,
+                "file": visitor.file_path,
+                "line": sink_line,
+                "statement": sink_stmt_info["statement"],
+                "context_lines": [sink_line - 1, sink_line + 1],
+                "type": "sink",
+                "description": f"Unsafe {sink_name} operation, potentially leading to vulnerability",
+            }
+            call_chain.append(sink_stmt)
+
+        # 4. Next add the specific source statement with detailed information
+        source_operation = self._extract_operation_at_line(visitor, source_line)
+        if source_operation:
+            source_stmt = {
+                "function": source_operation,
+                "file": visitor.file_path,
+                "line": source_line,
+                "statement": source_stmt_info["statement"],
+                "context_lines": [source_line - 1, source_line + 1],
+                "type": "source",
+                "description": f"Source of tainted data ({source_name})",
+            }
+            call_chain.append(source_stmt)
+
+        # 5. If source and sink are in the same function, return detailed info
         if source_func and sink_func and source_func.name == sink_func.name:
             func_info = {
                 "function": source_func.name,
                 "file": source_func.file_path,
                 "line": source_func.line_no,
+                "statement": f"function {source_func.name}",
+                "context_lines": [source_func.line_no, source_func.end_line_no],
                 "type": "source+sink",
                 "description": f"Contains both source {source_name}(line {source_line}) and sink {sink_name}(line {sink_line})",
             }
             call_chain.append(func_info)
             return call_chain
 
-        # 4. Build the complete call chain from source to sink
+        # 6. Build the complete call chain from source to sink
         if source_func and sink_func:
             # Use Breadth-First Search (BFS) to find the path from source function to sink function
             queue = [(source_func, [source_func])]  # (current_node, path)
@@ -501,9 +541,10 @@ class EnhancedTaintTracker:
                         visited.add(callee.name)
                         queue.append((callee, path + [callee]))
 
-            # If path found, build the call chain
+            # If path found, build the call chain with function and statement info
             if found_path:
                 for i, func in enumerate(found_path):
+                    # Determine node type
                     node_type = "intermediate"
                     description = "Intermediate function in the call chain"
 
@@ -516,10 +557,33 @@ class EnhancedTaintTracker:
                         node_type = "sink"
                         description = f"Contains sink {sink_name} at line {sink_line}"
 
+                    # Find a representative line number for this function where it's called
+                    line_num = func.line_no
+
+                    # Try to find the actual call statement if this is an intermediate function
+                    call_statement = ""
+
+                    if i > 0 and i < len(found_path) - 1:
+                        # This is an intermediate function - try to find where it's called
+                        prev_func = found_path[i - 1]
+                        for callee in prev_func.callees:
+                            if callee.name == func.name and hasattr(
+                                callee, "call_line"
+                            ):
+                                line_num = callee.call_line
+                                call_statement = self._get_statement_at_line(
+                                    visitor, line_num
+                                )["statement"]
+                                break
+
                     func_info = {
                         "function": func.name,
                         "file": func.file_path,
-                        "line": func.line_no,
+                        "line": line_num,
+                        "statement": call_statement
+                        if call_statement
+                        else f"function {func.name}()",
+                        "context_lines": [func.line_no, func.end_line_no],
                         "type": node_type,
                         "description": description,
                     }
@@ -529,7 +593,7 @@ class EnhancedTaintTracker:
 
             # If direct path not found, try finding common callers...
             if not found_path and self.debug:
-                print("If direct path not found, try finding common callers...")
+                print("No direct path found, trying to find common callers...")
 
             # Build reverse call graph (from callee to caller)
             reverse_call_graph = {}
@@ -567,12 +631,35 @@ class EnhancedTaintTracker:
                         break
 
                 if common_caller_node:
+                    # Try to extract call statements for both source and sink functions
+                    source_call_stmt = ""
+                    sink_call_stmt = ""
+
+                    for callee in common_caller_node.callees:
+                        if callee.name == source_func.name and hasattr(
+                            callee, "call_line"
+                        ):
+                            source_call_stmt = self._get_statement_at_line(
+                                visitor, callee.call_line
+                            )["statement"]
+                        elif callee.name == sink_func.name and hasattr(
+                            callee, "call_line"
+                        ):
+                            sink_call_stmt = self._get_statement_at_line(
+                                visitor, callee.call_line
+                            )["statement"]
+
                     # Source function -> Common caller -> Sink function
                     call_chain = [
                         {
                             "function": source_func.name,
                             "file": source_func.file_path,
                             "line": source_func.line_no,
+                            "statement": source_stmt_info["statement"],
+                            "context_lines": [
+                                source_func.line_no,
+                                source_func.end_line_no,
+                            ],
                             "type": "source",
                             "description": f"Contains source {source_name} at line {source_line}",
                         },
@@ -580,25 +667,44 @@ class EnhancedTaintTracker:
                             "function": common_caller_node.name,
                             "file": common_caller_node.file_path,
                             "line": common_caller_node.line_no,
+                            "statement": f"function {common_caller_node.name}()",
+                            "context_lines": [
+                                common_caller_node.line_no,
+                                common_caller_node.end_line_no,
+                            ],
                             "type": "intermediate",
-                            "description": "Common caller of source and sink",
+                            "description": "Common caller of source and sink functions",
+                            "calls": [
+                                {
+                                    "function": source_func.name,
+                                    "statement": source_call_stmt,
+                                },
+                                {
+                                    "function": sink_func.name,
+                                    "statement": sink_call_stmt,
+                                },
+                            ],
                         },
                         {
                             "function": sink_func.name,
                             "file": sink_func.file_path,
                             "line": sink_func.line_no,
+                            "statement": sink_stmt_info["statement"],
+                            "context_lines": [sink_func.line_no, sink_func.end_line_no],
                             "type": "sink",
                             "description": f"Contains sink {sink_name} at line {sink_line}",
                         },
                     ]
                     return call_chain
 
-        # 5. If full call chain cannot be built, but source or sink function exists, add them
+        # 7. If full call chain cannot be built, but source or sink function exists, add them
         if source_func:
             source_func_info = {
                 "function": source_func.name,
                 "file": source_func.file_path,
                 "line": source_func.line_no,
+                "statement": source_stmt_info["statement"],
+                "context_lines": [source_func.line_no, source_func.end_line_no],
                 "type": "source",
                 "description": f"Contains source {source_name} at line {source_line}",
             }
@@ -609,12 +715,12 @@ class EnhancedTaintTracker:
                 "function": sink_func.name,
                 "file": sink_func.file_path,
                 "line": sink_func.line_no,
+                "statement": sink_stmt_info["statement"],
+                "context_lines": [sink_func.line_no, sink_func.end_line_no],
                 "type": "sink",
                 "description": f"Contains sink {sink_name} at line {sink_line}",
             }
-            # Avoid adding duplicates (if source and sink are in the same function but not detected earlier)
-            if not call_chain or call_chain[0]["function"] != sink_func.name:
-                call_chain.append(sink_func_info)
+            call_chain.append(sink_func_info)
 
         return call_chain
 
@@ -886,94 +992,125 @@ class EnhancedTaintTracker:
 
     def print_detailed_vulnerability(self, vulnerability: Dict[str, Any]) -> None:
         """
-        Print detailed information about a vulnerability.
+        Print a detailed vulnerability report with enhanced call chain information.
 
         Args:
-            vulnerability: Vulnerability dictionary
+            vulnerability: The vulnerability dictionary
         """
         print("\n" + "=" * 80)
-        print(f"VULNERABILITY: {vulnerability.get('rule', 'Unnamed Rule')}")
-        print(f"Message: {vulnerability.get('message', 'No message')}")
-        print(f"File: {vulnerability.get('file', 'Unknown file')}")
-        print("-" * 80)
-
-        # Source information
-        source = vulnerability.get("source", {})
-        print(
-            f"SOURCE: {source.get('name', 'Unknown')} at line {source.get('line', 0)}"
-        )
-
-        # Sink information
-        sink = vulnerability.get("sink", {})
-        print(f"SINK: {sink.get('name', 'Unknown')} at line {sink.get('line', 0)}")
-
-        # Tainted variable
-        print(f"TAINTED VARIABLE: {vulnerability.get('tainted_variable', 'Unknown')}")
-        print("-" * 80)
-
-        # Propagation chain
-        prop_chain = vulnerability.get("propagation_chain", [])
-        if prop_chain:
-            print("PROPAGATION CHAIN:")
-            for step in prop_chain:
-                step_no = step.get("step_no", "")
-                op = step.get("operation", "Unknown")
-                desc = step.get("description", "No description")
-                line = step.get("line", 0)
-                var = step.get("var_name", "")
-
-                # Format the step
-                step_str = f"{step_no}. " if step_no else ""
-                step_str += f"[{op}] "
-                step_str += desc
-                if line:
-                    step_str += f" (line {line})"
-                if var and var not in desc:
-                    step_str += f" - {var}"
-
-                print(f"  {step_str}")
-        else:
-            print("PROPAGATION CHAIN: None")
-
-        print("-" * 80)
-
-        # Call chain
-        call_chain = vulnerability.get("call_chain", [])
-        if call_chain:
-            print("CALL CHAIN:")
-            for i, call in enumerate(call_chain):
-                func = call.get("function", "Unknown")
-                file = call.get("file", "Unknown file")
-                line = call.get("line", 0)
-                call_type = call.get("type", "Unknown")
-                desc = call.get("description", "")
-
-                # Format the call
-                type_display = call_type.upper()
-                if call_type == "sink_location":
-                    type_display = "SINK LOCATION"
-                elif call_type == "source":
-                    type_display = "SOURCE LOCATION"
-                elif call_type == "intermediate":
-                    type_display = "INTERMEDIATE CALL"
-
-                call_str = f"{i+1}. [{type_display}] {func} in {file}:{line}"
-                if desc:
-                    call_str += f" - {desc}"
-
-                print(f"  {call_str}")
-        else:
-            print("CALL CHAIN: None")
-
+        print(f"VULNERABILITY REPORT: {vulnerability.get('rule', 'Unknown Rule')}")
         print("=" * 80)
 
-        # Check if the vulnerability is auto-detected
-        if vulnerability.get("auto_detected", False):
-            print("  🤖 Auto-detected: Yes (Based on standalone sink detection)")
-            print(f"  ⚠️ Confidence: {vulnerability.get('confidence', 'Low')}")
-            print(
-                "  📝 Description: This vulnerability is automatically generated based on the discovered dangerous operation point, and the data source could not be determined"
-            )
+        # Print file info
+        file_path = vulnerability.get("file", "Unknown file")
+        print(f"File: {file_path}")
+
+        # Print source info
+        source = vulnerability.get("source", {})
+        source_name = source.get("name", "Unknown")
+        source_line = source.get("line", 0)
+        print(f"Source: {source_name} at line {source_line}")
+
+        # Print sink info
+        sink = vulnerability.get("sink", {})
+        sink_name = sink.get("name", "Unknown")
+        sink_line = sink.get("line", 0)
+        print(f"Sink: {sink_name} at line {sink_line}")
+
+        # Print tainted variable
+        tainted_var = vulnerability.get("tainted_variable", "Unknown")
+        print(f"Tainted Variable: {tainted_var}")
+
+        # Print severity and confidence
+        severity = vulnerability.get("severity", "Unknown")
+        confidence = vulnerability.get("confidence", "Unknown")
+        print(f"Severity: {severity}")
+        print(f"Confidence: {confidence}")
+
+        # Print description
+        description = vulnerability.get("description", "No description available")
+        print(f"\nDescription: {description}")
+
+        # Print enhanced call chain information
+        call_chain = vulnerability.get("call_chain", [])
+        if call_chain:
+            print("\nCall Chain:")
+            for i, call_item in enumerate(call_chain):
+                # 增强的调用链显示
+                call_type = call_item.get("type", "unknown")
+                call_func = call_item.get("function", "Unknown")
+                call_line = call_item.get("line", 0)
+                call_file = call_item.get("file", "Unknown")
+
+                # 使用彩色输出区分不同类型的调用链节点
+                type_colors = {
+                    "source": "\033[92m",  # 绿色
+                    "sink": "\033[91m",  # 红色
+                    "intermediate": "\033[94m",  # 蓝色
+                    "source+sink": "\033[93m",  # 黄色
+                    "sink_container": "\033[95m",  # 紫色
+                    "related_path": "\033[96m",  # 青色
+                }
+                color = type_colors.get(call_type, "\033[0m")
+                reset = "\033[0m"
+
+                # 打印带颜色的标题行
+                title = f"{color}[{i+1}] {call_type.upper()}: {call_func} @ {os.path.basename(call_file)}:{call_line}{reset}"
+                print(f"\n  {title}")
+
+                # 打印语句（如果有）
+                if "statement" in call_item:
+                    statement = call_item["statement"]
+                    print(f"      Statement: {statement}")
+
+                # 打印上下文行（如果有）
+                if "context_lines" in call_item and call_item["context_lines"]:
+                    context_start, context_end = call_item["context_lines"]
+                    print(f"      Context: Lines {context_start}-{context_end}")
+
+                    # 如果有源代码，尝试显示上下文代码
+                    if (
+                        hasattr(self, "current_file_contents")
+                        and self.current_file_contents
+                    ):
+                        # 在当前文件内容中提取上下文
+                        try:
+                            context_lines = self.current_file_contents.splitlines()[
+                                context_start - 1 : context_end
+                            ]
+                            if context_lines:
+                                print("      Code:")
+                                for i, line in enumerate(context_lines, context_start):
+                                    # 高亮当前行
+                                    if i == call_line:
+                                        print(f"      > {i}: {line}")
+                                    else:
+                                        print(f"        {i}: {line}")
+                        except Exception as e:
+                            if self.debug:
+                                print(f"Error displaying context: {str(e)}")
+
+                # 打印描述
+                description = call_item.get("description", "")
+                if description:
+                    print(f"      Description: {description}")
+
+                # 打印调用信息（如果有）
+                if "calls" in call_item:
+                    print("      Calls:")
+                    for call in call_item["calls"]:
+                        func_name = call.get("function", "unknown")
+                        statement = call.get("statement", "")
+                        print(f"        -> {func_name}: {statement}")
+
+        # Print propagation path
+        propagation_path = vulnerability.get("propagation_path", [])
+        if propagation_path:
+            print("\nPropagation Path:")
+            for step in propagation_path:
+                print(f"  {step}")
+
+        print("=" * 80 + "\n")
 
     def _build_partial_call_chain_for_sink(
         self, visitor: EnhancedTaintAnalysisVisitor, sink_info: Dict[str, Any]
@@ -1006,20 +1143,10 @@ class EnhancedTaintTracker:
                 print("[DEBUG] Sink line number is 0 or missing")
             return []
 
-        # Step 1: Find function containing the sink
-        sink_function_node = self._find_function_containing_line(visitor, sink_line)
-
-        # Verify if visitor has source_lines attribute
-        has_source_lines = hasattr(visitor, "source_lines") and visitor.source_lines
-        if self.debug:
-            if has_source_lines:
-                print(
-                    f"[DEBUG] Visitor has source_lines attribute, total {len(visitor.source_lines)} lines"
-                )
-            else:
-                print(
-                    "[DEBUG] ⚠️ Visitor lacks source_lines attribute in _build_partial_call_chain_for_sink!"
-                )
+        # Step 1: Get the exact statement at the sink line
+        sink_stmt_info = self._get_statement_at_line(
+            visitor, sink_line, context_lines=2
+        )
 
         # Step 2: Find the direct sink operation (the actual dangerous call)
         sink_operation = self._extract_operation_at_line(visitor, sink_line)
@@ -1030,48 +1157,212 @@ class EnhancedTaintTracker:
                     "function": sink_operation,
                     "file": visitor.file_path,
                     "line": sink_line,
+                    "statement": sink_stmt_info["statement"],
+                    "context_lines": [sink_line - 2, sink_line + 2]
+                    if sink_line > 2
+                    else [1, sink_line + 2],
                     "type": "sink",
                     "description": f"Unsafe {sink_name} operation, potentially leading to {vulnerability_type}",
                 }
             )
 
-        # Step 3: Add the function containing the sink
+        # Step 3: Find function containing the sink
+        sink_function_node = self._find_function_containing_line(visitor, sink_line)
+
+        # Step 4: Try to find tainted variables used in the sink
+        tainted_vars_in_sink = self._find_tainted_vars_in_sink(visitor, sink_line)
+
+        # Step 5: If we found tainted variables, try to find their source statements
+        if (
+            tainted_vars_in_sink
+            and hasattr(visitor, "tainted")
+            and hasattr(visitor, "source_statements")
+        ):
+            for var_name in tainted_vars_in_sink:
+                # 检查变量是否被污染以及是否有源点信息
+                if var_name in visitor.tainted:
+                    source_info = visitor.tainted.get(var_name)
+                    if source_info and "line" in source_info:
+                        source_line = source_info.get("line", 0)
+                        source_name = source_info.get("name", "Unknown")
+
+                        # 获取源语句的详细信息
+                        if source_line > 0:
+                            source_stmt_info = self._get_statement_at_line(
+                                visitor, source_line, context_lines=1
+                            )
+                            source_operation = self._extract_operation_at_line(
+                                visitor, source_line
+                            )
+
+                            # 添加源语句到调用链
+                            source_stmt = {
+                                "function": source_operation or f"Source of {var_name}",
+                                "file": visitor.file_path,
+                                "line": source_line,
+                                "statement": source_info.get(
+                                    "statement", source_stmt_info["statement"]
+                                ),
+                                "context_lines": [source_line - 1, source_line + 1],
+                                "type": "source",
+                                "description": f"Source of tainted data ({source_name}) assigned to variable {var_name}",
+                            }
+                            # 将源语句添加到调用链中
+                            call_chain.append(source_stmt)
+
+                            if self.debug:
+                                print(
+                                    f"[DEBUG] Added source statement for var {var_name} at line {source_line}"
+                                )
+
+        # Step 6: Check for any variable assignment sources from known source patterns
+        # (这一步在找不到污点变量的情况下查找可能的源)
+        if sink_function_node and hasattr(visitor, "var_assignments"):
+            func_body_range = (
+                sink_function_node.line_no,
+                sink_function_node.end_line_no,
+            )
+            potential_sources = []
+
+            # 遍历函数体内的所有赋值语句，查找可能的网络输入源
+            for var_name, assign_info in visitor.var_assignments.items():
+                if (
+                    "line" in assign_info
+                    and func_body_range[0] <= assign_info["line"] <= func_body_range[1]
+                ):
+                    # 检查赋值语句是否包含网络输入等模式
+                    line_no = assign_info["line"]
+                    stmt = self._get_statement_at_line(visitor, line_no)["statement"]
+
+                    # 检查是否包含关键网络输入模式
+                    if (
+                        "recv" in stmt
+                        or "network" in stmt.lower()
+                        or "distributed" in stmt
+                    ):
+                        potential_sources.append(
+                            {"var": var_name, "line": line_no, "statement": stmt}
+                        )
+
+            # 添加潜在源
+            for src in potential_sources:
+                # 检查是否已经添加过该源
+                if not any(c.get("line") == src["line"] for c in call_chain):
+                    source_stmt = {
+                        "function": f"Potential source: {src['statement']}",
+                        "file": visitor.file_path,
+                        "line": src["line"],
+                        "statement": src["statement"],
+                        "context_lines": [src["line"] - 1, src["line"] + 1],
+                        "type": "potential_source",
+                        "description": f"Potential source of tainted data assigned to variable {src['var']}",
+                    }
+                    call_chain.append(source_stmt)
+
+        # Step 7: Add the function containing the sink to call chain
         if sink_function_node:
             # Check if a function with the same name has already been added, avoid duplicates
             if not call_chain or call_chain[0]["function"] != sink_function_node.name:
                 file_path = getattr(sink_function_node, "file_path", visitor.file_path)
+
+                # Find where this function is defined (to provide context)
+                func_def_start = sink_function_node.line_no
+                func_def_end = getattr(
+                    sink_function_node, "end_line_no", func_def_start + 1
+                )
+
+                # Try to get the function definition statement
+                func_def_stmt = ""
+                if (
+                    hasattr(visitor, "source_lines")
+                    and visitor.source_lines
+                    and func_def_start > 0
+                ):
+                    func_def_stmt = visitor.source_lines[func_def_start - 1].strip()
+
                 sink_func_info = {
                     "function": sink_function_node.name,
                     "file": file_path,
                     "line": sink_function_node.line_no,
+                    "statement": func_def_stmt
+                    if func_def_stmt
+                    else f"function {sink_function_node.name}",
+                    "context_lines": [func_def_start, func_def_end],
                     "type": "sink_container",
                     "description": f"Function containing sink {sink_name}, at line {sink_line}",
                 }
                 call_chain.append(sink_func_info)
 
-        # Step 4: Find related functions with similar functionality
+        # Step 8: Find related functions with similar functionality
         related_functions = self._find_related_functions(visitor, sink_name)
         for related_func in related_functions:
             # Ensure duplicate functions are not added
             if all(entry["function"] != related_func.name for entry in call_chain):
+                # Try to get the actual implementation or calling code
+                func_def_start = related_func.line_no
+                func_def_end = getattr(related_func, "end_line_no", func_def_start + 1)
+
+                # Try to get a code snippet or signature for the related function
+                func_snippet = ""
+                if (
+                    hasattr(visitor, "source_lines")
+                    and visitor.source_lines
+                    and func_def_start > 0
+                ):
+                    func_snippet = visitor.source_lines[func_def_start - 1].strip()
+
                 related_info = {
                     "function": related_func.name,
                     "file": related_func.file_path,
                     "line": related_func.line_no,
+                    "statement": func_snippet
+                    if func_snippet
+                    else f"function {related_func.name}",
+                    "context_lines": [func_def_start, func_def_end],
                     "type": "related_path",
                     "description": "Related function using similar unsafe techniques",
                 }
                 call_chain.append(related_info)
 
-        # Step 5: Find caller functions (who called the function containing the sink)
+        # Step 9: Find caller functions (who called the function containing the sink)
         if sink_function_node and sink_function_node.callers:
             # Only add one primary caller to avoid excessively long chains
             caller = sink_function_node.callers[0]
             if all(entry["function"] != caller.name for entry in call_chain):
+                # Try to find the line where this caller calls the sink function
+                caller_line = getattr(caller, "line_no", 0)
+                call_line = None
+
+                # Try to locate the actual call statement
+                if hasattr(caller, "callees"):
+                    for callee in caller.callees:
+                        if callee.name == sink_function_node.name and hasattr(
+                            callee, "call_line"
+                        ):
+                            call_line = callee.call_line
+                            break
+
+                # If we found the call line, get the statement
+                call_stmt = ""
+                if (
+                    call_line
+                    and hasattr(visitor, "source_lines")
+                    and visitor.source_lines
+                ):
+                    if 0 < call_line <= len(visitor.source_lines):
+                        call_stmt = visitor.source_lines[call_line - 1].strip()
+
                 caller_info = {
                     "function": caller.name,
                     "file": caller.file_path,
-                    "line": caller.line_no,
+                    "line": call_line if call_line else caller_line,
+                    "statement": call_stmt
+                    if call_stmt
+                    else f"{caller.name}() calls {sink_function_node.name}()",
+                    "context_lines": [
+                        call_line - 1 if call_line and call_line > 1 else caller_line,
+                        call_line + 1 if call_line else caller_line + 1,
+                    ],
                     "type": "intermediate",
                     "description": f"Called the function {sink_function_node.name} containing the sink",
                 }
@@ -1081,6 +1372,49 @@ class EnhancedTaintTracker:
             print(f"[DEBUG] Built call chain with {len(call_chain)} nodes")
 
         return call_chain
+
+    def _find_tainted_vars_in_sink(
+        self, visitor: EnhancedTaintAnalysisVisitor, sink_line: int
+    ) -> List[str]:
+        """
+        查找在sink语句中使用的污点变量
+
+        Args:
+            visitor: 访问者实例
+            sink_line: sink语句所在行号
+
+        Returns:
+            包含在sink中使用的污点变量名的列表
+        """
+        tainted_vars = []
+
+        # 检查visitor是否有源代码行
+        if not hasattr(visitor, "source_lines") or not visitor.source_lines:
+            return tainted_vars
+
+        # 获取sink行的源代码
+        if sink_line <= 0 or sink_line > len(visitor.source_lines):
+            return tainted_vars
+
+        sink_code = visitor.source_lines[sink_line - 1]
+
+        # 提取变量名
+        if hasattr(visitor, "tainted"):
+            # 检查每个污点变量是否在sink代码中使用
+            for var_name in visitor.tainted:
+                # 变量名前后必须有非字母数字字符或行首尾，以避免部分匹配
+                # 例如，避免将"a"匹配到"abc"中
+                import re
+
+                pattern = r"(^|[^\w])" + re.escape(var_name) + r"([^\w]|$)"
+                if re.search(pattern, sink_code):
+                    tainted_vars.append(var_name)
+                    if self.debug:
+                        print(
+                            f"[DEBUG] Found tainted variable {var_name} used in sink at line {sink_line}"
+                        )
+
+        return tainted_vars
 
     def _find_function_containing_line(
         self, visitor: EnhancedTaintAnalysisVisitor, line: int
@@ -1139,12 +1473,26 @@ class EnhancedTaintTracker:
         if line <= 0 or line > len(visitor.source_lines):
             if self.debug:
                 print(
-                    f"[Warning] Line number {line} is out of source code range (1-{len(visitor.source_lines)})"
+                    f"[Warning] Line number {line} is out of range (1-{len(visitor.source_lines)})"
                 )
             return None
 
         # Get line content
         line_content = visitor.source_lines[line - 1].strip()
+
+        # More detailed extraction of the operation by checking full statement
+        if "=" in line_content:
+            # Handle assignment cases: extract the right side of the assignment
+            operation = line_content.split("=", 1)[1].strip()
+        else:
+            # For non-assignment statements, use the full statement
+            operation = line_content
+
+        # Clean up the operation string
+        # Remove trailing semicolons, comments, etc.
+        operation = re.sub(r"[;].*$", "", operation)
+        operation = re.sub(r"#.*$", "", operation)
+        operation = operation.strip()
 
         # Common dangerous function name patterns
         dangerous_patterns = {
@@ -1173,19 +1521,70 @@ class EnhancedTaintTracker:
 
         # Attempt to find matching dangerous patterns
         sink_type = None
+        matched_pattern = None
+
         for sink_name, patterns in dangerous_patterns.items():
             for pattern in patterns:
-                if pattern in line_content:
-                    sink_type = pattern
-                    if self.debug:
-                        print(
-                            f"[Found] Dangerous pattern found on line {line}: {pattern}"
-                        )
+                if pattern in operation:
+                    sink_type = sink_name
+                    matched_pattern = pattern
                     break
             if sink_type:
                 break
 
-        return sink_type
+        if sink_type and matched_pattern:
+            # Return the exact operation instead of just the pattern
+            return operation
+
+        # If no dangerous pattern found but operation is not empty, return the operation
+        if operation:
+            return operation
+
+        return None
+
+    def _get_statement_at_line(
+        self, visitor: EnhancedTaintAnalysisVisitor, line: int, context_lines: int = 0
+    ) -> Dict[str, Any]:
+        """
+        Extract the statement at the given line with optional context lines.
+
+        Args:
+            visitor: The visitor instance
+            line: The line number to extract
+            context_lines: Number of lines of context to include before and after
+
+        Returns:
+            Dictionary with statement text and context information
+        """
+        if not hasattr(visitor, "source_lines") or not visitor.source_lines:
+            return {"statement": "", "context_start": line, "context_end": line}
+
+        if line <= 0 or line > len(visitor.source_lines):
+            return {"statement": "", "context_start": line, "context_end": line}
+
+        # Extract main statement
+        statement = visitor.source_lines[line - 1].strip()
+
+        # Determine context range
+        start_line = max(1, line - context_lines)
+        end_line = min(len(visitor.source_lines), line + context_lines)
+
+        # Extract context if requested
+        context = []
+        if context_lines > 0:
+            for i in range(start_line, end_line + 1):
+                if i == line:
+                    # Mark the actual statement line (could be used for highlighting)
+                    context.append(f"{i}: {visitor.source_lines[i-1].rstrip()}")
+                else:
+                    context.append(f"{i}: {visitor.source_lines[i-1].rstrip()}")
+
+        return {
+            "statement": statement,
+            "context_lines": context if context_lines > 0 else None,
+            "context_start": start_line,
+            "context_end": end_line,
+        }
 
     def _find_related_functions(
         self, visitor: EnhancedTaintAnalysisVisitor, sink_name: str
@@ -1208,7 +1607,15 @@ class EnhancedTaintTracker:
         # Find patterns related to sink_name in the config file
         for sink in self.sinks:
             if sink.get("name") == sink_name:
-                # Use the sink's patterns as the basis for finding related functions
+                # 首先查看是否有专门的related_patterns字段
+                if "related_patterns" in sink:
+                    related_patterns.extend(sink.get("related_patterns", []))
+                    if self.debug:
+                        print(
+                            f"Found related_patterns in config for {sink_name}: {related_patterns}"
+                        )
+
+                # 否则，从patterns提取关键词
                 for pattern in sink.get("patterns", []):
                     # Extract the base function name part from the pattern
                     if "." in pattern:
@@ -1231,61 +1638,25 @@ class EnhancedTaintTracker:
                 ):  # Only use longer words to avoid mismatches from short words
                     related_patterns.append(word.lower())
 
+            if self.debug:
+                print(
+                    f"No patterns found in config for {sink_name}, using words: {related_patterns}"
+                )
+
         # 2. Find similar functions through AST analysis
         # First, find functions similar to the pattern names
         for func_name, func_node in visitor.functions.items():
             for pattern in related_patterns:
                 # Check if function name contains pattern (case-insensitive)
                 if pattern.lower() in func_name.lower():
+                    if self.debug:
+                        print(
+                            f"Found related function {func_name} matching pattern {pattern}"
+                        )
                     related_functions.append(func_node)
                     break
 
-        # 3. If it's a built-in dangerous pattern, add related functions
-        if "pickle" in sink_name.lower() or "deseriali" in sink_name.lower():
-            for func_name, func_node in visitor.functions.items():
-                if any(
-                    term in func_name.lower()
-                    for term in [
-                        "load",
-                        "dump",
-                        "serial",
-                        "deserial",
-                        "broadcast",
-                        "object",
-                    ]
-                ):
-                    if func_node not in related_functions:
-                        related_functions.append(func_node)
-        elif "command" in sink_name.lower() or "exec" in sink_name.lower():
-            for func_name, func_node in visitor.functions.items():
-                if any(
-                    term in func_name.lower()
-                    for term in ["run", "exec", "command", "system", "popen", "process"]
-                ):
-                    if func_node not in related_functions:
-                        related_functions.append(func_node)
-        elif "sql" in sink_name.lower() or "inject" in sink_name.lower():
-            for func_name, func_node in visitor.functions.items():
-                if any(
-                    term in func_name.lower()
-                    for term in ["query", "sql", "execute", "db", "database"]
-                ):
-                    if func_node not in related_functions:
-                        related_functions.append(func_node)
-        elif (
-            "path" in sink_name.lower()
-            or "file" in sink_name.lower()
-            or "traversal" in sink_name.lower()
-        ):
-            for func_name, func_node in visitor.functions.items():
-                if any(
-                    term in func_name.lower()
-                    for term in ["file", "path", "read", "write", "open", "directory"]
-                ):
-                    if func_node not in related_functions:
-                        related_functions.append(func_node)
-
-        # 4. Find functions that call similar functions
+        # 3. Find functions that call similar functions
         call_related_functions = []
         for func_node in list(
             related_functions
@@ -1301,5 +1672,5 @@ class EnhancedTaintTracker:
         # Merge directly related functions and call-relation related functions
         related_functions.extend(call_related_functions)
 
-        # 5. Limit the number of returned results to avoid excessive length
+        # 4. Limit the number of returned results to avoid excessive length
         return related_functions[:5]

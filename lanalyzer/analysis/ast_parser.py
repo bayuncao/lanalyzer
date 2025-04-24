@@ -435,6 +435,12 @@ class TaintVisitor(ast.NodeVisitor):
         if self.debug:
             print(f"\n[Function Name Parsing] Starting parsing: {ast.dump(func)}")
 
+        # 如果输入为None，直接返回(None, None)
+        if func is None:
+            if self.debug:
+                print("  Function node is None")
+            return None, None
+
         if isinstance(func, ast.Name):
             simple_name = func.id
 
@@ -495,6 +501,35 @@ class TaintVisitor(ast.NodeVisitor):
                         print(f"  Handling nested attributes: {full_name}")
                     return func.attr, full_name
 
+        # 处理Subscript类型（如dic[key]）
+        elif isinstance(func, ast.Subscript):
+            if self.debug:
+                print(f"  Encountered subscript expression: {ast.dump(func)}")
+            if isinstance(func.value, ast.Name):
+                # 尝试获取基础名称，如dic[key]中的"dic"
+                base_name = func.value.id
+                if self.debug:
+                    print(f"  Subscript base name: {base_name}")
+                return base_name, None
+            elif isinstance(func.value, ast.Attribute):
+                # 处理obj.attr[key]形式
+                _, parent_full = self._get_func_name_with_module(func.value)
+                if parent_full:
+                    if self.debug:
+                        print(f"  Subscript with attribute: {parent_full}[...]")
+                    return parent_full, parent_full
+
+        # 处理其他复杂表达式
+        try:
+            # 尝试获取一个可用于日志和调试的字符串表示
+            expr_str = ast.unparse(func)
+            if self.debug:
+                print(f"  Complex expression: {expr_str}")
+            return expr_str, None
+        except (AttributeError, ValueError):
+            # ast.unparse在Python 3.9+才可用
+            pass
+
         if self.debug:
             print("  Unable to parse function name")
         return None, None
@@ -510,6 +545,18 @@ class TaintVisitor(ast.NodeVisitor):
         Returns:
             True if the function is a source, False otherwise
         """
+        # 确保func_name是字符串类型
+        if not isinstance(func_name, str):
+            if self.debug:
+                print(f"Warning: func_name is not a string: {type(func_name)}")
+            return False
+
+        # 确保full_name是字符串类型或None
+        if full_name is not None and not isinstance(full_name, str):
+            if self.debug:
+                print(f"Warning: full_name is not a string: {type(full_name)}")
+            full_name = None
+
         for source in self.sources:
             for pattern in source["patterns"]:
                 # Check if pattern matches simple name
@@ -541,6 +588,22 @@ class TaintVisitor(ast.NodeVisitor):
         Returns:
             Type of the source
         """
+        # 确保func_name是字符串类型
+        if not isinstance(func_name, str):
+            if self.debug:
+                print(
+                    f"Warning: func_name is not a string in _get_source_type: {type(func_name)}"
+                )
+            return "Unknown"
+
+        # 确保full_name是字符串类型或None
+        if full_name is not None and not isinstance(full_name, str):
+            if self.debug:
+                print(
+                    f"Warning: full_name is not a string in _get_source_type: {type(full_name)}"
+                )
+            full_name = None
+
         for source in self.sources:
             for pattern in source["patterns"]:
                 if pattern == func_name or (full_name and pattern in full_name):
@@ -560,6 +623,22 @@ class TaintVisitor(ast.NodeVisitor):
         """
         Check if a function name is a sink based on configuration patterns.
         """
+        # 确保func_name是字符串类型
+        if not isinstance(func_name, str):
+            if self.debug:
+                print(
+                    f"Warning: func_name is not a string in _is_sink: {type(func_name)}"
+                )
+            return False
+
+        # 确保full_name是字符串类型或None
+        if full_name is not None and not isinstance(full_name, str):
+            if self.debug:
+                print(
+                    f"Warning: full_name is not a string in _is_sink: {type(full_name)}"
+                )
+            full_name = None
+
         if self.debug:
             print(
                 f"\n[Sink Check] Checking function: {func_name} (full name: {full_name or 'N/A'})"
@@ -638,6 +717,22 @@ class TaintVisitor(ast.NodeVisitor):
         Returns:
             Type of the sink
         """
+        # 确保func_name是字符串类型
+        if not isinstance(func_name, str):
+            if self.debug:
+                print(
+                    f"Warning: func_name is not a string in _get_sink_type: {type(func_name)}"
+                )
+            return "Unknown"
+
+        # 确保full_name是字符串类型或None
+        if full_name is not None and not isinstance(full_name, str):
+            if self.debug:
+                print(
+                    f"Warning: full_name is not a string in _get_sink_type: {type(full_name)}"
+                )
+            full_name = None
+
         for sink in self.sinks:
             for pattern in sink["patterns"]:
                 if pattern == func_name or (full_name and pattern in full_name):
