@@ -30,7 +30,9 @@ def analyze_files_with_logging(
     start_time = time.time()
 
     print(f"\n[Analysis] Starting analysis of {total_files} files")
-    print(f"[Analysis] Start time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(
+        f"[Analysis] Start time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
 
     # Log configuration info - use tracker.config instead of direct access to rules
     print(f"[Config] Source types: {[s['name'] for s in tracker.sources]}")
@@ -46,7 +48,9 @@ def analyze_files_with_logging(
     # Special focus on sinks within `with open` context
     with_open_sinks = [p for p in sink_patterns if "load" in p or "loads" in p]
     if with_open_sinks:
-        print(f"[Config] Special focus on sinks in 'with open' context: {with_open_sinks}")
+        print(
+            f"[Config] Special focus on sinks in 'with open' context: {with_open_sinks}"
+        )
 
     for idx, file_path in enumerate(files, 1):
         file_start_time = time.time()
@@ -92,14 +96,18 @@ def analyze_files_with_logging(
             analysis_duration = file_end_time - file_start_time
             ast_analysis_time = file_end_time - analysis_start
 
-            print(f"{progress} Analysis complete, total time: {analysis_duration:.2f} seconds")
+            print(
+                f"{progress} Analysis complete, total time: {analysis_duration:.2f} seconds"
+            )
             print(f"{progress} AST analysis time: {ast_analysis_time:.2f} seconds")
-            print(f"{progress} Number of vulnerabilities found: {len(file_vulnerabilities)}")
+            print(
+                f"{progress} Number of vulnerabilities found: {len(file_vulnerabilities)}"
+            )
 
             # Modified part: Force analysis even if no visitor
             sources_count = 0
             sinks_count = 0
-            
+
             # Attempt to get source and sink info, but don't block processing
             if hasattr(tracker, "visitor") and tracker.visitor:
                 sources_count = (
@@ -112,14 +120,16 @@ def analyze_files_with_logging(
                     if hasattr(tracker.visitor, "found_sinks")
                     else 0
                 )
-                
+
                 print(f"{progress} Number of sources found: {sources_count}")
                 print(f"{progress} Number of sinks found: {sinks_count}")
 
                 # Log file handles related to `with open`
                 if hasattr(tracker.visitor, "file_handles"):
                     file_handles = tracker.visitor.file_handles
-                    print(f"{progress} Number of tracked file handles: {len(file_handles)}")
+                    print(
+                        f"{progress} Number of tracked file handles: {len(file_handles)}"
+                    )
 
                     # Log details for each file handle
                     if file_handles:
@@ -133,8 +143,10 @@ def analyze_files_with_logging(
                             )
             else:
                 # Continue analysis even without visitor
-                print(f"{progress} Note: No visitor information available for this file. Skipping detailed analysis but continuing processing.")
-                
+                print(
+                    f"{progress} Note: No visitor information available for this file. Skipping detailed analysis but continuing processing."
+                )
+
                 # Custom analysis logic can be added here, independent of the visitor
                 # Example: Use regex or other methods to find potential issues
                 try:
@@ -144,9 +156,13 @@ def analyze_files_with_logging(
                         for pattern in tracker.sinks:
                             for sink_pattern in pattern.get("patterns", []):
                                 if sink_pattern in content:
-                                    print(f"{progress} Potential sink pattern found in file: {sink_pattern}")
+                                    print(
+                                        f"{progress} Potential sink pattern found in file: {sink_pattern}"
+                                    )
                 except Exception as e:
-                    print(f"{progress} Could not read file content for alternative analysis: {e}")
+                    print(
+                        f"{progress} Could not read file content for alternative analysis: {e}"
+                    )
 
             if file_vulnerabilities:
                 print(f"{progress} Vulnerability details:")
@@ -157,10 +173,10 @@ def analyze_files_with_logging(
                     sink_name = vuln.get("sink", {}).get("name", "Unknown")
                     sink_line = vuln.get("sink", {}).get("line", 0)
                     tainted_var = vuln.get("tainted_variable", "Unknown")
-                    
+
                     # Check if it's an auto-detected vulnerability
                     is_auto_detected = vuln.get("auto_detected", False)
-                    
+
                     if is_auto_detected:
                         print(
                             f"{progress}   {i}. {rule}: [Auto-detected] {sink_name}(line {sink_line}), no specific source found"
@@ -169,7 +185,7 @@ def analyze_files_with_logging(
                         print(
                             f"{progress}   {i}. {rule}: {source_name}(line {source_line}) -> {sink_name}(line {sink_line}), tainted variable: {tainted_var}"
                         )
-                        
+
                     # Check if it's a sink in `with open` context - Modified code for robust check
                     is_with_open_sink = (
                         "with open" in source_name or "FileRead" in source_name
@@ -189,7 +205,9 @@ def analyze_files_with_logging(
                         )
 
                     if is_with_open_sink:
-                        print(f"{progress}      ⚠️ Note: This is a sink point within a 'with open' context!")
+                        print(
+                            f"{progress}      ⚠️ Note: This is a sink point within a 'with open' context!"
+                        )
 
             all_vulnerabilities.extend(file_vulnerabilities)
 
@@ -212,20 +230,22 @@ def analyze_files_with_logging(
     for vuln in all_vulnerabilities:
         rule = vuln.get("rule", "Unknown")
         is_auto_detected = vuln.get("auto_detected", False)
-        
+
         if is_auto_detected:
             auto_detected_vulns += 1
-        
+
         vuln_types[rule] = vuln_types.get(rule, 0) + 1
 
     if vuln_types:
         print("[Analysis] Vulnerability type statistics:")
         for rule, count in sorted(vuln_types.items(), key=lambda x: x[1], reverse=True):
             print(f"  - {rule}: {count}")
-        
+
         # Display count of auto-detected vulnerabilities
         if auto_detected_vulns > 0:
-            print(f"[Analysis] Auto-detected potential vulnerabilities: {auto_detected_vulns}")
+            print(
+                f"[Analysis] Auto-detected potential vulnerabilities: {auto_detected_vulns}"
+            )
 
     # Special count for vulnerabilities in `with open` context
     with_open_vulns = []
@@ -236,14 +256,18 @@ def analyze_files_with_logging(
             with_open_vulns.append(vuln)
 
     if with_open_vulns:
-        print(f"[Analysis] Found {len(with_open_vulns)} file operation related vulnerabilities")
+        print(
+            f"[Analysis] Found {len(with_open_vulns)} file operation related vulnerabilities"
+        )
         for i, vuln in enumerate(with_open_vulns, 1):
             file = vuln.get("file", "Unknown")
             sink_line = vuln.get("sink", {}).get("line", 0)
             rule = vuln.get("rule", "Unknown")
             print(f"  {i}. {os.path.basename(file)}:{sink_line} - {rule}")
 
-    print(f"[Analysis] End time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(
+        f"[Analysis] End time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
 
     return all_vulnerabilities
 
@@ -298,7 +322,6 @@ def print_detailed_summary(detailed_summary: Dict[str, Any]) -> None:
     print(f"Functions analyzed: {detailed_summary.get('functions_analyzed', 0)}")
     print(f"Vulnerabilities found: {detailed_summary.get('vulnerabilities_found', 0)}")
 
-    
     print("\nPROPAGATION STATISTICS:")
     print(
         f"Vulnerabilities with propagation chains: {detailed_summary.get('vulnerabilities_with_propagation', 0)}"
@@ -327,7 +350,6 @@ def print_detailed_summary(detailed_summary: Dict[str, Any]) -> None:
         ):
             print(f"  {source}: {count}")
 
-    
     sink_counts = detailed_summary.get("sink_counts", {})
     if sink_counts:
         print("\nSINK TYPE STATISTICS:")
@@ -336,15 +358,12 @@ def print_detailed_summary(detailed_summary: Dict[str, Any]) -> None:
         ):
             print(f"  {sink}: {count}")
 
-    
     source_sink_pairs = detailed_summary.get("source_sink_pairs", {})
     if source_sink_pairs:
         print("\nTOP SOURCE-SINK PAIRS:")
         for pair, count in sorted(
             source_sink_pairs.items(), key=lambda x: x[1], reverse=True
-        )[
-            :10
-        ]:  
+        )[:10]:
             print(f"  {pair}: {count}")
 
-    print("=" * 60) 
+    print("=" * 60)

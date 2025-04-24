@@ -39,14 +39,16 @@ class EnhancedTaintVisitor(TaintVisitor):
         super().__init__(parent_map, debug, verbose)
         self.file_path = file_path
         self.source_lines = None  # Will store source code lines
-        
+
         # If file path is provided, try to load the source code
         if file_path and os.path.exists(file_path):
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     self.source_lines = f.readlines()
                 if self.debug:
-                    print(f"Loaded {len(self.source_lines)} lines of source code from {file_path}")
+                    print(
+                        f"Loaded {len(self.source_lines)} lines of source code from {file_path}"
+                    )
             except Exception as e:
                 if self.debug:
                     print(f"Failed to load source code: {str(e)}")
@@ -92,7 +94,9 @@ class EnhancedTaintVisitor(TaintVisitor):
 
         # Increased initialization debug info
         if self.debug:
-            print(f"Creating EnhancedTaintVisitor instance for analyzing file: {self.file_path}")
+            print(
+                f"Creating EnhancedTaintVisitor instance for analyzing file: {self.file_path}"
+            )
 
     def _initialize_operation_taint_rules(self) -> Dict[str, Callable]:
         """Initialize rules for how taint propagates through different operations."""
@@ -133,7 +137,9 @@ class EnhancedTaintVisitor(TaintVisitor):
         """Visit a module node and initialize path analysis."""
         # Add filename debug info
         if self.debug:
-            print(f"\n========== Starting analysis of file: {self.file_path} ==========\n")
+            print(
+                f"\n========== Starting analysis of file: {self.file_path} ==========\n"
+            )
 
         self.path_root = PathNode(node)
         self.current_path = self.path_root
@@ -141,7 +147,9 @@ class EnhancedTaintVisitor(TaintVisitor):
 
         # Print file info again upon analysis completion
         if self.debug:
-            print(f"\n========== Completed analysis of file: {self.file_path} ==========")
+            print(
+                f"\n========== Completed analysis of file: {self.file_path} =========="
+            )
             print(f"Found {len(self.found_sinks)} sinks")
             print(f"Found {len(self.found_sources)} sources")
 
@@ -164,4 +172,4 @@ class EnhancedTaintVisitor(TaintVisitor):
             module, original_name = self.module_imports[func_name]
             full_name = f"{module}.{original_name}"
 
-        return func_name, full_name 
+        return func_name, full_name

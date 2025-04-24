@@ -19,7 +19,13 @@ class ParentNodeVisitor(ast.NodeVisitor):
 
 
 class TaintVisitor(ast.NodeVisitor):
-    def __init__(self, parent_map=None, debug: bool = False, verbose: bool = False, file_path: Optional[str] = None):
+    def __init__(
+        self,
+        parent_map=None,
+        debug: bool = False,
+        verbose: bool = False,
+        file_path: Optional[str] = None,
+    ):
         """
         Initialize the taint visitor.
 
@@ -38,18 +44,20 @@ class TaintVisitor(ast.NodeVisitor):
         self.verbose = verbose
         self.file_path = file_path
         self.source_lines = None  # Store source code lines
-        
+
         # If file path is provided, try to load the source code
         if file_path and os.path.exists(file_path):
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     self.source_lines = f.readlines()
                 if self.debug:
-                    print(f"Loaded {len(self.source_lines)} lines of source code from {file_path}")
+                    print(
+                        f"Loaded {len(self.source_lines)} lines of source code from {file_path}"
+                    )
             except Exception as e:
                 if self.debug:
                     print(f"Failed to load source code: {str(e)}")
-        
+
         self.import_aliases = {}  # Track import aliases, e.g., 'import module as alias'
         self.from_imports = {}  # Track from imports, e.g., 'from module import func'
         self.direct_imports = set()  # Track direct imports
@@ -60,8 +68,11 @@ class TaintVisitor(ast.NodeVisitor):
         """
         for name in node.names:
             if self.debug:
-                print(f"\n[Import Tracking] Processing import: {name.name}" + (f" as {name.asname}" if name.asname else ""))
-            
+                print(
+                    f"\n[Import Tracking] Processing import: {name.name}"
+                    + (f" as {name.asname}" if name.asname else "")
+                )
+
             if name.asname:
                 self.import_aliases[name.asname] = name.name
                 if self.debug:
@@ -142,7 +153,7 @@ class TaintVisitor(ast.NodeVisitor):
         if func_name and self._is_sink(func_name, full_name):
             sink_type = self._get_sink_type(func_name, full_name)
             vulnerability_type = self._get_sink_vulnerability_type(sink_type)
-            
+
             sink_info = {
                 "name": sink_type,
                 "line": line_no,
@@ -150,7 +161,7 @@ class TaintVisitor(ast.NodeVisitor):
                 "node": node,
                 "vulnerability_type": vulnerability_type,
             }
-            
+
             self.found_sinks.append(sink_info)
             self._check_sink_args(node, sink_type, sink_info)
 
@@ -423,22 +434,26 @@ class TaintVisitor(ast.NodeVisitor):
         """
         if self.debug:
             print(f"\n[Function Name Parsing] Starting parsing: {ast.dump(func)}")
-        
+
         if isinstance(func, ast.Name):
             simple_name = func.id
-            
+
             # Check if this is an imported name
             if simple_name in self.from_imports:
                 full_name = self.from_imports[simple_name]
                 if self.debug:
-                    print(f"  Found mapping in from_imports: {simple_name} -> {full_name}")
+                    print(
+                        f"  Found mapping in from_imports: {simple_name} -> {full_name}"
+                    )
                 return simple_name, full_name
 
             # Check if this is an alias
             if simple_name in self.import_aliases:
                 module_name = self.import_aliases[simple_name]
                 if self.debug:
-                    print(f"  Found mapping in import_aliases: {simple_name} -> {module_name}")
+                    print(
+                        f"  Found mapping in import_aliases: {simple_name} -> {module_name}"
+                    )
                 return simple_name, module_name
 
             # Check if this is a direct import
@@ -455,18 +470,20 @@ class TaintVisitor(ast.NodeVisitor):
             if isinstance(func.value, ast.Name):
                 module_name = func.value.id
                 attr_name = func.attr
-                
+
                 # Check if the module is an alias
                 if module_name in self.import_aliases:
                     real_module = self.import_aliases[module_name]
                     full_name = f"{real_module}.{attr_name}"
                     if self.debug:
-                        print(f"  Parsed from module alias: {module_name}.{attr_name} -> {full_name}")
+                        print(
+                            f"  Parsed from module alias: {module_name}.{attr_name} -> {full_name}"
+                        )
                 else:
                     full_name = f"{module_name}.{attr_name}"
                     if self.debug:
                         print(f"  Constructed full name: {full_name}")
-                
+
                 return attr_name, full_name
 
             # Handle nested attributes like module.submodule.function
@@ -544,22 +561,26 @@ class TaintVisitor(ast.NodeVisitor):
         Check if a function name is a sink based on configuration patterns.
         """
         if self.debug:
-            print(f"\n[Sink Check] Checking function: {func_name} (full name: {full_name or 'N/A'})")
+            print(
+                f"\n[Sink Check] Checking function: {func_name} (full name: {full_name or 'N/A'})"
+            )
             print("  Current import information:")
             print(f"    - Direct imports: {self.direct_imports}")
             print(f"    - Alias imports: {self.import_aliases}")
             print(f"    - From imports: {self.from_imports}")
-        
+
         for sink in self.sinks:
             sink_name = sink.get("name", "Unknown")
             if self.debug:
                 print(f"  [Sink Type] Checking patterns for {sink_name}:")
-            
+
             for pattern in sink["patterns"]:
                 if self.debug:
                     print(f"    - Current pattern: {pattern}")
-                    print(f"      Comparing: function name='{func_name}', full name='{full_name}'")
-                
+                    print(
+                        f"      Comparing: function name='{func_name}', full name='{full_name}'"
+                    )
+
                 # Check simple name match
                 if pattern == func_name:
                     if self.debug:
@@ -571,12 +592,16 @@ class TaintVisitor(ast.NodeVisitor):
                     # Check exact match
                     if pattern == full_name:
                         if self.debug:
-                            print(f"    ✓ Match successful: Exact full name match - {pattern}")
+                            print(
+                                f"    ✓ Match successful: Exact full name match - {pattern}"
+                            )
                         return True
                     # Check partial match
                     if pattern in full_name:
                         if self.debug:
-                            print(f"    ✓ Match successful: Full name contains pattern - {pattern} in {full_name}")
+                            print(
+                                f"    ✓ Match successful: Full name contains pattern - {pattern} in {full_name}"
+                            )
                         return True
 
                 # Check for wildcard patterns
@@ -584,13 +609,17 @@ class TaintVisitor(ast.NodeVisitor):
                     regex_pattern = pattern.replace(".", "\\.").replace("*", ".*")
                     if re.match(regex_pattern, func_name):
                         if self.debug:
-                            print(f"    ✓ Match successful: Function name wildcard match - {pattern}")
+                            print(
+                                f"    ✓ Match successful: Function name wildcard match - {pattern}"
+                            )
                         return True
                     if full_name and re.match(regex_pattern, full_name):
                         if self.debug:
-                            print(f"    ✓ Match successful: Full name wildcard match - {pattern}")
+                            print(
+                                f"    ✓ Match successful: Full name wildcard match - {pattern}"
+                            )
                         return True
-                
+
                 if self.debug:
                     print("    × No match for this pattern")
 

@@ -81,7 +81,9 @@ class FunctionVisitorMixin:
         self.current_path = old_path
         self.variable_taint = old_variable_taint
 
-    def _check_function_return_taint(self: "EnhancedTaintVisitor", node: ast.FunctionDef) -> None:
+    def _check_function_return_taint(
+        self: "EnhancedTaintVisitor", node: ast.FunctionDef
+    ) -> None:
         """Check if a function returns tainted data."""
         returns_tainted = False
         taint_sources = []
@@ -153,7 +155,9 @@ class FunctionVisitorMixin:
                 # of the external callee without adding a node to self.functions.
                 # Example: self.current_function.add_external_callee_name(func_name)
                 if self.debug:
-                    print(f"  -> Call to external/undefined function '{func_name}' ignored for self.functions population.")
+                    print(
+                        f"  -> Call to external/undefined function '{func_name}' ignored for self.functions population."
+                    )
 
         # Track taint propagation through return values
         self._track_return_taint_propagation(node, func_name)
@@ -231,7 +235,9 @@ class FunctionVisitorMixin:
                                 f"Propagated taint to parameter {param_name} in function {func_name}"
                             )
 
-    def _track_return_taint_propagation(self: "EnhancedTaintVisitor", node: ast.Call, func_name: str) -> None:
+    def _track_return_taint_propagation(
+        self: "EnhancedTaintVisitor", node: ast.Call, func_name: str
+    ) -> None:
         """Track taint propagation through function return values."""
         # Check if this is a function that returns tainted data
         if (
@@ -273,7 +279,7 @@ class FunctionVisitorMixin:
                                 print(
                                     f"Propagated taint from {func_name} return to {target.id}"
                                 )
-    
+
     def visit_With(self: "EnhancedTaintVisitor", node: ast.With) -> None:
         """
         Visit a with statement node to handle context managers.
@@ -281,52 +287,58 @@ class FunctionVisitorMixin:
         for item in node.items:
             if isinstance(item.context_expr, ast.Call):
                 # Get function name but don't hardcode any checks
-                func_name, full_name = self._get_func_name_with_module(item.context_expr.func)
-                
+                func_name, full_name = self._get_func_name_with_module(
+                    item.context_expr.func
+                )
+
                 # Use configuration-driven approach to check if it's a file-related source
                 is_file_open = False
                 source_type = None
-                
+
                 # Check all source patterns
                 for source in self.sources:
                     for pattern in source["patterns"]:
-                        if (pattern == func_name or 
-                            (full_name and pattern in full_name) or
-                            ("open" in pattern)):
+                        if (
+                            pattern == func_name
+                            or (full_name and pattern in full_name)
+                            or ("open" in pattern)
+                        ):
                             is_file_open = True
                             source_type = source["name"]
                             break
                     if is_file_open:
                         break
-                
+
                 # If it's a file open operation and has an as variable
                 if (is_file_open or func_name == "open") and item.optional_vars:
                     if isinstance(item.optional_vars, ast.Name):
                         file_var = item.optional_vars.id
-                        
+
                         # Mark the file handle variable as tainted
                         source_info = {
                             "name": source_type or "FileRead",
                             "line": getattr(node, "lineno", 0),
                             "col": getattr(node, "col_offset", 0),
-                            "context": "with_statement"
+                            "context": "with_statement",
                         }
-                        
+
                         # Add file handle tracking
                         if not hasattr(self, "file_handles"):
                             self.file_handles = {}
-                        
+
                         # Mark tainted file handle from with statement
                         self.file_handles[file_var] = {
                             "source_var": "file_path",
                             "source_info": source_info,
-                            "from_with": True
+                            "from_with": True,
                         }
-                        
+
                         # Explicitly mark file handle as tainted
                         self.variable_taint[file_var] = source_info
-                        
+
                         if self.debug:
-                            print(f"Marked file handle '{file_var}' as tainted (from with statement)")
-        
-        self.generic_visit(node) 
+                            print(
+                                f"Marked file handle '{file_var}' as tainted (from with statement)"
+                            )
+
+        self.generic_visit(node)

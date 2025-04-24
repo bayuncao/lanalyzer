@@ -15,9 +15,9 @@ from lanalyzer.cli.log_utils import LogTee, get_timestamp
 from lanalyzer.cli.file_utils import list_target_files, gather_target_files
 from lanalyzer.cli.config_utils import load_configuration, save_output
 from lanalyzer.cli.analysis_utils import (
-    analyze_files_with_logging, 
-    print_summary, 
-    print_detailed_summary
+    analyze_files_with_logging,
+    print_summary,
+    print_detailed_summary,
 )
 
 
@@ -113,7 +113,9 @@ def enhanced_cli_main() -> int:
         # List files to be analyzed
         target_files = gather_target_files(args.target)
         if args.debug:
-            print(f"[File List] The following {len(target_files)} files will be analyzed:")
+            print(
+                f"[File List] The following {len(target_files)} files will be analyzed:"
+            )
             for idx, file_path in enumerate(target_files, 1):
                 print(f"  {idx}. {file_path}")
 
@@ -153,6 +155,7 @@ def enhanced_cli_main() -> int:
     except Exception as e:
         if args.debug:
             import traceback
+
             traceback.print_exc()
         else:
             print(f"Error during analysis: {e}")

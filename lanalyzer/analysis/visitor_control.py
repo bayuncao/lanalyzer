@@ -49,8 +49,10 @@ class ControlFlowVisitorMixin:
         self.current_path = old_path
 
         # Don't call generic_visit as we've handled the children manually
-        
-    def get_taint_propagation_chain(self: "EnhancedTaintVisitor", var_name: str) -> List[Dict[str, Any]]:
+
+    def get_taint_propagation_chain(
+        self: "EnhancedTaintVisitor", var_name: str
+    ) -> List[Dict[str, Any]]:
         """Get the complete taint propagation chain for a variable."""
         if var_name not in self.variable_taint:
             return []
@@ -142,4 +144,4 @@ class ControlFlowVisitorMixin:
             key=lambda x: x.get("line", 0) if x.get("line", 0) > 0 else float("inf")
         )
 
-        return propagation_chain 
+        return propagation_chain

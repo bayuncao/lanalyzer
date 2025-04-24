@@ -48,7 +48,7 @@ def save_output(vulnerabilities, output_path, pretty=False, debug=False):
     try:
         # Preprocess results to ensure they can be serialized correctly
         processed_vulns = prepare_for_json(vulnerabilities)
-        
+
         with open(output_path, "w", encoding="utf-8") as f:
             if pretty:
                 json.dump(processed_vulns, f, indent=2, ensure_ascii=False)
@@ -56,26 +56,29 @@ def save_output(vulnerabilities, output_path, pretty=False, debug=False):
                 json.dump(processed_vulns, f, ensure_ascii=False)
 
         if debug:
-            print(f"[Output] Successfully saved {len(vulnerabilities)} vulnerability results to {output_path}")
+            print(
+                f"[Output] Successfully saved {len(vulnerabilities)} vulnerability results to {output_path}"
+            )
     except Exception as e:
         print(f"[Error] Failed to save output: {e}")
         if debug:
             import traceback
+
             print(traceback.format_exc())
 
 
 def prepare_for_json(obj):
     """
     Recursively process the object to make it JSON serializable.
-    
+
     Handles:
     - AST nodes converted to string representation
     - Sets converted to lists
     - Other non-serializable objects converted to strings
-    
+
     Args:
         obj: The object to process
-        
+
     Returns:
         A serializable object
     """
@@ -91,7 +94,7 @@ def prepare_for_json(obj):
     elif isinstance(obj, set):
         # Handle sets
         return [prepare_for_json(item) for item in obj]
-    elif hasattr(obj, '__dict__'):
+    elif hasattr(obj, "__dict__"):
         # Handle custom objects
         return f"<{obj.__class__.__name__}>"
     else:
@@ -100,4 +103,4 @@ def prepare_for_json(obj):
             json.dumps(obj)
             return obj
         except (TypeError, OverflowError):
-            return str(obj) 
+            return str(obj)

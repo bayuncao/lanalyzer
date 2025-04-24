@@ -353,9 +353,6 @@ def get_node_source_code(node: ast.AST, source_code: str) -> str:
         return "\n".join(result)
 
 
-
-
-
 def extract_call_targets(node: ast.Call) -> List[str]:
     """
     Extract possible function names from a Call node.

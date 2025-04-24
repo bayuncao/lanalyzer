@@ -22,7 +22,9 @@ from lanalyzer.analysis.tracker import EnhancedTaintTracker
 from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
 
 # For backward compatibility
-from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor as EnhancedTaintVisitor
+from lanalyzer.analysis.visitor import (
+    EnhancedTaintAnalysisVisitor as EnhancedTaintVisitor,
+)
 
 # Import functions we have migrated from the utils package
 from lanalyzer.utils.ast_utils import (

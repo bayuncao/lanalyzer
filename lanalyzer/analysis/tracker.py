@@ -134,31 +134,37 @@ class EnhancedTaintTracker:
             vulnerabilities = self._find_enhanced_vulnerabilities(visitor, file_path)
 
             # Keep track of reported sink lines from full flows
-            reported_sink_lines = {vuln.get("sink", {}).get("line", -1) for vuln in vulnerabilities}
+            reported_sink_lines = {
+                vuln.get("sink", {}).get("line", -1) for vuln in vulnerabilities
+            }
 
             # Add new detection logic: treat standalone sinks as potential vulnerabilities
             if hasattr(visitor, "found_sinks") and visitor.found_sinks:
                 if self.debug:
                     print(f"Found {len(visitor.found_sinks)} potential sinks")
                     # Check the source_lines attribute
-                    if hasattr(visitor, 'source_lines') and visitor.source_lines:
-                        print(f"✓ Visitor has source_lines attribute with {len(visitor.source_lines)} lines of source code")
+                    if hasattr(visitor, "source_lines") and visitor.source_lines:
+                        print(
+                            f"✓ Visitor has source_lines attribute with {len(visitor.source_lines)} lines of source code"
+                        )
                     else:
-                        print("✗ Visitor does not have source_lines attribute or it is empty")
-                    
+                        print(
+                            "✗ Visitor does not have source_lines attribute or it is empty"
+                        )
+
                 for sink_info in visitor.found_sinks:
                     # Create a serializable copy of sink_info, removing the AST node
                     serializable_sink = {}
                     for key, value in sink_info.items():
                         if key != "node":  # Skip AST node
                             serializable_sink[key] = value
-                    
+
                     # Continue processing with the serializable sink_info
                     sink_line = serializable_sink.get("line", 0)
-                    
+
                     # Check if this sink has already been reported in a full flow
                     if sink_line in reported_sink_lines:
-                        continue # Skip if already reported via a full taint flow
+                        continue  # Skip if already reported via a full taint flow
 
                     # If this sink hasn't been reported, create a new vulnerability record
                     # (This block is reached only if the sink wasn't part of a full flow)
@@ -168,12 +174,14 @@ class EnhancedTaintTracker:
                         "line": 0,
                         "col": 0,
                         "context": "auto_detected",
-                        "description": "Automatically detected unknown source"
+                        "description": "Automatically detected unknown source",
                     }
 
                     # Attempt to build a partial call chain based on sink location
-                    partial_call_chain = self._build_partial_call_chain_for_sink(visitor, serializable_sink)
-                    
+                    partial_call_chain = self._build_partial_call_chain_for_sink(
+                        visitor, serializable_sink
+                    )
+
                     # Create vulnerability record
                     sink_vulnerability = {
                         "file": file_path,
@@ -186,18 +194,22 @@ class EnhancedTaintTracker:
                         "description": f"Potential dangerous operation point {serializable_sink.get('name', 'Unknown')} found, but data source could not be determined",
                         "auto_detected": True,  # Mark as auto-detected vulnerability
                         "propagation_path": [],  # No propagation path (as source is unknown)
-                        "call_chain": partial_call_chain # Use the generated partial chain
+                        "call_chain": partial_call_chain,  # Use the generated partial chain
                     }
-                    
+
                     # Add extra sink-related info if available
                     if "tainted_args" in serializable_sink:
-                        sink_vulnerability["tainted_arguments"] = serializable_sink["tainted_args"]
-                    
+                        sink_vulnerability["tainted_arguments"] = serializable_sink[
+                            "tainted_args"
+                        ]
+
                     vulnerabilities.append(sink_vulnerability)
-                    reported_sink_lines.add(sink_line) # Mark as reported
-                    
+                    reported_sink_lines.add(sink_line)  # Mark as reported
+
                     if self.debug:
-                        print(f"Auto-detected potential vulnerability: {serializable_sink.get('name', 'Unknown')} at line {sink_line}")
+                        print(
+                            f"Auto-detected potential vulnerability: {serializable_sink.get('name', 'Unknown')} at line {sink_line}"
+                        )
 
             if self.debug:
                 print(f"Enhanced analysis complete for {file_path}")
@@ -422,7 +434,9 @@ class EnhancedTaintTracker:
         sink_name = sink.get("name", "Unknown")
 
         if self.debug:
-            print(f"Building call chain from source {source_name}(line {source_line}) to sink {sink_name}(line {sink_line})")
+            print(
+                f"Building call chain from source {source_name}(line {source_line}) to sink {sink_name}(line {sink_line})"
+            )
 
         # 1. Find function containing the source
         source_func = None
@@ -440,12 +454,16 @@ class EnhancedTaintTracker:
 
         if self.debug:
             if source_func:
-                print(f"Found source function: {source_func.name} (lines {source_func.line_no}-{source_func.end_line_no})")
+                print(
+                    f"Found source function: {source_func.name} (lines {source_func.line_no}-{source_func.end_line_no})"
+                )
             else:
                 print(f"Could not find function containing source (line {source_line})")
-                
+
             if sink_func:
-                print(f"Found sink function: {sink_func.name} (lines {sink_func.line_no}-{sink_func.end_line_no})")
+                print(
+                    f"Found sink function: {sink_func.name} (lines {sink_func.line_no}-{sink_func.end_line_no})"
+                )
             else:
                 print(f"Could not find function containing sink (line {sink_line})")
 
@@ -456,7 +474,7 @@ class EnhancedTaintTracker:
                 "file": source_func.file_path,
                 "line": source_func.line_no,
                 "type": "source+sink",
-                "description": f"Contains both source {source_name}(line {source_line}) and sink {sink_name}(line {sink_line})"
+                "description": f"Contains both source {source_name}(line {source_line}) and sink {sink_name}(line {sink_line})",
             }
             call_chain.append(func_info)
             return call_chain
@@ -471,42 +489,44 @@ class EnhancedTaintTracker:
 
             while queue and not found_path:
                 current, path = queue.pop(0)
-                
+
                 # Check callees of the current node
                 for callee in current.callees:
                     if callee.name == sink_func.name:
                         # Path found
                         found_path = path + [sink_func]
                         break
-                    
+
                     if callee.name not in visited and len(path) < max_depth:
                         visited.add(callee.name)
                         queue.append((callee, path + [callee]))
-            
+
             # If path found, build the call chain
             if found_path:
                 for i, func in enumerate(found_path):
                     node_type = "intermediate"
                     description = "Intermediate function in the call chain"
-                    
+
                     if i == 0:
                         node_type = "source"
-                        description = f"Contains source {source_name} at line {source_line}"
+                        description = (
+                            f"Contains source {source_name} at line {source_line}"
+                        )
                     elif i == len(found_path) - 1:
                         node_type = "sink"
                         description = f"Contains sink {sink_name} at line {sink_line}"
-                    
+
                     func_info = {
                         "function": func.name,
                         "file": func.file_path,
                         "line": func.line_no,
                         "type": node_type,
-                        "description": description
+                        "description": description,
                     }
                     call_chain.append(func_info)
-                
+
                 return call_chain
-            
+
             # If direct path not found, try finding common callers...
             if not found_path and self.debug:
                 print("If direct path not found, try finding common callers...")
@@ -515,33 +535,37 @@ class EnhancedTaintTracker:
             reverse_call_graph = {}
             for func_name, func_node in visitor.functions.items():
                 reverse_call_graph[func_name] = []
-                
+
             for func_name, func_node in visitor.functions.items():
                 for callee in func_node.callees:
                     if callee.name not in reverse_call_graph:
                         reverse_call_graph[callee.name] = []
                     reverse_call_graph[callee.name].append(func_name)
-            
+
             # Use BFS to find common callers of source and sink functions
-            source_callers = self._find_callers(source_func.name, reverse_call_graph, max_depth)
-            sink_callers = self._find_callers(sink_func.name, reverse_call_graph, max_depth)
-            
+            source_callers = self._find_callers(
+                source_func.name, reverse_call_graph, max_depth
+            )
+            sink_callers = self._find_callers(
+                sink_func.name, reverse_call_graph, max_depth
+            )
+
             common_callers = source_callers.intersection(sink_callers)
-            
+
             if common_callers and self.debug:
                 print(f"Found common callers: {common_callers}")
-            
+
             # If common callers found, build path
             if common_callers:
                 # Select a common caller
                 common_caller = next(iter(common_callers))
                 common_caller_node = None
-                
+
                 for func_name, func_node in visitor.functions.items():
                     if func_name == common_caller:
                         common_caller_node = func_node
                         break
-                
+
                 if common_caller_node:
                     # Source function -> Common caller -> Sink function
                     call_chain = [
@@ -550,22 +574,22 @@ class EnhancedTaintTracker:
                             "file": source_func.file_path,
                             "line": source_func.line_no,
                             "type": "source",
-                            "description": f"Contains source {source_name} at line {source_line}"
+                            "description": f"Contains source {source_name} at line {source_line}",
                         },
                         {
                             "function": common_caller_node.name,
                             "file": common_caller_node.file_path,
                             "line": common_caller_node.line_no,
                             "type": "intermediate",
-                            "description": "Common caller of source and sink"
+                            "description": "Common caller of source and sink",
                         },
                         {
                             "function": sink_func.name,
                             "file": sink_func.file_path,
                             "line": sink_func.line_no,
                             "type": "sink",
-                            "description": f"Contains sink {sink_name} at line {sink_line}"
-                        }
+                            "description": f"Contains sink {sink_name} at line {sink_line}",
+                        },
                     ]
                     return call_chain
 
@@ -576,25 +600,27 @@ class EnhancedTaintTracker:
                 "file": source_func.file_path,
                 "line": source_func.line_no,
                 "type": "source",
-                "description": f"Contains source {source_name} at line {source_line}"
+                "description": f"Contains source {source_name} at line {source_line}",
             }
             call_chain.append(source_func_info)
-            
+
         if sink_func:
             sink_func_info = {
                 "function": sink_func.name,
                 "file": sink_func.file_path,
                 "line": sink_func.line_no,
                 "type": "sink",
-                "description": f"Contains sink {sink_name} at line {sink_line}"
+                "description": f"Contains sink {sink_name} at line {sink_line}",
             }
             # Avoid adding duplicates (if source and sink are in the same function but not detected earlier)
             if not call_chain or call_chain[0]["function"] != sink_func.name:
                 call_chain.append(sink_func_info)
 
         return call_chain
-        
-    def _find_callers(self, func_name: str, reverse_call_graph: Dict[str, List[str]], max_depth: int) -> Set[str]:
+
+    def _find_callers(
+        self, func_name: str, reverse_call_graph: Dict[str, List[str]], max_depth: int
+    ) -> Set[str]:
         """
         Use BFS to find all functions that call the specified function.
 
@@ -609,23 +635,23 @@ class EnhancedTaintTracker:
         callers = set()
         visited = {func_name}
         queue = [(func_name, 0)]  # (function_name, depth)
-        
+
         while queue:
             current, depth = queue.pop(0)
-            
+
             if depth >= max_depth:
                 continue
-                
+
             # Get all callers of the current function
             current_callers = reverse_call_graph.get(current, [])
-            
+
             for caller in current_callers:
                 callers.add(caller)
-                
+
                 if caller not in visited:
                     visited.add(caller)
                     queue.append((caller, depth + 1))
-                    
+
         return callers
 
     def analyze_multiple_files(self, file_paths: List[str]) -> List[Dict[str, Any]]:
@@ -861,7 +887,7 @@ class EnhancedTaintTracker:
     def print_detailed_vulnerability(self, vulnerability: Dict[str, Any]) -> None:
         """
         Print detailed information about a vulnerability.
-        
+
         Args:
             vulnerability: Vulnerability dictionary
         """
@@ -945,7 +971,9 @@ class EnhancedTaintTracker:
         if vulnerability.get("auto_detected", False):
             print("  🤖 Auto-detected: Yes (Based on standalone sink detection)")
             print(f"  ⚠️ Confidence: {vulnerability.get('confidence', 'Low')}")
-            print("  📝 Description: This vulnerability is automatically generated based on the discovered dangerous operation point, and the data source could not be determined")
+            print(
+                "  📝 Description: This vulnerability is automatically generated based on the discovered dangerous operation point, and the data source could not be determined"
+            )
 
     def _build_partial_call_chain_for_sink(
         self, visitor: EnhancedTaintAnalysisVisitor, sink_info: Dict[str, Any]
@@ -964,10 +992,14 @@ class EnhancedTaintTracker:
         call_chain = []
         sink_line = sink_info.get("line", 0)
         sink_name = sink_info.get("name", "Unknown Sink")
-        vulnerability_type = sink_info.get("vulnerability_type", f"{sink_name} Vulnerability")
+        vulnerability_type = sink_info.get(
+            "vulnerability_type", f"{sink_name} Vulnerability"
+        )
 
         if self.debug:
-            print(f"[DEBUG] Building call chain for sink '{sink_name}' (line {sink_line})")
+            print(
+                f"[DEBUG] Building call chain for sink '{sink_name}' (line {sink_line})"
+            )
 
         if not sink_line:
             if self.debug:
@@ -976,41 +1008,47 @@ class EnhancedTaintTracker:
 
         # Step 1: Find function containing the sink
         sink_function_node = self._find_function_containing_line(visitor, sink_line)
-        
+
         # Verify if visitor has source_lines attribute
-        has_source_lines = hasattr(visitor, 'source_lines') and visitor.source_lines
+        has_source_lines = hasattr(visitor, "source_lines") and visitor.source_lines
         if self.debug:
             if has_source_lines:
-                print(f"[DEBUG] Visitor has source_lines attribute, total {len(visitor.source_lines)} lines")
+                print(
+                    f"[DEBUG] Visitor has source_lines attribute, total {len(visitor.source_lines)} lines"
+                )
             else:
-                print("[DEBUG] ⚠️ Visitor lacks source_lines attribute in _build_partial_call_chain_for_sink!")
-                
+                print(
+                    "[DEBUG] ⚠️ Visitor lacks source_lines attribute in _build_partial_call_chain_for_sink!"
+                )
+
         # Step 2: Find the direct sink operation (the actual dangerous call)
         sink_operation = self._extract_operation_at_line(visitor, sink_line)
         if sink_operation:
             # If direct operation is found, add it as the first element of the call chain
-            call_chain.append({
-                "function": sink_operation,
-                "file": visitor.file_path,
-                "line": sink_line,
-                "type": "sink",
-                "description": f"Unsafe {sink_name} operation, potentially leading to {vulnerability_type}"
-            })
-        
+            call_chain.append(
+                {
+                    "function": sink_operation,
+                    "file": visitor.file_path,
+                    "line": sink_line,
+                    "type": "sink",
+                    "description": f"Unsafe {sink_name} operation, potentially leading to {vulnerability_type}",
+                }
+            )
+
         # Step 3: Add the function containing the sink
         if sink_function_node:
             # Check if a function with the same name has already been added, avoid duplicates
             if not call_chain or call_chain[0]["function"] != sink_function_node.name:
-                file_path = getattr(sink_function_node, 'file_path', visitor.file_path)
+                file_path = getattr(sink_function_node, "file_path", visitor.file_path)
                 sink_func_info = {
                     "function": sink_function_node.name,
                     "file": file_path,
                     "line": sink_function_node.line_no,
                     "type": "sink_container",
-                    "description": f"Function containing sink {sink_name}, at line {sink_line}"
+                    "description": f"Function containing sink {sink_name}, at line {sink_line}",
                 }
                 call_chain.append(sink_func_info)
-        
+
         # Step 4: Find related functions with similar functionality
         related_functions = self._find_related_functions(visitor, sink_name)
         for related_func in related_functions:
@@ -1021,10 +1059,10 @@ class EnhancedTaintTracker:
                     "file": related_func.file_path,
                     "line": related_func.line_no,
                     "type": "related_path",
-                    "description": "Related function using similar unsafe techniques"
+                    "description": "Related function using similar unsafe techniques",
                 }
                 call_chain.append(related_info)
-        
+
         # Step 5: Find caller functions (who called the function containing the sink)
         if sink_function_node and sink_function_node.callers:
             # Only add one primary caller to avoid excessively long chains
@@ -1035,13 +1073,13 @@ class EnhancedTaintTracker:
                     "file": caller.file_path,
                     "line": caller.line_no,
                     "type": "intermediate",
-                    "description": f"Called the function {sink_function_node.name} containing the sink"
+                    "description": f"Called the function {sink_function_node.name} containing the sink",
                 }
                 call_chain.append(caller_info)
 
         if self.debug:
             print(f"[DEBUG] Built call chain with {len(call_chain)} nodes")
-            
+
         return call_chain
 
     def _find_function_containing_line(
@@ -1059,56 +1097,80 @@ class EnhancedTaintTracker:
         """
         for func_name, func_node in visitor.functions.items():
             # Ensure the node has necessary attributes
-            if not hasattr(func_node, 'line_no') or not hasattr(func_node, 'end_line_no'):
+            if not hasattr(func_node, "line_no") or not hasattr(
+                func_node, "end_line_no"
+            ):
                 continue
-            
+
             # Check if the line number is valid
-            if not isinstance(func_node.line_no, int) or not isinstance(func_node.end_line_no, int):
+            if not isinstance(func_node.line_no, int) or not isinstance(
+                func_node.end_line_no, int
+            ):
                 continue
-                
+
             # Check if the line is within the function's range
             if func_node.line_no <= line <= func_node.end_line_no:
                 return func_node
-                
+
         return None
-        
+
     def _extract_operation_at_line(
         self, visitor: EnhancedTaintAnalysisVisitor, line: int
     ) -> Optional[str]:
         """
         Attempt to extract the actual operation name for the specified line.
-        
+
         Args:
             visitor: Visitor instance
             line: Line number
-            
+
         Returns:
             Operation name, or None if not found
         """
         # Check if raw source code is available
-        if not hasattr(visitor, 'source_lines') or not visitor.source_lines:
+        if not hasattr(visitor, "source_lines") or not visitor.source_lines:
             if self.debug:
-                print(f"[Warning] Visitor lacks source_lines attribute or it is empty, cannot extract operation for line {line}")
+                print(
+                    f"[Warning] Visitor lacks source_lines attribute or it is empty, cannot extract operation for line {line}"
+                )
             return None
-            
+
         # Ensure line number is within valid range
         if line <= 0 or line > len(visitor.source_lines):
             if self.debug:
-                print(f"[Warning] Line number {line} is out of source code range (1-{len(visitor.source_lines)})")
+                print(
+                    f"[Warning] Line number {line} is out of source code range (1-{len(visitor.source_lines)})"
+                )
             return None
-            
+
         # Get line content
-        line_content = visitor.source_lines[line-1].strip()
-        
+        line_content = visitor.source_lines[line - 1].strip()
+
         # Common dangerous function name patterns
         dangerous_patterns = {
-            "PickleDeserialization": ["pickle.loads", "pickle.load", "cPickle.loads", "cPickle.load"],
-            "CommandExecution": ["os.system", "subprocess.run", "subprocess.Popen", "exec(", "eval("],
-            "SQLInjection": ["execute(", "executemany(", "cursor.execute", "raw_connection"],
+            "PickleDeserialization": [
+                "pickle.loads",
+                "pickle.load",
+                "cPickle.loads",
+                "cPickle.load",
+            ],
+            "CommandExecution": [
+                "os.system",
+                "subprocess.run",
+                "subprocess.Popen",
+                "exec(",
+                "eval(",
+            ],
+            "SQLInjection": [
+                "execute(",
+                "executemany(",
+                "cursor.execute",
+                "raw_connection",
+            ],
             "PathTraversal": ["open(", "os.path.join", "os.makedirs", "os.listdir"],
-            "XSS": ["render_template", "render", "html"]
+            "XSS": ["render_template", "render", "html"],
         }
-        
+
         # Attempt to find matching dangerous patterns
         sink_type = None
         for sink_name, patterns in dangerous_patterns.items():
@@ -1116,11 +1178,13 @@ class EnhancedTaintTracker:
                 if pattern in line_content:
                     sink_type = pattern
                     if self.debug:
-                        print(f"[Found] Dangerous pattern found on line {line}: {pattern}")
+                        print(
+                            f"[Found] Dangerous pattern found on line {line}: {pattern}"
+                        )
                     break
             if sink_type:
                 break
-                
+
         return sink_type
 
     def _find_related_functions(
@@ -1128,43 +1192,45 @@ class EnhancedTaintTracker:
     ) -> List[Any]:
         """
         Find functions related to the given sink.
-        
+
         Args:
             visitor: Visitor instance
             sink_name: Sink name
-            
+
         Returns:
             List of related function nodes
         """
         related_functions = []
-        
+
         # 1. Use sink definitions from the config file to find related function patterns
         related_patterns = []
-        
+
         # Find patterns related to sink_name in the config file
         for sink in self.sinks:
             if sink.get("name") == sink_name:
                 # Use the sink's patterns as the basis for finding related functions
                 for pattern in sink.get("patterns", []):
                     # Extract the base function name part from the pattern
-                    if '.' in pattern:
-                        func_part = pattern.split('.')[-1]
+                    if "." in pattern:
+                        func_part = pattern.split(".")[-1]
                         related_patterns.append(func_part)
-                    elif '(' in pattern:
-                        func_part = pattern.split('(')[0]
+                    elif "(" in pattern:
+                        func_part = pattern.split("(")[0]
                         related_patterns.append(func_part)
                     else:
                         related_patterns.append(pattern)
                 break
-                
+
         # If no related patterns found in config, use the sink name itself as a basis
         if not related_patterns:
             # Use words from sink_name as search patterns
-            words = re.findall(r'[A-Za-z]+', sink_name)
+            words = re.findall(r"[A-Za-z]+", sink_name)
             for word in words:
-                if len(word) > 3:  # Only use longer words to avoid mismatches from short words
+                if (
+                    len(word) > 3
+                ):  # Only use longer words to avoid mismatches from short words
                     related_patterns.append(word.lower())
-                    
+
         # 2. Find similar functions through AST analysis
         # First, find functions similar to the pattern names
         for func_name, func_node in visitor.functions.items():
@@ -1173,39 +1239,67 @@ class EnhancedTaintTracker:
                 if pattern.lower() in func_name.lower():
                     related_functions.append(func_node)
                     break
-                    
+
         # 3. If it's a built-in dangerous pattern, add related functions
         if "pickle" in sink_name.lower() or "deseriali" in sink_name.lower():
             for func_name, func_node in visitor.functions.items():
-                if any(term in func_name.lower() for term in ["load", "dump", "serial", "deserial", "broadcast", "object"]):
+                if any(
+                    term in func_name.lower()
+                    for term in [
+                        "load",
+                        "dump",
+                        "serial",
+                        "deserial",
+                        "broadcast",
+                        "object",
+                    ]
+                ):
                     if func_node not in related_functions:
                         related_functions.append(func_node)
         elif "command" in sink_name.lower() or "exec" in sink_name.lower():
             for func_name, func_node in visitor.functions.items():
-                if any(term in func_name.lower() for term in ["run", "exec", "command", "system", "popen", "process"]):
+                if any(
+                    term in func_name.lower()
+                    for term in ["run", "exec", "command", "system", "popen", "process"]
+                ):
                     if func_node not in related_functions:
                         related_functions.append(func_node)
         elif "sql" in sink_name.lower() or "inject" in sink_name.lower():
             for func_name, func_node in visitor.functions.items():
-                if any(term in func_name.lower() for term in ["query", "sql", "execute", "db", "database"]):
+                if any(
+                    term in func_name.lower()
+                    for term in ["query", "sql", "execute", "db", "database"]
+                ):
                     if func_node not in related_functions:
                         related_functions.append(func_node)
-        elif "path" in sink_name.lower() or "file" in sink_name.lower() or "traversal" in sink_name.lower():
+        elif (
+            "path" in sink_name.lower()
+            or "file" in sink_name.lower()
+            or "traversal" in sink_name.lower()
+        ):
             for func_name, func_node in visitor.functions.items():
-                if any(term in func_name.lower() for term in ["file", "path", "read", "write", "open", "directory"]):
+                if any(
+                    term in func_name.lower()
+                    for term in ["file", "path", "read", "write", "open", "directory"]
+                ):
                     if func_node not in related_functions:
                         related_functions.append(func_node)
-                    
+
         # 4. Find functions that call similar functions
         call_related_functions = []
-        for func_node in list(related_functions):  # Use a copy to avoid modifying while iterating
+        for func_node in list(
+            related_functions
+        ):  # Use a copy to avoid modifying while iterating
             # Find other functions that call the current function
             for caller in func_node.callers:
-                if caller not in related_functions and caller not in call_related_functions:
+                if (
+                    caller not in related_functions
+                    and caller not in call_related_functions
+                ):
                     call_related_functions.append(caller)
-                    
+
         # Merge directly related functions and call-relation related functions
         related_functions.extend(call_related_functions)
-                    
+
         # 5. Limit the number of returned results to avoid excessive length
         return related_functions[:5]

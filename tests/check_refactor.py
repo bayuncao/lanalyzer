@@ -16,11 +16,13 @@ from lanalyzer.analysis import (
     EnhancedTaintVisitor,
 )
 
+
 # Test: Confirm EnhancedTaintVisitor is an alias for EnhancedTaintAnalysisVisitor
 def test_backward_compatibility():
     print("Testing backward compatibility...", end="")
     assert EnhancedTaintVisitor == EnhancedTaintAnalysisVisitor
     print("Success!")
+
 
 # Test: Instantiate the new visitor class
 def test_instantiation():
@@ -32,27 +34,29 @@ def test_instantiation():
     assert hasattr(visitor, "pathsensitive")
     print("Success!")
 
+
 # Check if files exist
 def check_files():
     print("Checking file splitting results...")
     expected_files = [
         "lanalyzer/analysis/visitor_base.py",
-        "lanalyzer/analysis/visitor_function.py", 
+        "lanalyzer/analysis/visitor_function.py",
         "lanalyzer/analysis/visitor_datastructure.py",
         "lanalyzer/analysis/visitor_control.py",
         "lanalyzer/analysis/visitor.py",
     ]
-    
+
     for file in expected_files:
         print(f"  Checking {file}...", end="")
         assert os.path.exists(file), f"File does not exist: {file}"
         print("Exists")
-    
+
     print("All file checks successful!")
+
 
 if __name__ == "__main__":
     print("Starting verification of refactoring results...")
     check_files()
     test_backward_compatibility()
     test_instantiation()
-    print("All tests passed! Refactoring successful.") 
+    print("All tests passed! Refactoring successful.")

@@ -178,7 +178,9 @@ class DataStructureVisitorMixin:
                                     f"List {container_name} tainted by insert() with {value.id}"
                                 )
 
-    def _track_complex_data_assignments(self: "EnhancedTaintVisitor", node: ast.Assign) -> None:
+    def _track_complex_data_assignments(
+        self: "EnhancedTaintVisitor", node: ast.Assign
+    ) -> None:
         """Track taint in complex data structure assignments with enhanced propagation tracking."""
         # Handle dictionary assignments
         if isinstance(node.value, ast.Dict):
@@ -382,4 +384,4 @@ class DataStructureVisitorMixin:
             assign_path = self.pathsensitive.PathNode(node, self.current_path)
             self.current_path.add_child(assign_path)
             # Copy current variable taint state to this path node
-            assign_path.variable_taint = copy.deepcopy(self.variable_taint) 
+            assign_path.variable_taint = copy.deepcopy(self.variable_taint)

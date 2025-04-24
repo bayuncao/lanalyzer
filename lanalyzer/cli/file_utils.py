@@ -60,4 +60,3 @@ def gather_target_files(target_path):
         else:
             print(f"[Warning] Target is not a Python file: {target_path}")
             return []
-
