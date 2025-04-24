@@ -7,8 +7,6 @@ dist/
 .idea/
 examples/*
 .DS_Store
-README.md
-testing_observations.md
 analysis_log.txt
 .cursor/
 rules/*
