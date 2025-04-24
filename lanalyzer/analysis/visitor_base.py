@@ -7,7 +7,7 @@ import copy
 import os
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from lanalyzer.analysis.enhanced.ast_parser import TaintVisitor
+from lanalyzer.analysis.ast_parser import TaintVisitor
 
 from .callgraph import CallGraphNode
 from .datastructures import DataStructureNode

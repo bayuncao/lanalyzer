@@ -14,7 +14,7 @@ from typing import Any, Dict, List
 import json
 import ast
 
-from lanalyzer.analysis.enhanced.tracker import EnhancedTaintTracker
+from lanalyzer.analysis.tracker import EnhancedTaintTracker
 
 
 def enhanced_cli_main() -> int:

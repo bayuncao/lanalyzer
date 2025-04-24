@@ -8,7 +8,7 @@ import traceback
 import re
 from typing import Any, Dict, List, Tuple, Set, Optional
 
-from lanalyzer.analysis.enhanced.ast_parser import ParentNodeVisitor
+from lanalyzer.analysis.ast_parser import ParentNodeVisitor
 
 from .visitor import EnhancedTaintAnalysisVisitor
 

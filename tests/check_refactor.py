@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # 导入重构后的类和向后兼容的类
-from lanalyzer.analysis.enhanced import (
+from lanalyzer.analysis import (
     EnhancedTaintAnalysisVisitor,
     EnhancedTaintVisitor,
 )
@@ -36,11 +36,11 @@ def test_instantiation():
 def check_files():
     print("检查文件分拆结果...")
     expected_files = [
-        "lanalyzer/analysis/enhanced/visitor_base.py",
-        "lanalyzer/analysis/enhanced/visitor_function.py", 
-        "lanalyzer/analysis/enhanced/visitor_datastructure.py",
-        "lanalyzer/analysis/enhanced/visitor_control.py",
-        "lanalyzer/analysis/enhanced/visitor.py",
+        "lanalyzer/analysis/visitor_base.py",
+        "lanalyzer/analysis/visitor_function.py", 
+        "lanalyzer/analysis/visitor_datastructure.py",
+        "lanalyzer/analysis/visitor_control.py",
+        "lanalyzer/analysis/visitor.py",
     ]
     
     for file in expected_files:

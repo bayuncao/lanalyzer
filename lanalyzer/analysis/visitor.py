@@ -7,7 +7,7 @@ import ast
 from typing import Any, Dict, List, Optional, Tuple
 import os
 
-from lanalyzer.analysis.enhanced.ast_parser import TaintVisitor
+from lanalyzer.analysis.ast_parser import TaintVisitor
 
 from .callgraph import CallGraphNode
 from .datastructures import DataStructureNode
@@ -23,7 +23,7 @@ import importlib
 
 # Create dynamic imports to avoid circular references
 for module_name in ['callgraph', 'datastructures', 'defuse', 'pathsensitive']:
-    globals()[module_name] = importlib.import_module(f'.{module_name}', package='lanalyzer.analysis.enhanced')
+    globals()[module_name] = importlib.import_module(f'.{module_name}', package='lanalyzer.analysis')
 
 
 class EnhancedTaintAnalysisVisitor(
