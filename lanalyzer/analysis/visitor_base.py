@@ -3,15 +3,11 @@ Enhanced AST visitor for taint analysis - Base Visitor.
 """
 
 import ast
-import copy
 import os
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 from lanalyzer.analysis.ast_parser import TaintVisitor
 
-from .callgraph import CallGraphNode
-from .datastructures import DataStructureNode
-from .defuse import DefUseChain
 from .pathsensitive import PathNode
 
 

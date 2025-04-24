@@ -4,7 +4,6 @@ Enhanced AST visitor for taint analysis - Data structure related operations.
 
 import ast
 import copy
-from typing import Dict, Any
 
 from .visitor_base import EnhancedTaintVisitor
 from .datastructures import DataStructureNode

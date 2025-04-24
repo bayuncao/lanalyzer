@@ -144,7 +144,7 @@ class EnhancedTaintTracker:
                     if hasattr(visitor, 'source_lines') and visitor.source_lines:
                         print(f"✓ Visitor has source_lines attribute with {len(visitor.source_lines)} lines of source code")
                     else:
-                        print(f"✗ Visitor does not have source_lines attribute or it is empty")
+                        print("✗ Visitor does not have source_lines attribute or it is empty")
                     
                 for sink_info in visitor.found_sinks:
                     # Create a serializable copy of sink_info, removing the AST node
@@ -983,7 +983,7 @@ class EnhancedTaintTracker:
             if has_source_lines:
                 print(f"[DEBUG] Visitor has source_lines attribute, total {len(visitor.source_lines)} lines")
             else:
-                print(f"[DEBUG] ⚠️ Visitor lacks source_lines attribute in _build_partial_call_chain_for_sink!")
+                print("[DEBUG] ⚠️ Visitor lacks source_lines attribute in _build_partial_call_chain_for_sink!")
                 
         # Step 2: Find the direct sink operation (the actual dangerous call)
         sink_operation = self._extract_operation_at_line(visitor, sink_line)
@@ -1021,7 +1021,7 @@ class EnhancedTaintTracker:
                     "file": related_func.file_path,
                     "line": related_func.line_no,
                     "type": "related_path",
-                    "description": f"Related function using similar unsafe techniques"
+                    "description": "Related function using similar unsafe techniques"
                 }
                 call_chain.append(related_info)
         

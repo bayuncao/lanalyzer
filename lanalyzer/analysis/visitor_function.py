@@ -4,7 +4,6 @@ Enhanced AST visitor for taint analysis - Function related operations.
 
 import ast
 import copy
-from typing import Dict, Optional, Tuple
 
 from .visitor_base import EnhancedTaintVisitor
 from .defuse import DefUseChain

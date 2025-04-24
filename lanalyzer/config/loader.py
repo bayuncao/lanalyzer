@@ -7,7 +7,7 @@ This module provides functionality for loading and validating configuration file
 import json
 import os
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 
 class ConfigLoader:

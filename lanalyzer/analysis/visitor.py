@@ -3,16 +3,10 @@ Enhanced AST visitor for taint analysis.
 This is the main aggregation file that imports and combines all visitor components.
 """
 
-import ast
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Optional
 import os
 
-from lanalyzer.analysis.ast_parser import TaintVisitor
 
-from .callgraph import CallGraphNode
-from .datastructures import DataStructureNode
-from .defuse import DefUseChain
-from .pathsensitive import PathNode
 
 from .visitor_base import EnhancedTaintVisitor
 from .visitor_function import FunctionVisitorMixin
@@ -75,4 +69,4 @@ class EnhancedTaintAnalysisVisitor(
             if hasattr(self, 'source_lines') and self.source_lines:
                 print(f"Successfully loaded source code lines: {len(self.source_lines)} lines")
             else:
-                print(f"Warning: Failed to load source code lines")
+                print("Warning: Failed to load source code lines")

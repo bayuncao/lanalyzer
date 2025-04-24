@@ -545,7 +545,7 @@ class TaintVisitor(ast.NodeVisitor):
         """
         if self.debug:
             print(f"\n[Sink Check] Checking function: {func_name} (full name: {full_name or 'N/A'})")
-            print(f"  Current import information:")
+            print("  Current import information:")
             print(f"    - Direct imports: {self.direct_imports}")
             print(f"    - Alias imports: {self.import_aliases}")
             print(f"    - From imports: {self.from_imports}")
@@ -592,7 +592,7 @@ class TaintVisitor(ast.NodeVisitor):
                         return True
                 
                 if self.debug:
-                    print(f"    × No match for this pattern")
+                    print("    × No match for this pattern")
 
         if self.debug:
             print(f"[Sink check result] {func_name}: Not a sink\n")
