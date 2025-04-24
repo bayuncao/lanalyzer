@@ -249,7 +249,6 @@ class ConfigLoader:
         print("-" * 40)
 
 
-# 便捷函数
 def load_config(config_path: str, debug: bool = False) -> Dict[str, Any]:
     """
     Load configuration from a file.

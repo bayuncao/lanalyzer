@@ -294,12 +294,11 @@ def print_detailed_summary(detailed_summary: Dict[str, Any]) -> None:
     print("DETAILED ANALYSIS STATISTICS")
     print("-" * 60)
 
-    # 基本统计
     print(f"Files analyzed: {detailed_summary.get('files_analyzed', 0)}")
     print(f"Functions analyzed: {detailed_summary.get('functions_analyzed', 0)}")
     print(f"Vulnerabilities found: {detailed_summary.get('vulnerabilities_found', 0)}")
 
-    # 传播链统计
+    
     print("\nPROPAGATION STATISTICS:")
     print(
         f"Vulnerabilities with propagation chains: {detailed_summary.get('vulnerabilities_with_propagation', 0)}"
@@ -310,7 +309,6 @@ def print_detailed_summary(detailed_summary: Dict[str, Any]) -> None:
     print(f"Max propagation steps: {detailed_summary.get('max_propagation_steps', 0)}")
     print(f"Min propagation steps: {detailed_summary.get('min_propagation_steps', 0)}")
 
-    # 调用链统计
     print("\nCALL CHAIN STATISTICS:")
     print(
         f"Vulnerabilities with call chains: {detailed_summary.get('vulnerabilities_with_call_chains', 0)}"
@@ -321,7 +319,6 @@ def print_detailed_summary(detailed_summary: Dict[str, Any]) -> None:
     print(f"Max call chain length: {detailed_summary.get('max_call_chain_length', 0)}")
     print(f"Min call chain length: {detailed_summary.get('min_call_chain_length', 0)}")
 
-    # 源点统计
     source_counts = detailed_summary.get("source_counts", {})
     if source_counts:
         print("\nSOURCE TYPE STATISTICS:")
@@ -330,7 +327,7 @@ def print_detailed_summary(detailed_summary: Dict[str, Any]) -> None:
         ):
             print(f"  {source}: {count}")
 
-    # 汇点统计
+    
     sink_counts = detailed_summary.get("sink_counts", {})
     if sink_counts:
         print("\nSINK TYPE STATISTICS:")
@@ -339,7 +336,7 @@ def print_detailed_summary(detailed_summary: Dict[str, Any]) -> None:
         ):
             print(f"  {sink}: {count}")
 
-    # 源点-汇点对统计
+    
     source_sink_pairs = detailed_summary.get("source_sink_pairs", {})
     if source_sink_pairs:
         print("\nTOP SOURCE-SINK PAIRS:")
@@ -347,7 +344,7 @@ def print_detailed_summary(detailed_summary: Dict[str, Any]) -> None:
             source_sink_pairs.items(), key=lambda x: x[1], reverse=True
         )[
             :10
-        ]:  # 只显示前10个
+        ]:  
             print(f"  {pair}: {count}")
 
     print("=" * 60) 

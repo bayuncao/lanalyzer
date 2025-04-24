@@ -281,14 +281,14 @@ class FunctionVisitorMixin:
         """
         for item in node.items:
             if isinstance(item.context_expr, ast.Call):
-                # 获取函数名但不硬编码任何判断
+                # Get function name but don't hardcode any checks
                 func_name, full_name = self._get_func_name_with_module(item.context_expr.func)
                 
-                # 使用配置驱动的方式检查是否是文件相关的源点
+                # Use configuration-driven approach to check if it's a file-related source
                 is_file_open = False
                 source_type = None
                 
-                # 检查所有源点模式
+                # Check all source patterns
                 for source in self.sources:
                     for pattern in source["patterns"]:
                         if (pattern == func_name or 
@@ -300,12 +300,12 @@ class FunctionVisitorMixin:
                     if is_file_open:
                         break
                 
-                # 如果是文件打开操作且有as变量
+                # If it's a file open operation and has an as variable
                 if (is_file_open or func_name == "open") and item.optional_vars:
                     if isinstance(item.optional_vars, ast.Name):
                         file_var = item.optional_vars.id
                         
-                        # 将文件句柄变量标记为污点
+                        # Mark the file handle variable as tainted
                         source_info = {
                             "name": source_type or "FileRead",
                             "line": getattr(node, "lineno", 0),
@@ -313,22 +313,21 @@ class FunctionVisitorMixin:
                             "context": "with_statement"
                         }
                         
-                        # 添加文件句柄跟踪
+                        # Add file handle tracking
                         if not hasattr(self, "file_handles"):
                             self.file_handles = {}
                         
-                        # 标记来自with语句的污点文件句柄
+                        # Mark tainted file handle from with statement
                         self.file_handles[file_var] = {
                             "source_var": "file_path",
                             "source_info": source_info,
                             "from_with": True
                         }
                         
-                        # 显式将文件句柄标记为污点
+                        # Explicitly mark file handle as tainted
                         self.variable_taint[file_var] = source_info
                         
                         if self.debug:
-                            print(f"标记文件句柄 '{file_var}' 为污点 (来自with语句)")
+                            print(f"Marked file handle '{file_var}' as tainted (from with statement)")
         
-        # 继续处理with语句体
         self.generic_visit(node) 

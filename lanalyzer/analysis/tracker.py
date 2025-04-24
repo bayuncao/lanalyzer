@@ -941,7 +941,7 @@ class EnhancedTaintTracker:
 
         print("=" * 80)
 
-        # 检查是否是自动检测的漏洞
+        # Check if the vulnerability is auto-detected
         if vulnerability.get("auto_detected", False):
             print("  🤖 Auto-detected: Yes (Based on standalone sink detection)")
             print(f"  ⚠️ Confidence: {vulnerability.get('confidence', 'Low')}")

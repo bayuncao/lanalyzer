@@ -353,7 +353,7 @@ def get_node_source_code(node: ast.AST, source_code: str) -> str:
         return "\n".join(result)
 
 
-# 从 common/utils.py 迁移的函数
+
 
 
 def extract_call_targets(node: ast.Call) -> List[str]:
