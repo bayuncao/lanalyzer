@@ -1,5 +1,5 @@
 """
-Console formatter for LAnaLyzer output.
+Console formatter for LanaLyzer output.
 
 Formats analysis results for terminal display with color highlighting.
 """

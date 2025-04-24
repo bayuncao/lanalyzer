@@ -1,5 +1,5 @@
 """
-Settings module for LAnaLyzer.
+Settings module for LanaLyzer.
 
 This module provides the Settings class for configuration management.
 """
@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 @dataclass
 class Settings:
     """
-    Configuration settings for the LAnaLyzer tool.
+    Configuration settings for the LanaLyzer tool.
 
     This class provides a structured way to manage configuration options
     for the taint analysis process.

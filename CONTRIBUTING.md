@@ -1,6 +1,6 @@
-# Contributing to LAnaLyzer
+# Contributing to LanaLyzer
 
-Thank you for your interest in contributing to LAnaLyzer! This document provides guidelines and instructions for contributing to this project.
+Thank you for your interest in contributing to LanaLyzer! This document provides guidelines and instructions for contributing to this project.
 
 ## Code of Conduct
 
@@ -109,4 +109,4 @@ When requesting features:
 
 If you have any questions about contributing, please open an issue with the "question" label.
 
-Thank you for contributing to LAnaLyzer! 
+Thank you for contributing to LanaLyzer! 

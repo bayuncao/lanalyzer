@@ -1,5 +1,5 @@
 """
-JSON formatter for LAnaLyzer output.
+JSON formatter for LanaLyzer output.
 
 Formats analysis results as JSON.
 """

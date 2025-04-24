@@ -1,5 +1,5 @@
 """
-Taint models for LAnaLyzer.
+Taint models for LanaLyzer.
 
 This module provides models for representing taint sources, sinks and flows.
 Some functionality has been moved to the enhanced analysis module and may be removed in future versions.

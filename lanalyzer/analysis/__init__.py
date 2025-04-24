@@ -1,5 +1,5 @@
 """
-Taint analysis module for LAnaLyzer.
+Taint analysis module for LanaLyzer.
 
 This package provides advanced taint analysis with the following capabilities:
 

@@ -1,5 +1,5 @@
 """
-Sink model for LAnaLyzer.
+Sink model for LanaLyzer.
 
 Represents sinks where untrusted data could lead to vulnerabilities.
 """

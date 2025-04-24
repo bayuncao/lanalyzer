@@ -1,5 +1,5 @@
 """
-Output module for LAnaLyzer.
+Output module for LanaLyzer.
 
 This module provides formatters for converting analysis results into various output formats,
 as well as report generators for creating comprehensive vulnerability reports.

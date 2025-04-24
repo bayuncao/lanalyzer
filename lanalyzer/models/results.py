@@ -1,5 +1,5 @@
 """
-Analysis results model for LAnaLyzer.
+Analysis results model for LanaLyzer.
 
 Represents the complete results of a taint analysis.
 """

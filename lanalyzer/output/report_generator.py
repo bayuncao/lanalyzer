@@ -1,5 +1,5 @@
 """
-Report generator for LAnaLyzer.
+Report generator for LanaLyzer.
 
 Generates comprehensive reports from analysis results.
 """
@@ -46,7 +46,7 @@ class ReportGenerator:
         # Basic report data
         report_data = {
             "timestamp": self.timestamp,
-            "title": "LAnaLyzer Vulnerability Report",
+            "title": "LanaLyzer Vulnerability Report",
             "total_vulnerabilities": len(self.vulns),
             "vulnerabilities": self.vulns,
             "summary": {},
@@ -221,7 +221,7 @@ class ReportGenerator:
         report = []
 
         # Header
-        report.append("# LAnaLyzer Vulnerability Report")
+        report.append("# LanaLyzer Vulnerability Report")
         report.append(f"**Generated:** {self.report_data['timestamp']}")
         report.append(f"**Target:** {self.report_data['target']}")
         report.append("")

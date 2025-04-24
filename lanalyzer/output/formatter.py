@@ -1,5 +1,5 @@
 """
-Base formatter for LAnaLyzer output.
+Base formatter for LanaLyzer output.
 
 Defines the interface for different output formatters.
 """

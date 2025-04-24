@@ -1,5 +1,5 @@
 """
-Data models for LAnaLyzer.
+Data models for LanaLyzer.
 
 This package provides data models for representing sources, sinks, vulnerabilities and analysis results.
 """

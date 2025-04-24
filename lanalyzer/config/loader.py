@@ -1,5 +1,5 @@
 """
-Configuration loader module for LAnaLyzer.
+Configuration loader module for LanaLyzer.
 
 This module provides functionality for loading and validating configuration files.
 """
@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 
 class ConfigLoader:
     """
-    Configuration loader for LAnaLyzer.
+    Configuration loader for LanaLyzer.
 
     This class provides methods for loading and validating configuration files.
     """

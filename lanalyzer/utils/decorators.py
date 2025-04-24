@@ -1,5 +1,5 @@
 """
-Decorator utilities for LAnaLyzer.
+Decorator utilities for LanaLyzer.
 
 Provides useful decorator functions for enhancing functionality.
 """

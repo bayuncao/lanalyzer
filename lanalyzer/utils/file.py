@@ -1,5 +1,5 @@
 """
-File utilities for LAnaLyzer.
+File utilities for LanaLyzer.
 
 Provides common file and path operations used by the taint analysis engine.
 """

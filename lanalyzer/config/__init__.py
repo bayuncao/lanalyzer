@@ -1,5 +1,5 @@
 """
-Configuration module for LAnaLyzer.
+Configuration module for LanaLyzer.
 
 Provides functionality for loading, validating and managing configuration settings.
 """

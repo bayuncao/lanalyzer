@@ -1,5 +1,5 @@
 """
-AST utility functions for LAnaLyzer.
+AST utility functions for LanaLyzer.
 
 Provides basic utility functions for working with Python Abstract Syntax Trees (AST).
 General utility functions not specific to analysis modules.

@@ -2,7 +2,7 @@
 name = "lanalyzer"
 version = "0.1.0"
 description = "Python Taint Analysis Tool for finding security vulnerabilities"
-authors = [{ name = "LAnaLyzer Team", email = "lanalyzer@example.com" }]
+authors = [{ name = "LanaLyzer Team", email = "lanalyzer@example.com" }]
 requires-python = "~=3.10"
 readme = "README.md"
 license = "MIT"

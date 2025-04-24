@@ -1,5 +1,5 @@
 """
-Source model for LAnaLyzer.
+Source model for LanaLyzer.
 
 Represents sources of untrusted data in the analyzed code.
 """

@@ -1,5 +1,5 @@
 """
-Logging utilities for LAnaLyzer.
+Logging utilities for LanaLyzer.
 
 Provides a consistent logging interface for the entire application.
 """

@@ -1,5 +1,5 @@
 """
-Base analyzer module for LAnaLyzer.
+Base analyzer module for LanaLyzer.
 
 Provides the abstract base class for all analyzers.
 """

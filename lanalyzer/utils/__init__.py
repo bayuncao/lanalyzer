@@ -1,7 +1,7 @@
 """
-Utility functions for LAnaLyzer.
+Utility functions for LanaLyzer.
 
-This package provides common utility functions used throughout the LAnaLyzer tool.
+This package provides common utility functions used throughout the LanaLyzer tool.
 """
 
 # AST utilities

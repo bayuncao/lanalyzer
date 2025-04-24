@@ -1,5 +1,5 @@
 """
-Base models for LAnaLyzer.
+Base models for LanaLyzer.
 
 Provides the base model classes that other models will inherit from.
 """
@@ -9,7 +9,7 @@ from typing import Any, Dict
 
 
 class BaseModel(abc.ABC):
-    """Base class for all LAnaLyzer models."""
+    """Base class for all LanaLyzer models."""
 
     @abc.abstractmethod
     def to_dict(self) -> Dict[str, Any]:
