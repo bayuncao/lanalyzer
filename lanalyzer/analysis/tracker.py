@@ -53,19 +53,19 @@ class EnhancedTaintTracker:
 
         if not os.path.exists(file_path):
             if self.debug:
-                print(f"❌ 错误: 文件不存在: {file_path}")
+                print(f"❌ Error: File not found: {file_path}")
             return []
 
         if not file_path.endswith(".py"):
             if self.debug:
-                print(f"⚠️ 跳过非Python文件: {file_path}")
+                print(f"⚠️ Skipping non-Python file: {file_path}")
             return []
 
         # Mark file as analyzed
         self.analyzed_files.add(file_path)
 
         if self.debug:
-            print(f"\n🔍 开始分析文件: {file_path}")
+            print(f"\n🔍 Starting analysis of file: {file_path}")
 
         try:
             with open(file_path, "r", encoding="utf-8") as f:
@@ -136,60 +136,60 @@ class EnhancedTaintTracker:
             # Keep track of reported sink lines from full flows
             reported_sink_lines = {vuln.get("sink", {}).get("line", -1) for vuln in vulnerabilities}
 
-            # 添加新的检测逻辑：单独的汇点也视为潜在漏洞
+            # Add new detection logic: treat standalone sinks as potential vulnerabilities
             if hasattr(visitor, "found_sinks") and visitor.found_sinks:
                 if self.debug:
-                    print(f"发现 {len(visitor.found_sinks)} 个潜在汇点")
-                    # 检查source_lines属性
+                    print(f"Found {len(visitor.found_sinks)} potential sinks")
+                    # Check the source_lines attribute
                     if hasattr(visitor, 'source_lines') and visitor.source_lines:
-                        print(f"✓ visitor有source_lines属性，包含 {len(visitor.source_lines)} 行源代码")
+                        print(f"✓ Visitor has source_lines attribute with {len(visitor.source_lines)} lines of source code")
                     else:
-                        print(f"✗ visitor没有source_lines属性或为空")
+                        print(f"✗ Visitor does not have source_lines attribute or it is empty")
                     
                 for sink_info in visitor.found_sinks:
-                    # 创建sink_info的可序列化副本，移除AST节点
+                    # Create a serializable copy of sink_info, removing the AST node
                     serializable_sink = {}
                     for key, value in sink_info.items():
-                        if key != "node":  # 跳过AST节点
+                        if key != "node":  # Skip AST node
                             serializable_sink[key] = value
                     
-                    # 使用可序列化的sink_info继续处理
+                    # Continue processing with the serializable sink_info
                     sink_line = serializable_sink.get("line", 0)
                     
-                    # 检查此汇点是否已在完整流程中报告
+                    # Check if this sink has already been reported in a full flow
                     if sink_line in reported_sink_lines:
                         continue # Skip if already reported via a full taint flow
 
-                    # 如果这个汇点尚未被报告，创建一个新的漏洞记录
+                    # If this sink hasn't been reported, create a new vulnerability record
                     # (This block is reached only if the sink wasn't part of a full flow)
-                    # 创建一个默认的"未知来源"源点
+                    # Create a default "Unknown Source" source
                     unknown_source = {
                         "name": "UnknownSource",
                         "line": 0,
                         "col": 0,
                         "context": "auto_detected",
-                        "description": "自动检测到的未知来源"
+                        "description": "Automatically detected unknown source"
                     }
 
                     # Attempt to build a partial call chain based on sink location
                     partial_call_chain = self._build_partial_call_chain_for_sink(visitor, serializable_sink)
                     
-                    # 创建漏洞记录
+                    # Create vulnerability record
                     sink_vulnerability = {
                         "file": file_path,
-                        "rule": f"潜在{serializable_sink.get('vulnerability_type', serializable_sink.get('name', 'Unknown'))}",
+                        "rule": f"Potential{serializable_sink.get('vulnerability_type', serializable_sink.get('name', 'Unknown'))}",
                         "source": unknown_source,
-                        "sink": serializable_sink,  # 使用可序列化的版本
-                        "tainted_variable": "未知",
-                        "severity": "中",  # 默认为中等严重性
-                        "confidence": "低",  # 由于没有确定的源点，信心值较低
-                        "description": f"发现潜在危险操作点 {serializable_sink.get('name', 'Unknown')}，但未能确定数据来源",
-                        "auto_detected": True,  # 标记为自动检测的漏洞
-                        "propagation_path": [],  # 没有传播路径 (as source is unknown)
+                        "sink": serializable_sink,  # Use the serializable version
+                        "tainted_variable": "Unknown",
+                        "severity": "Medium",  # Default to medium severity
+                        "confidence": "Low",  # Confidence is low due to uncertain source
+                        "description": f"Potential dangerous operation point {serializable_sink.get('name', 'Unknown')} found, but data source could not be determined",
+                        "auto_detected": True,  # Mark as auto-detected vulnerability
+                        "propagation_path": [],  # No propagation path (as source is unknown)
                         "call_chain": partial_call_chain # Use the generated partial chain
                     }
                     
-                    # 添加额外的汇点相关信息（如果有）
+                    # Add extra sink-related info if available
                     if "tainted_args" in serializable_sink:
                         sink_vulnerability["tainted_arguments"] = serializable_sink["tainted_args"]
                     
@@ -197,7 +197,7 @@ class EnhancedTaintTracker:
                     reported_sink_lines.add(sink_line) # Mark as reported
                     
                     if self.debug:
-                        print(f"自动检测到潜在漏洞: {serializable_sink.get('name', 'Unknown')} 在行 {sink_line}")
+                        print(f"Auto-detected potential vulnerability: {serializable_sink.get('name', 'Unknown')} at line {sink_line}")
 
             if self.debug:
                 print(f"Enhanced analysis complete for {file_path}")
@@ -211,7 +211,7 @@ class EnhancedTaintTracker:
                     f"Identified {len(visitor.data_structures)} complex data structures"
                 )
 
-            self.visitor = visitor  # 这行代码可能在原实现中缺失或位置不当
+            self.visitor = visitor  # This line of code may be missing or misplaced in the original implementation
             return vulnerabilities
 
         except Exception as e:
@@ -405,15 +405,15 @@ class EnhancedTaintTracker:
         source_info: Dict[str, Any],
     ) -> List[Dict[str, Any]]:
         """
-        获取从源点到汇点的详细函数调用链。
+        Get the detailed function call chain from source to sink.
 
         Args:
-            sink: 汇点字典
-            visitor: EnhancedTaintAnalysisVisitor实例
-            source_info: 源点信息字典
+            sink: Sink dictionary
+            visitor: EnhancedTaintAnalysisVisitor instance
+            source_info: Source information dictionary
 
         Returns:
-            包含详细函数调用链信息的字典列表
+            List of dictionaries containing detailed function call chain information
         """
         call_chain = []
         source_line = source_info.get("line", 0)
@@ -422,16 +422,16 @@ class EnhancedTaintTracker:
         sink_name = sink.get("name", "Unknown")
 
         if self.debug:
-            print(f"构建从源点 {source_name}(行 {source_line}) 到汇点 {sink_name}(行 {sink_line}) 的调用链")
+            print(f"Building call chain from source {source_name}(line {source_line}) to sink {sink_name}(line {sink_line})")
 
-        # 1. 找到包含源点的函数
+        # 1. Find function containing the source
         source_func = None
         for func_name, func_node in visitor.functions.items():
             if func_node.line_no <= source_line <= func_node.end_line_no:
                 source_func = func_node
                 break
 
-        # 2. 找到包含汇点的函数
+        # 2. Find function containing the sink
         sink_func = None
         for func_name, func_node in visitor.functions.items():
             if func_node.line_no <= sink_line <= func_node.end_line_no:
@@ -440,42 +440,42 @@ class EnhancedTaintTracker:
 
         if self.debug:
             if source_func:
-                print(f"找到源点函数: {source_func.name} (行 {source_func.line_no}-{source_func.end_line_no})")
+                print(f"Found source function: {source_func.name} (lines {source_func.line_no}-{source_func.end_line_no})")
             else:
-                print(f"未找到包含源点(行 {source_line})的函数")
+                print(f"Could not find function containing source (line {source_line})")
                 
             if sink_func:
-                print(f"找到汇点函数: {sink_func.name} (行 {sink_func.line_no}-{sink_func.end_line_no})")
+                print(f"Found sink function: {sink_func.name} (lines {sink_func.line_no}-{sink_func.end_line_no})")
             else:
-                print(f"未找到包含汇点(行 {sink_line})的函数")
+                print(f"Could not find function containing sink (line {sink_line})")
 
-        # 3. 如果源点和汇点是同一个函数，直接返回该函数信息
+        # 3. If source and sink are in the same function, return that function's info directly
         if source_func and sink_func and source_func.name == sink_func.name:
             func_info = {
                 "function": source_func.name,
                 "file": source_func.file_path,
                 "line": source_func.line_no,
                 "type": "source+sink",
-                "description": f"同时包含源点 {source_name}(行 {source_line}) 和汇点 {sink_name}(行 {sink_line})"
+                "description": f"Contains both source {source_name}(line {source_line}) and sink {sink_name}(line {sink_line})"
             }
             call_chain.append(func_info)
             return call_chain
 
-        # 4. 构建从汇点到源点的完整调用链
+        # 4. Build the complete call chain from source to sink
         if source_func and sink_func:
-            # 使用广度优先搜索(BFS)查找从源点函数到汇点函数的路径
-            queue = [(source_func, [source_func])]  # (当前节点, 路径)
+            # Use Breadth-First Search (BFS) to find the path from source function to sink function
+            queue = [(source_func, [source_func])]  # (current_node, path)
             visited = {source_func.name}
-            max_depth = 20  # 防止过深搜索
+            max_depth = 20  # Prevent overly deep search
             found_path = None
 
             while queue and not found_path:
                 current, path = queue.pop(0)
                 
-                # 检查当前节点的被调用者
+                # Check callees of the current node
                 for callee in current.callees:
                     if callee.name == sink_func.name:
-                        # 找到路径
+                        # Path found
                         found_path = path + [sink_func]
                         break
                     
@@ -483,18 +483,18 @@ class EnhancedTaintTracker:
                         visited.add(callee.name)
                         queue.append((callee, path + [callee]))
             
-            # 如果找到路径，构建调用链
+            # If path found, build the call chain
             if found_path:
                 for i, func in enumerate(found_path):
                     node_type = "intermediate"
-                    description = "调用链中的中间函数"
+                    description = "Intermediate function in the call chain"
                     
                     if i == 0:
                         node_type = "source"
-                        description = f"包含源点 {source_name} 在行 {source_line}"
+                        description = f"Contains source {source_name} at line {source_line}"
                     elif i == len(found_path) - 1:
                         node_type = "sink"
-                        description = f"包含汇点 {sink_name} 在行 {sink_line}"
+                        description = f"Contains sink {sink_name} at line {sink_line}"
                     
                     func_info = {
                         "function": func.name,
@@ -507,11 +507,11 @@ class EnhancedTaintTracker:
                 
                 return call_chain
             
-            # 如果找不到直接路径，尝试查找共同的调用者
+            # If direct path not found, try finding common callers...
             if not found_path and self.debug:
-                print("未找到直接路径，尝试查找共同的调用者...")
+                print("If direct path not found, try finding common callers...")
 
-            # 构建反向调用图(从被调用者到调用者)
+            # Build reverse call graph (from callee to caller)
             reverse_call_graph = {}
             for func_name, func_node in visitor.functions.items():
                 reverse_call_graph[func_name] = []
@@ -522,18 +522,18 @@ class EnhancedTaintTracker:
                         reverse_call_graph[callee.name] = []
                     reverse_call_graph[callee.name].append(func_name)
             
-            # 使用BFS查找源点函数和汇点函数的共同调用者
+            # Use BFS to find common callers of source and sink functions
             source_callers = self._find_callers(source_func.name, reverse_call_graph, max_depth)
             sink_callers = self._find_callers(sink_func.name, reverse_call_graph, max_depth)
             
             common_callers = source_callers.intersection(sink_callers)
             
             if common_callers and self.debug:
-                print(f"找到共同调用者: {common_callers}")
+                print(f"Found common callers: {common_callers}")
             
-            # 如果找到共同调用者，构建路径
+            # If common callers found, build path
             if common_callers:
-                # 选择一个共同调用者
+                # Select a common caller
                 common_caller = next(iter(common_callers))
                 common_caller_node = None
                 
@@ -543,40 +543,40 @@ class EnhancedTaintTracker:
                         break
                 
                 if common_caller_node:
-                    # 源点函数 -> 共同调用者 -> 汇点函数
+                    # Source function -> Common caller -> Sink function
                     call_chain = [
                         {
                             "function": source_func.name,
                             "file": source_func.file_path,
                             "line": source_func.line_no,
                             "type": "source",
-                            "description": f"包含源点 {source_name} 在行 {source_line}"
+                            "description": f"Contains source {source_name} at line {source_line}"
                         },
                         {
                             "function": common_caller_node.name,
                             "file": common_caller_node.file_path,
                             "line": common_caller_node.line_no,
                             "type": "intermediate",
-                            "description": "源点和汇点的共同调用者"
+                            "description": "Common caller of source and sink"
                         },
                         {
                             "function": sink_func.name,
                             "file": sink_func.file_path,
                             "line": sink_func.line_no,
                             "type": "sink",
-                            "description": f"包含汇点 {sink_name} 在行 {sink_line}"
+                            "description": f"Contains sink {sink_name} at line {sink_line}"
                         }
                     ]
                     return call_chain
 
-        # 5. 如果无法构建完整调用链，但源点函数或汇点函数存在，则添加它们
+        # 5. If full call chain cannot be built, but source or sink function exists, add them
         if source_func:
             source_func_info = {
                 "function": source_func.name,
                 "file": source_func.file_path,
                 "line": source_func.line_no,
                 "type": "source",
-                "description": f"包含源点 {source_name} 在行 {source_line}"
+                "description": f"Contains source {source_name} at line {source_line}"
             }
             call_chain.append(source_func_info)
             
@@ -586,9 +586,9 @@ class EnhancedTaintTracker:
                 "file": sink_func.file_path,
                 "line": sink_func.line_no,
                 "type": "sink",
-                "description": f"包含汇点 {sink_name} 在行 {sink_line}"
+                "description": f"Contains sink {sink_name} at line {sink_line}"
             }
-            # 避免重复添加(如果源点和汇点在同一函数但之前未检测到)
+            # Avoid adding duplicates (if source and sink are in the same function but not detected earlier)
             if not call_chain or call_chain[0]["function"] != sink_func.name:
                 call_chain.append(sink_func_info)
 
@@ -596,19 +596,19 @@ class EnhancedTaintTracker:
         
     def _find_callers(self, func_name: str, reverse_call_graph: Dict[str, List[str]], max_depth: int) -> Set[str]:
         """
-        使用BFS找到调用指定函数的所有函数。
+        Use BFS to find all functions that call the specified function.
 
         Args:
-            func_name: 要查找调用者的函数名
-            reverse_call_graph: 反向调用图
-            max_depth: 最大搜索深度
+            func_name: Name of the function to find callers for
+            reverse_call_graph: Reverse call graph
+            max_depth: Maximum search depth
 
         Returns:
-            调用该函数的函数名集合
+            Set of function names that call this function
         """
         callers = set()
         visited = {func_name}
-        queue = [(func_name, 0)]  # (函数名, 深度)
+        queue = [(func_name, 0)]  # (function_name, depth)
         
         while queue:
             current, depth = queue.pop(0)
@@ -616,7 +616,7 @@ class EnhancedTaintTracker:
             if depth >= max_depth:
                 continue
                 
-            # 获取当前函数的所有调用者
+            # Get all callers of the current function
             current_callers = reverse_call_graph.get(current, [])
             
             for caller in current_callers:
@@ -943,23 +943,23 @@ class EnhancedTaintTracker:
 
         # 检查是否是自动检测的漏洞
         if vulnerability.get("auto_detected", False):
-            print("  🤖 自动检测: 是 (基于单独的汇点检测)")
-            print(f"  ⚠️ 置信度: {vulnerability.get('confidence', '低')}")
-            print("  📝 说明: 此漏洞是基于发现的危险操作点自动生成的，没有确定的数据来源")
+            print("  🤖 Auto-detected: Yes (Based on standalone sink detection)")
+            print(f"  ⚠️ Confidence: {vulnerability.get('confidence', 'Low')}")
+            print("  📝 Description: This vulnerability is automatically generated based on the discovered dangerous operation point, and the data source could not be determined")
 
     def _build_partial_call_chain_for_sink(
         self, visitor: EnhancedTaintAnalysisVisitor, sink_info: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
         """
-        构建更完整的调用链，即使在没有明确源点的情况下也能提供丰富的调用上下文。
-        这用于自动检测的漏洞，其中无法确定数据的完整来源路径。
+        Build a more complete call chain, providing rich calling context even without an explicit source.
+        This is used for auto-detected vulnerabilities where the full data source path cannot be determined.
 
         Args:
-            visitor: 包含分析结果的访问器实例
-            sink_info: 汇点信息字典
+            visitor: Visitor instance containing analysis results
+            sink_info: Sink information dictionary
 
         Returns:
-            表示调用链的字典列表
+            List of dictionaries representing the call chain
         """
         call_chain = []
         sink_line = sink_info.get("line", 0)
@@ -967,39 +967,39 @@ class EnhancedTaintTracker:
         vulnerability_type = sink_info.get("vulnerability_type", f"{sink_name} Vulnerability")
 
         if self.debug:
-            print(f"[DEBUG] 构建汇点 '{sink_name}' (行 {sink_line}) 的调用链")
+            print(f"[DEBUG] Building call chain for sink '{sink_name}' (line {sink_line})")
 
         if not sink_line:
             if self.debug:
-                print("[DEBUG] 汇点行号为0或缺失")
+                print("[DEBUG] Sink line number is 0 or missing")
             return []
 
-        # 步骤1：找到包含汇点的函数
+        # Step 1: Find function containing the sink
         sink_function_node = self._find_function_containing_line(visitor, sink_line)
         
-        # 验证visitor是否有source_lines属性
+        # Verify if visitor has source_lines attribute
         has_source_lines = hasattr(visitor, 'source_lines') and visitor.source_lines
         if self.debug:
             if has_source_lines:
-                print(f"[DEBUG] visitor有source_lines属性，共 {len(visitor.source_lines)} 行")
+                print(f"[DEBUG] Visitor has source_lines attribute, total {len(visitor.source_lines)} lines")
             else:
-                print(f"[DEBUG] ⚠️ _build_partial_call_chain_for_sink中发现visitor没有source_lines属性!")
+                print(f"[DEBUG] ⚠️ Visitor lacks source_lines attribute in _build_partial_call_chain_for_sink!")
                 
-        # 步骤2：查找直接汇点操作（实际的危险调用）
+        # Step 2: Find the direct sink operation (the actual dangerous call)
         sink_operation = self._extract_operation_at_line(visitor, sink_line)
         if sink_operation:
-            # 如果发现了直接操作，添加为调用链的第一个元素
+            # If direct operation is found, add it as the first element of the call chain
             call_chain.append({
                 "function": sink_operation,
                 "file": visitor.file_path,
                 "line": sink_line,
                 "type": "sink",
-                "description": f"不安全的 {sink_name} 操作，可能导致 {vulnerability_type}"
+                "description": f"Unsafe {sink_name} operation, potentially leading to {vulnerability_type}"
             })
         
-        # 步骤3：添加包含汇点的函数
+        # Step 3: Add the function containing the sink
         if sink_function_node:
-            # 检查是否已经添加了同名函数，避免重复
+            # Check if a function with the same name has already been added, avoid duplicates
             if not call_chain or call_chain[0]["function"] != sink_function_node.name:
                 file_path = getattr(sink_function_node, 'file_path', visitor.file_path)
                 sink_func_info = {
@@ -1007,27 +1007,27 @@ class EnhancedTaintTracker:
                     "file": file_path,
                     "line": sink_function_node.line_no,
                     "type": "sink_container",
-                    "description": f"包含汇点 {sink_name} 的函数，在行 {sink_line}"
+                    "description": f"Function containing sink {sink_name}, at line {sink_line}"
                 }
                 call_chain.append(sink_func_info)
         
-        # 步骤4：查找有类似功能的相关函数
+        # Step 4: Find related functions with similar functionality
         related_functions = self._find_related_functions(visitor, sink_name)
         for related_func in related_functions:
-            # 确保不添加重复的函数
+            # Ensure duplicate functions are not added
             if all(entry["function"] != related_func.name for entry in call_chain):
                 related_info = {
                     "function": related_func.name,
                     "file": related_func.file_path,
                     "line": related_func.line_no,
                     "type": "related_path",
-                    "description": f"使用了类似的不安全技术的相关函数"
+                    "description": f"Related function using similar unsafe techniques"
                 }
                 call_chain.append(related_info)
         
-        # 步骤5：查找调用者函数（谁调用了包含汇点的函数）
+        # Step 5: Find caller functions (who called the function containing the sink)
         if sink_function_node and sink_function_node.callers:
-            # 仅添加一个主要调用者，避免链条过长
+            # Only add one primary caller to avoid excessively long chains
             caller = sink_function_node.callers[0]
             if all(entry["function"] != caller.name for entry in call_chain):
                 caller_info = {
@@ -1035,12 +1035,12 @@ class EnhancedTaintTracker:
                     "file": caller.file_path,
                     "line": caller.line_no,
                     "type": "intermediate",
-                    "description": f"调用了包含汇点的函数 {sink_function_node.name}"
+                    "description": f"Called the function {sink_function_node.name} containing the sink"
                 }
                 call_chain.append(caller_info)
 
         if self.debug:
-            print(f"[DEBUG] 构建了包含 {len(call_chain)} 个节点的调用链")
+            print(f"[DEBUG] Built call chain with {len(call_chain)} nodes")
             
         return call_chain
 
@@ -1048,25 +1048,25 @@ class EnhancedTaintTracker:
         self, visitor: EnhancedTaintAnalysisVisitor, line: int
     ) -> Optional[Any]:
         """
-        查找包含指定行的函数节点。
+        Find the function node containing the specified line.
 
         Args:
-            visitor: 访问器实例
-            line: 行号
+            visitor: Visitor instance
+            line: Line number
 
         Returns:
-            包含该行的函数节点，如果未找到则返回None
+            The function node containing the line, or None if not found
         """
         for func_name, func_node in visitor.functions.items():
-            # 确保节点有必要的属性
+            # Ensure the node has necessary attributes
             if not hasattr(func_node, 'line_no') or not hasattr(func_node, 'end_line_no'):
                 continue
             
-            # 检查行号是否有效
+            # Check if the line number is valid
             if not isinstance(func_node.line_no, int) or not isinstance(func_node.end_line_no, int):
                 continue
                 
-            # 检查行是否在函数范围内
+            # Check if the line is within the function's range
             if func_node.line_no <= line <= func_node.end_line_no:
                 return func_node
                 
@@ -1076,31 +1076,31 @@ class EnhancedTaintTracker:
         self, visitor: EnhancedTaintAnalysisVisitor, line: int
     ) -> Optional[str]:
         """
-        尝试提取指定行的实际操作名称。
+        Attempt to extract the actual operation name for the specified line.
         
         Args:
-            visitor: 访问器实例
-            line: 行号
+            visitor: Visitor instance
+            line: Line number
             
         Returns:
-            操作名称，如未找到则返回None
+            Operation name, or None if not found
         """
-        # 检查是否有原始代码可用
+        # Check if raw source code is available
         if not hasattr(visitor, 'source_lines') or not visitor.source_lines:
             if self.debug:
-                print(f"[警告] visitor没有source_lines属性或属性为空，无法提取行 {line} 的操作")
+                print(f"[Warning] Visitor lacks source_lines attribute or it is empty, cannot extract operation for line {line}")
             return None
             
-        # 确保行号在有效范围内
+        # Ensure line number is within valid range
         if line <= 0 or line > len(visitor.source_lines):
             if self.debug:
-                print(f"[警告] 行号 {line} 超出了源码范围 (1-{len(visitor.source_lines)})")
+                print(f"[Warning] Line number {line} is out of source code range (1-{len(visitor.source_lines)})")
             return None
             
-        # 获取行内容
+        # Get line content
         line_content = visitor.source_lines[line-1].strip()
         
-        # 常见的危险函数名称模式
+        # Common dangerous function name patterns
         dangerous_patterns = {
             "PickleDeserialization": ["pickle.loads", "pickle.load", "cPickle.loads", "cPickle.load"],
             "CommandExecution": ["os.system", "subprocess.run", "subprocess.Popen", "exec(", "eval("],
@@ -1109,14 +1109,14 @@ class EnhancedTaintTracker:
             "XSS": ["render_template", "render", "html"]
         }
         
-        # 尝试找到匹配的危险模式
+        # Attempt to find matching dangerous patterns
         sink_type = None
         for sink_name, patterns in dangerous_patterns.items():
             for pattern in patterns:
                 if pattern in line_content:
                     sink_type = pattern
                     if self.debug:
-                        print(f"[发现] 在行 {line} 找到危险模式: {pattern}")
+                        print(f"[Found] Dangerous pattern found on line {line}: {pattern}")
                     break
             if sink_type:
                 break
@@ -1127,26 +1127,26 @@ class EnhancedTaintTracker:
         self, visitor: EnhancedTaintAnalysisVisitor, sink_name: str
     ) -> List[Any]:
         """
-        查找与给定汇点相关的函数。
+        Find functions related to the given sink.
         
         Args:
-            visitor: 访问器实例
-            sink_name: 汇点名称
+            visitor: Visitor instance
+            sink_name: Sink name
             
         Returns:
-            相关函数节点列表
+            List of related function nodes
         """
         related_functions = []
         
-        # 1. 使用配置文件中的sink定义查找相关函数模式
+        # 1. Use sink definitions from the config file to find related function patterns
         related_patterns = []
         
-        # 从配置文件中查找与sink_name相关的模式
+        # Find patterns related to sink_name in the config file
         for sink in self.sinks:
             if sink.get("name") == sink_name:
-                # 使用sink的patterns作为相关函数查找的基础
+                # Use the sink's patterns as the basis for finding related functions
                 for pattern in sink.get("patterns", []):
-                    # 从pattern中提取基本函数名部分
+                    # Extract the base function name part from the pattern
                     if '.' in pattern:
                         func_part = pattern.split('.')[-1]
                         related_patterns.append(func_part)
@@ -1157,24 +1157,24 @@ class EnhancedTaintTracker:
                         related_patterns.append(pattern)
                 break
                 
-        # 如果未在配置中找到相关模式，使用汇点名称本身作为依据
+        # If no related patterns found in config, use the sink name itself as a basis
         if not related_patterns:
-            # 使用sink_name的单词作为搜索模式
+            # Use words from sink_name as search patterns
             words = re.findall(r'[A-Za-z]+', sink_name)
             for word in words:
-                if len(word) > 3:  # 只使用较长的词以避免太短的词导致误匹配
+                if len(word) > 3:  # Only use longer words to avoid mismatches from short words
                     related_patterns.append(word.lower())
                     
-        # 2. 通过AST分析查找相似的函数
-        # 首先查找与模式名称相似的函数
+        # 2. Find similar functions through AST analysis
+        # First, find functions similar to the pattern names
         for func_name, func_node in visitor.functions.items():
             for pattern in related_patterns:
-                # 检查函数名是否包含pattern（不区分大小写）
+                # Check if function name contains pattern (case-insensitive)
                 if pattern.lower() in func_name.lower():
                     related_functions.append(func_node)
                     break
                     
-        # 3. 如果是内置的危险模式，添加相关函数
+        # 3. If it's a built-in dangerous pattern, add related functions
         if "pickle" in sink_name.lower() or "deseriali" in sink_name.lower():
             for func_name, func_node in visitor.functions.items():
                 if any(term in func_name.lower() for term in ["load", "dump", "serial", "deserial", "broadcast", "object"]):
@@ -1196,16 +1196,16 @@ class EnhancedTaintTracker:
                     if func_node not in related_functions:
                         related_functions.append(func_node)
                     
-        # 4. 查找调用相似函数的函数
+        # 4. Find functions that call similar functions
         call_related_functions = []
-        for func_node in list(related_functions):  # 使用副本以避免在迭代时修改
-            # 查找调用当前函数的其他函数
+        for func_node in list(related_functions):  # Use a copy to avoid modifying while iterating
+            # Find other functions that call the current function
             for caller in func_node.callers:
                 if caller not in related_functions and caller not in call_related_functions:
                     call_related_functions.append(caller)
                     
-        # 合并直接相关函数和调用关系相关函数
+        # Merge directly related functions and call-relation related functions
         related_functions.extend(call_related_functions)
                     
-        # 5. 限制返回数量，避免结果过于冗长
+        # 5. Limit the number of returned results to avoid excessive length
         return related_functions[:5]

@@ -39,7 +39,7 @@ def get_python_files_in_directory(
     exclude_dirs = exclude_dirs or ["__pycache__", "venv", ".git", ".github"]
     python_files = []
 
-    # 处理文件而非目录的情况
+    # Handle the case where the input is a file, not a directory
     if os.path.isfile(directory):
         if is_python_file(directory):
             return [directory]

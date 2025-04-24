@@ -37,18 +37,18 @@ class TaintVisitor(ast.NodeVisitor):
         self.debug = debug
         self.verbose = verbose
         self.file_path = file_path
-        self.source_lines = None  # 存储源代码行
+        self.source_lines = None  # Store source code lines
         
-        # 如果提供了文件路径，尝试加载源代码
+        # If file path is provided, try to load the source code
         if file_path and os.path.exists(file_path):
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     self.source_lines = f.readlines()
                 if self.debug:
-                    print(f"加载了 {len(self.source_lines)} 行源代码从 {file_path}")
+                    print(f"Loaded {len(self.source_lines)} lines of source code from {file_path}")
             except Exception as e:
                 if self.debug:
-                    print(f"无法加载源代码: {str(e)}")
+                    print(f"Failed to load source code: {str(e)}")
         
         self.import_aliases = {}  # Track import aliases, e.g., 'import module as alias'
         self.from_imports = {}  # Track from imports, e.g., 'from module import func'
@@ -60,18 +60,18 @@ class TaintVisitor(ast.NodeVisitor):
         """
         for name in node.names:
             if self.debug:
-                print(f"\n[导入跟踪] 处理导入: {name.name}" + (f" as {name.asname}" if name.asname else ""))
+                print(f"\n[Import Tracking] Processing import: {name.name}" + (f" as {name.asname}" if name.asname else ""))
             
             if name.asname:
                 self.import_aliases[name.asname] = name.name
                 if self.debug:
-                    print(f"  记录别名: {name.asname} -> {name.name}")
+                    print(f"  Recording alias: {name.asname} -> {name.name}")
             else:
                 self.direct_imports.add(name.name)
-                # 同时添加模块名到 from_imports，以便后续查找
+                # Also add module name to from_imports for later lookup
                 self.from_imports[name.name] = name.name
                 if self.debug:
-                    print(f"  记录直接导入: {name.name}")
+                    print(f"  Recording direct import: {name.name}")
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
@@ -422,7 +422,7 @@ class TaintVisitor(ast.NodeVisitor):
             Tuple of (simple function name, full function name with module) or (None, None)
         """
         if self.debug:
-            print(f"\n[函数名称解析] 开始解析: {ast.dump(func)}")
+            print(f"\n[Function Name Parsing] Starting parsing: {ast.dump(func)}")
         
         if isinstance(func, ast.Name):
             simple_name = func.id
@@ -431,24 +431,24 @@ class TaintVisitor(ast.NodeVisitor):
             if simple_name in self.from_imports:
                 full_name = self.from_imports[simple_name]
                 if self.debug:
-                    print(f"  从 from_imports 找到映射: {simple_name} -> {full_name}")
+                    print(f"  Found mapping in from_imports: {simple_name} -> {full_name}")
                 return simple_name, full_name
 
             # Check if this is an alias
             if simple_name in self.import_aliases:
                 module_name = self.import_aliases[simple_name]
                 if self.debug:
-                    print(f"  从 import_aliases 找到映射: {simple_name} -> {module_name}")
+                    print(f"  Found mapping in import_aliases: {simple_name} -> {module_name}")
                 return simple_name, module_name
 
             # Check if this is a direct import
             if simple_name in self.direct_imports:
                 if self.debug:
-                    print(f"  在 direct_imports 中找到: {simple_name}")
+                    print(f"  Found in direct_imports: {simple_name}")
                 return simple_name, simple_name
 
             if self.debug:
-                print(f"  使用简单名称: {simple_name}")
+                print(f"  Using simple name: {simple_name}")
             return simple_name, simple_name
 
         elif isinstance(func, ast.Attribute):
@@ -461,11 +461,11 @@ class TaintVisitor(ast.NodeVisitor):
                     real_module = self.import_aliases[module_name]
                     full_name = f"{real_module}.{attr_name}"
                     if self.debug:
-                        print(f"  从模块别名解析: {module_name}.{attr_name} -> {full_name}")
+                        print(f"  Parsed from module alias: {module_name}.{attr_name} -> {full_name}")
                 else:
                     full_name = f"{module_name}.{attr_name}"
                     if self.debug:
-                        print(f"  构建完整名称: {full_name}")
+                        print(f"  Constructed full name: {full_name}")
                 
                 return attr_name, full_name
 
@@ -475,11 +475,11 @@ class TaintVisitor(ast.NodeVisitor):
                 if parent_full:
                     full_name = f"{parent_full}.{func.attr}"
                     if self.debug:
-                        print(f"  处理嵌套属性: {full_name}")
+                        print(f"  Handling nested attributes: {full_name}")
                     return func.attr, full_name
 
         if self.debug:
-            print("  无法解析函数名称")
+            print("  Unable to parse function name")
         return None, None
 
     def _is_source(self, func_name: str, full_name: Optional[str] = None) -> bool:
@@ -544,31 +544,31 @@ class TaintVisitor(ast.NodeVisitor):
         Check if a function name is a sink based on configuration patterns.
         """
         if self.debug:
-            print(f"\n[Sink检查] 检查函数: {func_name} (完整名称: {full_name or 'N/A'})")
-            print(f"  当前导入信息:")
-            print(f"    - 直接导入: {self.direct_imports}")
-            print(f"    - 别名导入: {self.import_aliases}")
-            print(f"    - From导入: {self.from_imports}")
+            print(f"\n[Sink Check] Checking function: {func_name} (full name: {full_name or 'N/A'})")
+            print(f"  Current import information:")
+            print(f"    - Direct imports: {self.direct_imports}")
+            print(f"    - Alias imports: {self.import_aliases}")
+            print(f"    - From imports: {self.from_imports}")
         
         for sink in self.sinks:
             sink_name = sink.get("name", "Unknown")
             if self.debug:
-                print(f"  [Sink类型] 检查 {sink_name} 的模式:")
+                print(f"  [Sink Type] Checking patterns for {sink_name}:")
             
             for pattern in sink["patterns"]:
                 if self.debug:
-                    print(f"    - 当前模式: {pattern}")
-                    print(f"      对比: 函数名='{func_name}', 完整名称='{full_name}'")
+                    print(f"    - Current pattern: {pattern}")
+                    print(f"      Comparing: function name='{func_name}', full name='{full_name}'")
                 
-                # 检查简单名称匹配
+                # Check simple name match
                 if pattern == func_name:
                     if self.debug:
-                        print(f"    ✓ 匹配成功: 简单名称匹配 - {pattern}")
+                        print(f"    ✓ Match found: simple name match - {pattern}")
                     return True
 
-                # 检查完整名称匹配
+                # Check full name match
                 if full_name:
-                    # 检查完整匹配
+                    # Check exact match
                     if pattern == full_name:
                         if self.debug:
                             print(f"    ✓ 匹配成功: 完整名称精确匹配 - {pattern}")

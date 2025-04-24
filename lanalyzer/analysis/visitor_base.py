@@ -42,18 +42,18 @@ class EnhancedTaintVisitor(TaintVisitor):
         """
         super().__init__(parent_map, debug, verbose)
         self.file_path = file_path
-        self.source_lines = None  # 将存储源代码行
+        self.source_lines = None  # Will store source code lines
         
-        # 如果提供了文件路径，尝试加载源代码
+        # If file path is provided, try to load the source code
         if file_path and os.path.exists(file_path):
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     self.source_lines = f.readlines()
                 if self.debug:
-                    print(f"加载了 {len(self.source_lines)} 行源代码从 {file_path}")
+                    print(f"Loaded {len(self.source_lines)} lines of source code from {file_path}")
             except Exception as e:
                 if self.debug:
-                    print(f"无法加载源代码: {str(e)}")
+                    print(f"Failed to load source code: {str(e)}")
 
         # For compatibility with the updated TaintVisitor, which uses "tainted"
         # instead of "variable_taint". This makes variable_taint an alias to tainted.
@@ -94,9 +94,9 @@ class EnhancedTaintVisitor(TaintVisitor):
         # Improved taint tracking for complex operations
         self.operation_taint_rules = self._initialize_operation_taint_rules()
 
-        # 增加初始化调试信息
+        # Increased initialization debug info
         if self.debug:
-            print(f"创建EnhancedTaintVisitor实例用于分析文件: {self.file_path}")
+            print(f"Creating EnhancedTaintVisitor instance for analyzing file: {self.file_path}")
 
     def _initialize_operation_taint_rules(self) -> Dict[str, Callable]:
         """Initialize rules for how taint propagates through different operations."""
@@ -135,19 +135,19 @@ class EnhancedTaintVisitor(TaintVisitor):
 
     def visit_Module(self, node: ast.Module) -> None:
         """Visit a module node and initialize path analysis."""
-        # 增加文件名调试信息
+        # Add filename debug info
         if self.debug:
-            print(f"\n========== 开始分析文件: {self.file_path} ==========\n")
+            print(f"\n========== Starting analysis of file: {self.file_path} ==========\n")
 
         self.path_root = PathNode(node)
         self.current_path = self.path_root
         super().generic_visit(node)
 
-        # 在分析完成时再次打印文件信息
+        # Print file info again upon analysis completion
         if self.debug:
-            print(f"\n========== 完成分析文件: {self.file_path} ==========")
-            print(f"发现 {len(self.found_sinks)} 个污点汇点(sink)")
-            print(f"发现 {len(self.found_sources)} 个污点源(source)")
+            print(f"\n========== Completed analysis of file: {self.file_path} ==========")
+            print(f"Found {len(self.found_sinks)} sinks")
+            print(f"Found {len(self.found_sources)} sources")
 
     def visit_Name(self, node: ast.Name) -> None:
         """Visit a name node to track variable uses."""

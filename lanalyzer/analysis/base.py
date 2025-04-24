@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Type, TypeVar
 from lanalyzer.models import AnalysisResults, Vulnerability
 from lanalyzer.utils.file import get_python_files_in_directory
 
-# 类型变量以提高类型提示
+# Type variable for better type hinting
 T = TypeVar("T", bound="BaseAnalyzer")
 
 
@@ -67,7 +67,7 @@ class BaseAnalyzer(abc.ABC):
         """
         vulnerabilities = []
 
-        # 使用我们优化后的工具函数来获取所有Python文件
+        # Use our optimized utility function to get all Python files
         python_files = get_python_files_in_directory(directory_path)
 
         for file_path in python_files:
@@ -94,7 +94,7 @@ class BaseAnalyzer(abc.ABC):
             PermissionError: If target path is not accessible
             ValueError: For other validation errors
         """
-        # 更好的路径验证
+        # Better path validation
         if not os.path.exists(target_path):
             raise FileNotFoundError(f"Target path does not exist: {target_path}")
 

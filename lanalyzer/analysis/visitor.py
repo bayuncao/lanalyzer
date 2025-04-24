@@ -58,21 +58,21 @@ class EnhancedTaintAnalysisVisitor(
         # Initialize the base visitor
         super().__init__(parent_map, debug, verbose, file_path)
         
-        # 确保file_path被设置，并且源代码行已加载
+        # Ensure file_path is set and source lines are loaded
         if not hasattr(self, 'source_lines') or not self.source_lines:
             if file_path and os.path.exists(file_path):
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
                         self.source_lines = f.readlines()
                     if self.debug:
-                        print(f"在EnhancedTaintAnalysisVisitor中加载了 {len(self.source_lines)} 行源代码从 {file_path}")
+                        print(f"Loaded {len(self.source_lines)} lines of source code from {file_path} in EnhancedTaintAnalysisVisitor")
                 except Exception as e:
                     if self.debug:
-                        print(f"在EnhancedTaintAnalysisVisitor中无法加载源代码: {str(e)}")
+                        print(f"Failed to load source code in EnhancedTaintAnalysisVisitor: {str(e)}")
         
         if self.debug:
-            print(f"初始化完整污点分析访问者用于文件: {file_path}")
+            print(f"Initializing complete taint analysis visitor for file: {file_path}")
             if hasattr(self, 'source_lines') and self.source_lines:
-                print(f"成功加载源代码行: {len(self.source_lines)} 行")
+                print(f"Successfully loaded source code lines: {len(self.source_lines)} lines")
             else:
-                print(f"警告: 未能加载源代码行")
+                print(f"Warning: Failed to load source code lines")

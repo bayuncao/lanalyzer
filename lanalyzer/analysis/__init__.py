@@ -21,10 +21,10 @@ from lanalyzer.analysis.pathsensitive import PathNode
 from lanalyzer.analysis.tracker import EnhancedTaintTracker
 from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
 
-# 为了保持向后兼容性
+# For backward compatibility
 from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor as EnhancedTaintVisitor
 
-# 从utils包导入我们已经迁移的函数
+# Import functions we have migrated from the utils package
 from lanalyzer.utils.ast_utils import (
     contains_sink_patterns,
     extract_call_targets,
@@ -130,23 +130,23 @@ def analyze_file(
     return vulnerabilities, summary
 
 
-# 为了保持向后兼容性，提供旧函数名的别名
+# Provide alias for old function name for backward compatibility
 enhanced_analyze_file = analyze_file
 
 __all__ = [
-    # 主要分析类
+    # Main analysis classes
     "EnhancedTaintTracker",
     "EnhancedTaintAnalysisVisitor",
-    "EnhancedTaintVisitor",  # 向后兼容
-    # 辅助数据结构
+    "EnhancedTaintVisitor",  # Backward compatibility
+    # Helper data structures
     "CallGraphNode",
     "DataStructureNode",
     "DefUseChain",
     "PathNode",
-    # 公共API函数
+    # Public API functions
     "analyze_file",
-    "enhanced_analyze_file",  # 兼容性别名
-    # 基础组件
+    "enhanced_analyze_file",  # Compatibility alias
+    # Base components
     "BaseAnalyzer",
     "parse_ast",
     "get_python_files",

@@ -1,40 +1,40 @@
 #!/usr/bin/env python3
 """
-简单测试脚本，用于验证重构是否成功。
-测试导入新的类和向后兼容性。
+Simple test script to verify successful refactoring.
+Tests importing new classes and backward compatibility.
 """
 
 import sys
 import os
 
-# 将项目根目录添加到Python路径中
+# Add project root directory to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-# 导入重构后的类和向后兼容的类
+# Import refactored classes and backward compatible class
 from lanalyzer.analysis import (
     EnhancedTaintAnalysisVisitor,
     EnhancedTaintVisitor,
 )
 
-# 测试：确认EnhancedTaintVisitor是EnhancedTaintAnalysisVisitor的别名
+# Test: Confirm EnhancedTaintVisitor is an alias for EnhancedTaintAnalysisVisitor
 def test_backward_compatibility():
-    print("测试向后兼容性...", end="")
+    print("Testing backward compatibility...", end="")
     assert EnhancedTaintVisitor == EnhancedTaintAnalysisVisitor
-    print("成功！")
+    print("Success!")
 
-# 测试：实例化新的访问者类
+# Test: Instantiate the new visitor class
 def test_instantiation():
-    print("测试新类实例化...", end="")
+    print("Testing new class instantiation...", end="")
     visitor = EnhancedTaintAnalysisVisitor(debug=True, file_path="test.py")
     assert hasattr(visitor, "callgraph")
     assert hasattr(visitor, "datastructures")
     assert hasattr(visitor, "defuse")
     assert hasattr(visitor, "pathsensitive")
-    print("成功！")
+    print("Success!")
 
-# 检查文件是否存在
+# Check if files exist
 def check_files():
-    print("检查文件分拆结果...")
+    print("Checking file splitting results...")
     expected_files = [
         "lanalyzer/analysis/visitor_base.py",
         "lanalyzer/analysis/visitor_function.py", 
@@ -44,15 +44,15 @@ def check_files():
     ]
     
     for file in expected_files:
-        print(f"  检查 {file}...", end="")
-        assert os.path.exists(file), f"文件不存在: {file}"
-        print("存在")
+        print(f"  Checking {file}...", end="")
+        assert os.path.exists(file), f"File does not exist: {file}"
+        print("Exists")
     
-    print("所有文件检查成功！")
+    print("All file checks successful!")
 
 if __name__ == "__main__":
-    print("开始验证重构结果...")
+    print("Starting verification of refactoring results...")
     check_files()
     test_backward_compatibility()
     test_instantiation()
-    print("所有测试通过！重构成功。") 
+    print("All tests passed! Refactoring successful.") 

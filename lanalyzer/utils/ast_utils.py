@@ -1,7 +1,8 @@
 """
 AST utility functions for LAnaLyzer.
 
-Provides utility functions for working with Python Abstract Syntax Trees (AST).
+Provides basic utility functions for working with Python Abstract Syntax Trees (AST).
+General utility functions not specific to analysis modules.
 """
 
 import ast
@@ -25,7 +26,6 @@ def parse_file(file_path: str, encoding: str = "utf-8") -> Optional[ast.Module]:
         FileNotFoundError: If the file doesn't exist
         PermissionError: If the file can't be read
     """
-    # 增强错误处理
     if not os.path.exists(file_path):
         print(f"Error: File not found: {file_path}")
         return None

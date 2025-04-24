@@ -23,8 +23,8 @@ def create_parser() -> argparse.ArgumentParser:
         description="Lanalyzer - Enhanced Python taint analysis tool"
     )
 
-    # 由于只有enhanced模式，不再需要子命令
-    # 直接将enhanced模式的参数作为主参数
+    # Since only enhanced mode exists, subcommands are no longer needed
+    # Directly use enhanced mode parameters as main parameters
     parser.add_argument(
         "--target",
         required=True,
