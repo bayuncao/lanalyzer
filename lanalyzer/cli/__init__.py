@@ -10,7 +10,6 @@ from lanalyzer.cli.log_utils import LogTee, get_timestamp
 from lanalyzer.cli.file_utils import list_target_files, gather_target_files
 from lanalyzer.cli.config_utils import load_configuration, save_output
 
-from lanalyzer.cli.base import main
-from lanalyzer.cli.enhanced import enhanced_cli_main
+from lanalyzer.cli.enhanced import main, enhanced_cli_main
 
 __all__ = ["main", "enhanced_cli_main"]

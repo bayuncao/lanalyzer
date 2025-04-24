@@ -9,7 +9,7 @@ __version__ = "0.1.0"
 __author__ = "LAnaLyzer Team"
 
 # Public API imports for easy access
-from lanalyzer.cli.base import main
+from lanalyzer.cli.enhanced import main
 from lanalyzer.output.report_generator import ReportGenerator
 
 # Define what's available when using "from lanalyzer import *"
