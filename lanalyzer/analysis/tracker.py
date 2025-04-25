@@ -1127,6 +1127,9 @@ class EnhancedTaintTracker:
             List of dictionaries representing the call chain
         """
         call_chain = []
+        # 用于去重的集合
+        added_sources = set()  # 记录已添加的源点，格式为 "line:statement"
+
         sink_line = sink_info.get("line", 0)
         sink_name = sink_info.get("name", "Unknown Sink")
         vulnerability_type = sink_info.get(
@@ -1150,27 +1153,72 @@ class EnhancedTaintTracker:
 
         # Step 2: Find the direct sink operation (the actual dangerous call)
         sink_operation = self._extract_operation_at_line(visitor, sink_line)
+        sink_entry = None
         if sink_operation:
-            # If direct operation is found, add it as the first element of the call chain
-            call_chain.append(
-                {
-                    "function": sink_operation,
-                    "file": visitor.file_path,
-                    "line": sink_line,
-                    "statement": sink_stmt_info["statement"],
-                    "context_lines": [sink_line - 2, sink_line + 2]
-                    if sink_line > 2
-                    else [1, sink_line + 2],
-                    "type": "sink",
-                    "description": f"Unsafe {sink_name} operation, potentially leading to {vulnerability_type}",
-                }
-            )
+            # If direct operation is found, create sink entry (but don't add to chain yet)
+            sink_entry = {
+                "function": sink_operation,
+                "file": visitor.file_path,
+                "line": sink_line,
+                "statement": sink_stmt_info["statement"],
+                "context_lines": [sink_line - 2, sink_line + 2]
+                if sink_line > 2
+                else [1, sink_line + 2],
+                "type": "sink",
+                "description": f"Unsafe {sink_name} operation, potentially leading to {vulnerability_type}",
+            }
 
         # Step 3: Find function containing the sink
         sink_function_node = self._find_function_containing_line(visitor, sink_line)
 
+        # 记录汇聚点所在的函数范围，用于优先在同一函数内查找源点
+        sink_function_range = None
+        if sink_function_node:
+            sink_function_range = (
+                sink_function_node.line_no,
+                sink_function_node.end_line_no,
+            )
+
+        # 创建容器函数信息，但先不添加到调用链
+        sink_container_entry = None
+        if sink_function_node:
+            file_path = getattr(sink_function_node, "file_path", visitor.file_path)
+
+            # Find where this function is defined (to provide context)
+            func_def_start = sink_function_node.line_no
+            func_def_end = getattr(
+                sink_function_node, "end_line_no", func_def_start + 1
+            )
+
+            # Try to get the function definition statement
+            func_def_stmt = ""
+            if (
+                hasattr(visitor, "source_lines")
+                and visitor.source_lines
+                and func_def_start > 0
+                and func_def_start <= len(visitor.source_lines)
+            ):
+                func_def_stmt = visitor.source_lines[func_def_start - 1].strip()
+
+            sink_container_entry = {
+                "function": sink_function_node.name,
+                "file": file_path,
+                "line": sink_function_node.line_no,
+                "statement": func_def_stmt
+                if func_def_stmt
+                else f"function {sink_function_node.name}",
+                "context_lines": [func_def_start, func_def_end],
+                "type": "sink_container",
+                "description": f"Function containing sink {sink_name}, at line {sink_line}",
+            }
+
         # Step 4: Try to find tainted variables used in the sink
         tainted_vars_in_sink = self._find_tainted_vars_in_sink(visitor, sink_line)
+
+        # 按函数内/函数外分类源点
+        same_function_sources = []  # 同函数内的源点
+        other_sources = []  # 其他函数的源点
+        parser_sources = []  # 命令行参数源点
 
         # Step 5: If we found tainted variables, try to find their source statements
         if (
@@ -1195,7 +1243,7 @@ class EnhancedTaintTracker:
                                 visitor, source_line
                             )
 
-                            # 添加源语句到调用链
+                            # 创建源语句信息
                             source_stmt = {
                                 "function": source_operation or f"Source of {var_name}",
                                 "file": visitor.file_path,
@@ -1207,171 +1255,298 @@ class EnhancedTaintTracker:
                                 "type": "source",
                                 "description": f"Source of tainted data ({source_name}) assigned to variable {var_name}",
                             }
-                            # 将源语句添加到调用链中
-                            call_chain.append(source_stmt)
+
+                            # 去重处理
+                            source_key = f"{source_line}:{source_stmt['statement']}"
+                            if source_key not in added_sources:
+                                added_sources.add(source_key)
+
+                                # 判断源点是否在同一函数内
+                                if (
+                                    sink_function_range
+                                    and sink_function_range[0]
+                                    <= source_line
+                                    <= sink_function_range[1]
+                                ):
+                                    same_function_sources.append(source_stmt)
+                                else:
+                                    other_sources.append(source_stmt)
 
                             if self.debug:
                                 print(
                                     f"[DEBUG] Added source statement for var {var_name} at line {source_line}"
                                 )
 
-        # Step 6: Check for any variable assignment sources from known source patterns
-        # (这一步在找不到污点变量的情况下查找可能的源)
-        if sink_function_node and hasattr(visitor, "var_assignments"):
-            func_body_range = (
-                sink_function_node.line_no,
-                sink_function_node.end_line_no,
-            )
+        # 步骤 6: 搜索函数内可能的源语句，优先考虑同一函数内的源
+        found_source_in_function = len(same_function_sources) > 0
+        if (
+            not found_source_in_function
+            and sink_function_node
+            and hasattr(visitor, "source_lines")
+        ):
+            # 从配置文件中收集所有源模式，优先处理高优先级源（如NetworkInput）
+            source_patterns = []
+            high_priority_patterns = []
+
+            for source_config in self.sources:
+                patterns = source_config.get("patterns", [])
+                source_name = source_config.get("name", "UnknownSource")
+                priority = source_config.get("priority", "normal")
+
+                # 将高优先级的源模式单独收集
+                if priority == "high":
+                    for pattern in patterns:
+                        high_priority_patterns.append((pattern, source_name))
+                else:
+                    for pattern in patterns:
+                        source_patterns.append((pattern, source_name))
+
+            # 优先级排序：先检查高优先级模式
+            all_sorted_patterns = high_priority_patterns + source_patterns
+
+            # 在函数内搜索可能的源语句
+            if sink_function_range:
+                start_line, end_line = sink_function_range
+                # 创建一个源语句列表
+                potential_sources = []
+
+                # 在函数内搜索可能的源语句
+                for line_idx in range(
+                    start_line, min(end_line, len(visitor.source_lines))
+                ):
+                    if line_idx == sink_line:
+                        continue  # 跳过汇聚点所在行
+
+                    line = (
+                        visitor.source_lines[line_idx - 1]
+                        if line_idx > 0 and line_idx <= len(visitor.source_lines)
+                        else ""
+                    )
+                    if not line:
+                        continue
+
+                    # 检查是否含有配置文件中定义的源模式
+                    for pattern, source_name in all_sorted_patterns:
+                        # 将星号通配符转换为正则表达式
+                        if "*" in pattern:
+                            pattern_regex = pattern.replace(".", "\\.").replace(
+                                "*", ".*"
+                            )
+                            pattern_match = re.search(pattern_regex, line)
+                            matches = bool(pattern_match)
+                        else:
+                            matches = pattern in line
+
+                        if matches:
+                            # 检查是否是变量赋值模式
+                            if "=" in line and line.index("=") < line.find(pattern):
+                                var_name = line.split("=")[0].strip()
+                                # 检查sink语句是否使用该变量
+                                sink_stmt = sink_stmt_info["statement"]
+                                if var_name in sink_stmt:
+                                    potential_sources.append(
+                                        {
+                                            "line": line_idx,
+                                            "statement": line.strip(),
+                                            "var": var_name,
+                                            "in_same_function": True,
+                                            "source_name": source_name,
+                                            "pattern": pattern,
+                                        }
+                                    )
+                                    break  # 找到一个匹配就跳出内循环
+
+                # 如果在同一函数内找到了源，添加到调用链
+                if potential_sources:
+                    # 按行号排序，优先选择距离sink最近但在sink之前的源
+                    potential_sources.sort(
+                        key=lambda x: sink_line - x["line"]
+                        if x["line"] < sink_line
+                        else float("inf")
+                    )
+                    for src in potential_sources:
+                        if src["line"] < sink_line:  # 优先选择在sink之前的源
+                            source_stmt = {
+                                "function": f"{src['var']} = {src['statement'].split('=')[1].strip()}"
+                                if "=" in src["statement"]
+                                else src["statement"],
+                                "file": visitor.file_path,
+                                "line": src["line"],
+                                "statement": src["statement"],
+                                "context_lines": [src["line"] - 1, src["line"] + 1],
+                                "type": "source",
+                                "description": f"Source of tainted data ({src['source_name']}) assigned to variable {src['var']}",
+                            }
+
+                            # 去重处理
+                            source_key = f"{src['line']}:{source_stmt['statement']}"
+                            if source_key not in added_sources:
+                                added_sources.add(source_key)
+                                same_function_sources.append(source_stmt)
+                                found_source_in_function = True
+                                if self.debug:
+                                    print(
+                                        f"[DEBUG] Found source using pattern '{src['pattern']}' at line {src['line']}"
+                                    )
+
+        # 步骤 7: 如果在同一函数内没有找到源，则搜索所有潜在的源点
+        if not found_source_in_function and hasattr(visitor, "var_assignments"):
             potential_sources = []
 
-            # 遍历函数体内的所有赋值语句，查找可能的网络输入源
+            # 从配置文件中获取源类型和模式
+            source_type_patterns = {}
+            for source_config in self.sources:
+                source_name = source_config.get("name", "UnknownSource")
+                patterns = source_config.get("patterns", [])
+                for pattern in patterns:
+                    source_type_patterns[pattern] = source_name
+
+            # 遍历所有赋值语句，查找可能的源点
             for var_name, assign_info in visitor.var_assignments.items():
-                if (
-                    "line" in assign_info
-                    and func_body_range[0] <= assign_info["line"] <= func_body_range[1]
-                ):
-                    # 检查赋值语句是否包含网络输入等模式
+                if "line" in assign_info:
+                    # 如果已经找到过这一行的源，跳过
                     line_no = assign_info["line"]
+                    if any(
+                        source["line"] == line_no
+                        for source in same_function_sources + other_sources
+                    ):
+                        continue
+
                     stmt = self._get_statement_at_line(visitor, line_no)["statement"]
 
-                    # 检查是否包含关键网络输入模式
-                    if (
-                        "recv" in stmt
-                        or "network" in stmt.lower()
-                        or "distributed" in stmt
-                    ):
+                    # 检查是否匹配任何配置文件中的源模式
+                    matched_source_type = None
+                    matched_pattern = None
+
+                    for pattern, source_type in source_type_patterns.items():
+                        # 处理通配符
+                        if "*" in pattern:
+                            pattern_regex = pattern.replace(".", "\\.").replace(
+                                "*", ".*"
+                            )
+                            if re.search(pattern_regex, stmt):
+                                matched_source_type = source_type
+                                matched_pattern = pattern
+                                break
+                        elif pattern in stmt:
+                            matched_source_type = source_type
+                            matched_pattern = pattern
+                            break
+
+                    if matched_source_type:
+                        # 判断是否在同一个函数内
+                        in_same_function = False
+                        if (
+                            sink_function_range
+                            and sink_function_range[0]
+                            <= line_no
+                            <= sink_function_range[1]
+                        ):
+                            in_same_function = True
+
+                        is_command_line = "CommandLineArgs" in matched_source_type
+
                         potential_sources.append(
-                            {"var": var_name, "line": line_no, "statement": stmt}
+                            {
+                                "var": var_name,
+                                "line": line_no,
+                                "statement": stmt,
+                                "in_same_function": in_same_function,
+                                "is_parser": is_command_line,
+                                "source_name": matched_source_type,
+                                "pattern": matched_pattern,
+                            }
                         )
 
-            # 添加潜在源
-            for src in potential_sources:
-                # 检查是否已经添加过该源
-                if not any(c.get("line") == src["line"] for c in call_chain):
+            # 添加潜在源，优先选择同一函数内的源
+            if potential_sources:
+                # 首先按是否在同一函数内排序，然后按行号接近sink排序
+                potential_sources.sort(
+                    key=lambda x: (
+                        not x.get("in_same_function", False),
+                        abs(x["line"] - sink_line),
+                    )
+                )
+
+                # 将潜在源分类
+                for src in potential_sources:
+                    # 去重处理
+                    source_key = f"{src['line']}:{src['statement']}"
+                    if source_key in added_sources:
+                        continue
+
                     source_stmt = {
-                        "function": f"Potential source: {src['statement']}",
+                        "function": f"{src['var'] if 'var' in src else ''} = {src['statement'].split('=')[1].strip()}"
+                        if "=" in src["statement"]
+                        else src["statement"],
                         "file": visitor.file_path,
                         "line": src["line"],
                         "statement": src["statement"],
                         "context_lines": [src["line"] - 1, src["line"] + 1],
-                        "type": "potential_source",
-                        "description": f"Potential source of tainted data assigned to variable {src['var']}",
+                        "type": "source",
+                        "description": f"Source of tainted data ({src.get('source_name', 'Unknown')}) assigned to variable {src['var']}",
                     }
-                    call_chain.append(source_stmt)
 
-        # Step 7: Add the function containing the sink to call chain
-        if sink_function_node:
-            # Check if a function with the same name has already been added, avoid duplicates
-            if not call_chain or call_chain[0]["function"] != sink_function_node.name:
-                file_path = getattr(sink_function_node, "file_path", visitor.file_path)
+                    added_sources.add(source_key)
 
-                # Find where this function is defined (to provide context)
-                func_def_start = sink_function_node.line_no
-                func_def_end = getattr(
-                    sink_function_node, "end_line_no", func_def_start + 1
-                )
+                    if src.get("is_parser", False):
+                        parser_sources.append(source_stmt)
+                    elif src.get("in_same_function", False):
+                        same_function_sources.append(source_stmt)
+                    else:
+                        other_sources.append(source_stmt)
 
-                # Try to get the function definition statement
-                func_def_stmt = ""
-                if (
-                    hasattr(visitor, "source_lines")
-                    and visitor.source_lines
-                    and func_def_start > 0
-                ):
-                    func_def_stmt = visitor.source_lines[func_def_start - 1].strip()
+                    if self.debug:
+                        print(
+                            f"[DEBUG] Found source using pattern '{src.get('pattern', 'unknown')}' at line {src['line']}"
+                        )
 
-                sink_func_info = {
-                    "function": sink_function_node.name,
-                    "file": file_path,
-                    "line": sink_function_node.line_no,
-                    "statement": func_def_stmt
-                    if func_def_stmt
-                    else f"function {sink_function_node.name}",
-                    "context_lines": [func_def_start, func_def_end],
-                    "type": "sink_container",
-                    "description": f"Function containing sink {sink_name}, at line {sink_line}",
-                }
-                call_chain.append(sink_func_info)
+        # 构建最终调用链，按照优先级顺序
+        final_call_chain = []
 
-        # Step 8: Find related functions with similar functionality
-        related_functions = self._find_related_functions(visitor, sink_name)
-        for related_func in related_functions:
-            # Ensure duplicate functions are not added
-            if all(entry["function"] != related_func.name for entry in call_chain):
-                # Try to get the actual implementation or calling code
-                func_def_start = related_func.line_no
-                func_def_end = getattr(related_func, "end_line_no", func_def_start + 1)
+        # 1. 同一函数内的源点（最高优先级）
+        for entry in same_function_sources:
+            final_call_chain.append(entry)
 
-                # Try to get a code snippet or signature for the related function
-                func_snippet = ""
-                if (
-                    hasattr(visitor, "source_lines")
-                    and visitor.source_lines
-                    and func_def_start > 0
-                ):
-                    func_snippet = visitor.source_lines[func_def_start - 1].strip()
+        # 2. 命令行参数源点
+        for entry in parser_sources:
+            final_call_chain.append(entry)
 
-                related_info = {
-                    "function": related_func.name,
-                    "file": related_func.file_path,
-                    "line": related_func.line_no,
-                    "statement": func_snippet
-                    if func_snippet
-                    else f"function {related_func.name}",
-                    "context_lines": [func_def_start, func_def_end],
-                    "type": "related_path",
-                    "description": "Related function using similar unsafe techniques",
-                }
-                call_chain.append(related_info)
+        # 3. 其他函数中的源点（仅当同函数内无源点时添加）
+        if not same_function_sources:
+            for entry in other_sources:
+                final_call_chain.append(entry)
 
-        # Step 9: Find caller functions (who called the function containing the sink)
-        if sink_function_node and sink_function_node.callers:
-            # Only add one primary caller to avoid excessively long chains
-            caller = sink_function_node.callers[0]
-            if all(entry["function"] != caller.name for entry in call_chain):
-                # Try to find the line where this caller calls the sink function
-                caller_line = getattr(caller, "line_no", 0)
-                call_line = None
+        # 4. 容器函数
+        if sink_container_entry:
+            final_call_chain.append(sink_container_entry)
 
-                # Try to locate the actual call statement
-                if hasattr(caller, "callees"):
-                    for callee in caller.callees:
-                        if callee.name == sink_function_node.name and hasattr(
-                            callee, "call_line"
-                        ):
-                            call_line = callee.call_line
-                            break
+        # 5. 汇聚点
+        if sink_entry:
+            final_call_chain.append(sink_entry)
 
-                # If we found the call line, get the statement
-                call_stmt = ""
-                if (
-                    call_line
-                    and hasattr(visitor, "source_lines")
-                    and visitor.source_lines
-                ):
-                    if 0 < call_line <= len(visitor.source_lines):
-                        call_stmt = visitor.source_lines[call_line - 1].strip()
+        # 对于同类型的源点，按照行号排序
+        if len(same_function_sources) > 1:
+            # 对同函数内源点按距离汇聚点的位置排序（近→远）
+            same_function_sources_sorted = sorted(
+                same_function_sources, key=lambda x: abs(x["line"] - sink_line)
+            )
 
-                caller_info = {
-                    "function": caller.name,
-                    "file": caller.file_path,
-                    "line": call_line if call_line else caller_line,
-                    "statement": call_stmt
-                    if call_stmt
-                    else f"{caller.name}() calls {sink_function_node.name}()",
-                    "context_lines": [
-                        call_line - 1 if call_line and call_line > 1 else caller_line,
-                        call_line + 1 if call_line else caller_line + 1,
-                    ],
-                    "type": "intermediate",
-                    "description": f"Called the function {sink_function_node.name} containing the sink",
-                }
-                call_chain.append(caller_info)
+            # 清除原来添加的同函数内源点
+            final_call_chain = [
+                e for e in final_call_chain if e not in same_function_sources
+            ]
+
+            # 将排序后的同函数内源点插入到调用链最前面
+            for entry in reversed(same_function_sources_sorted):
+                final_call_chain.insert(0, entry)
 
         if self.debug:
-            print(f"[DEBUG] Built call chain with {len(call_chain)} nodes")
+            print(f"[DEBUG] Built call chain with {len(final_call_chain)} nodes")
+            source_count = len([e for e in final_call_chain if e["type"] == "source"])
+            print(f"[DEBUG] Sources in call chain: {source_count}")
 
-        return call_chain
+        return final_call_chain
 
     def _find_tainted_vars_in_sink(
         self, visitor: EnhancedTaintAnalysisVisitor, sink_line: int

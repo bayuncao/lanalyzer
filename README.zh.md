@@ -64,3 +64,9 @@ python -m lanalyzer analyze example.py --config rules/sql_injection.json --prett
 ## 联系方式
 
 如有问题或需要支持，请在 GitHub 上提交 issue 或发送邮件至 [lanalyzer@example.com](mailto:lanalyzer@example.com)。
+
+## 最近更新
+
+- 增强了上下文分析和调用链构建逻辑：修复了在污点分析中源点和汇聚点关联的问题，优先在同一函数内查找源点，避免错误地关联到其他函数中相同的语句。
+
+## 开始使用

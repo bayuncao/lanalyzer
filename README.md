@@ -64,3 +64,9 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Contact
 
 For questions or support, please open an issue on GitHub or email us at [lanalyzer@example.com](mailto:lanalyzer@example.com).
+
+## Recent Updates
+
+- Enhanced context analysis and call chain building: Fixed issues with source and sink association in taint analysis, prioritizing source finding within the same function to avoid incorrectly linking to identical statements in other functions.
+
+## Getting Started
