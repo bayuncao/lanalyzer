@@ -32,11 +32,66 @@ def create_parser() -> argparse.ArgumentParser:
         description="Lanalyzer - Enhanced Python taint analysis tool"
     )
 
-    # Since only enhanced mode exists, subcommands are no longer needed
-    # Directly use enhanced mode parameters as main parameters
-    parser.add_argument(
+    # 创建子命令解析器
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+
+    # 分析命令
+    analyze_parser = subparsers.add_parser(
+        "analyze", help="Analyze Python code for vulnerabilities"
+    )
+
+    # 分析命令参数
+    analyze_parser.add_argument(
         "--target",
         required=True,
+        help="Target file or directory to analyze",
+    )
+    analyze_parser.add_argument(
+        "--config",
+        help="Path to configuration file (JSON)",
+    )
+    analyze_parser.add_argument("--output", help="Path to output file (JSON)")
+    analyze_parser.add_argument(
+        "--pretty", action="store_true", help="Pretty-print JSON output"
+    )
+    analyze_parser.add_argument(
+        "--debug", action="store_true", help="Enable debug output"
+    )
+    analyze_parser.add_argument(
+        "--verbose", action="store_true", help="Enable verbose output"
+    )
+    analyze_parser.add_argument(
+        "--list-files",
+        action="store_true",
+        help="List all Python files that would be analyzed",
+    )
+    analyze_parser.add_argument(
+        "--log-file",
+        help="Path to log file for debug and analysis output",
+    )
+
+    # MCP服务器命令
+    mcp_parser = subparsers.add_parser("mcp", help="Start MCP server")
+    mcp_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host to bind the server to (default: 127.0.0.1)",
+    )
+    mcp_parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to bind the server to (default: 8000)",
+    )
+    mcp_parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug mode",
+    )
+
+    # 为了向后兼容，添加与analyze命令相同的参数到主解析器
+    parser.add_argument(
+        "--target",
         help="Target file or directory to analyze",
     )
     parser.add_argument(
@@ -54,7 +109,6 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="List all Python files that would be analyzed",
     )
-
     parser.add_argument(
         "--log-file",
         help="Path to log file for debug and analysis output",
@@ -71,9 +125,61 @@ def enhanced_cli_main() -> int:
         Exit code
     """
     parser = create_parser()
-
     args = parser.parse_args()
 
+    # 如果是MCP命令，启动MCP服务器
+    if args.command == "mcp":
+        try:
+            # 动态导入MCP服务器模块，避免不必要的依赖
+            from lanalyzer.mcp.server import MCPServer
+
+            print(f"Starting Lanalyzer MCP Server on {args.host}:{args.port}")
+            if args.debug:
+                print("Debug mode: enabled")
+
+            server = MCPServer(
+                host=args.host,
+                port=args.port,
+                debug=args.debug,
+            )
+
+            server.run()
+            return 0
+        except ImportError:
+            print("Error: MCP server dependencies not installed.")
+            print("Please install with: pip install lanalyzer[mcp]")
+            return 1
+        except Exception as e:
+            print(f"Error starting MCP server: {e}")
+            if args.debug:
+                import traceback
+
+                traceback.print_exc()
+            return 1
+
+    # 处理分析命令 (新的analyze子命令或者向后兼容的旧格式)
+    # 如果子命令是analyze或者未指定子命令但提供了--target参数
+    if args.command == "analyze" or (args.command is None and args.target):
+        return run_analysis(args)
+
+    # 如果没有提供子命令也没有提供target，显示帮助
+    if args.command is None:
+        parser.print_help()
+        return 0
+
+    return 0
+
+
+def run_analysis(args) -> int:
+    """
+    Run the analysis based on command line arguments.
+
+    Args:
+        args: Command line arguments
+
+    Returns:
+        Exit code
+    """
     # Set log file
     log_file = None
     original_stdout = sys.stdout
