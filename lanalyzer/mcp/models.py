@@ -44,7 +44,7 @@ class VulnerabilityInfo(BaseModel):
     class Config:
         """Pydantic model configuration."""
 
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "rule_name": "PickleDeserialization",
                 "rule_id": "PICKLE-001",
@@ -150,7 +150,7 @@ class ServerInfoResponse(BaseModel):
     class Config:
         """Pydantic model configuration."""
 
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "name": "Lanalyzer MCP Server",
                 "version": "0.1.0",
