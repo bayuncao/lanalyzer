@@ -80,9 +80,6 @@ class EnhancedTaintVisitor(TaintVisitor):
         self.current_path = None  # Current path being analyzed
         self.path_constraints = []  # Stack of path constraints
 
-        # Track taint propagation path
-        self.taint_propagation_paths = {}  # var_name -> list of propagation steps
-
         # Function return taint tracking
         self.function_returns_tainted = {}  # function_name -> bool
 

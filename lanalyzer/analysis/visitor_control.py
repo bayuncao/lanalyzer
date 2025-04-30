@@ -72,18 +72,6 @@ class ControlFlowVisitorMixin:
             }
         )
 
-        # Add propagation path if available
-        if "propagation_path" in current_info:
-            for i, step in enumerate(current_info["propagation_path"]):
-                propagation_chain.append(
-                    {
-                        "step_no": i + 1,
-                        "operation": "Propagation",
-                        "description": step,
-                        "var_name": var_name,
-                    }
-                )
-
         # Add def-use information if available
         if var_name in self.def_use_chains:
             chain = self.def_use_chains[var_name]

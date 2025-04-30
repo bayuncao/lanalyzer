@@ -258,7 +258,6 @@ class EnhancedTaintTracker:
                     "confidence": "Low",  # Confidence is low due to uncertain source
                     "description": f"Potential dangerous operation point {serializable_sink.get('name', 'Unknown')} found, but data source could not be determined",
                     "auto_detected": True,  # Mark as auto-detected vulnerability
-                    "propagation_path": [],  # No propagation path (as source is unknown)
                     "call_chain": partial_call_chain,  # Use the generated partial chain
                 }
 
@@ -620,12 +619,5 @@ class EnhancedTaintTracker:
                         func_name = call.get("function", "unknown")
                         statement = call.get("statement", "")
                         print(f"        -> {func_name}: {statement}")
-
-        # Print propagation path
-        propagation_path = vulnerability.get("propagation_path", [])
-        if propagation_path:
-            print("\nPropagation Path:")
-            for step in propagation_path:
-                print(f"  {step}")
 
         print("=" * 80 + "\n")

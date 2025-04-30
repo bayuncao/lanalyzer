@@ -36,7 +36,14 @@ class JSONFormatter(OutputFormatter):
         include_summary = kwargs.get("include_summary", True)
         include_timestamp = kwargs.get("include_timestamp", True)
 
-        result = {"vulnerabilities": vulnerabilities}
+        filtered_vulnerabilities = []
+        for vuln in vulnerabilities:
+            # 创建漏洞对象的副本
+            vuln_copy = vuln.copy()
+
+            filtered_vulnerabilities.append(vuln_copy)
+
+        result = {"vulnerabilities": filtered_vulnerabilities}
 
         # Add timestamp if requested
         if include_timestamp:

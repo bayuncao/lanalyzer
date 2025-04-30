@@ -191,7 +191,6 @@ class DataStructureVisitorMixin:
                     # Check if any key/value is tainted
                     tainted_dict = False
                     tainted_keys = set()
-                    propagation_steps = []
 
                     for i, (key, value) in enumerate(
                         zip(node.value.keys, node.value.values)
@@ -210,10 +209,6 @@ class DataStructureVisitorMixin:
                                 key_repr = key.id
                                 tainted_keys.add(key.id)
 
-                            propagation_steps.append(
-                                f"Key {key_repr} tainted from variable {value.id} at line {getattr(node, 'lineno', 0)}"
-                            )
-
                     if tainted_dict:
                         # Create data structure entry
                         self.data_structures[dict_name] = DataStructureNode(
@@ -226,7 +221,6 @@ class DataStructureVisitorMixin:
                             "name": "ComplexDataStructure",
                             "line": getattr(node, "lineno", 0),
                             "col": getattr(node, "col_offset", 0),
-                            "propagation_path": propagation_steps,
                         }
 
                         # Add tainted keys
@@ -256,15 +250,11 @@ class DataStructureVisitorMixin:
                     # Check if any element is tainted
                     tainted_list = False
                     tainted_indices = set()
-                    propagation_steps = []
 
                     for i, elt in enumerate(node.value.elts):
                         if isinstance(elt, ast.Name) and elt.id in self.variable_taint:
                             tainted_list = True
                             tainted_indices.add(i)
-                            propagation_steps.append(
-                                f"Index {i} tainted from variable {elt.id} at line {getattr(node, 'lineno', 0)}"
-                            )
 
                     if tainted_list:
                         # Create data structure entry
@@ -278,7 +268,6 @@ class DataStructureVisitorMixin:
                             "name": "ComplexDataStructure",
                             "line": getattr(node, "lineno", 0),
                             "col": getattr(node, "col_offset", 0),
-                            "propagation_path": propagation_steps,
                         }
 
                         # Add tainted indices
