@@ -55,9 +55,6 @@ class FunctionVisitorMixin:
                     "name": "ParameterPassing",
                     "line": getattr(node, "lineno", 0),
                     "col": 0,
-                    "propagation_path": [
-                        f"Parameter {param} (index {i}) passed from caller"
-                    ],
                 }
                 self.variable_taint[param] = param_source_info
 
@@ -205,9 +202,6 @@ class FunctionVisitorMixin:
                             "name": "FunctionReturn",
                             "line": getattr(arg, "lineno", 0),
                             "col": getattr(arg, "col_offset", 0),
-                            "propagation_path": [
-                                f"Return value from {inner_func_name}"
-                            ],
                         }
 
                 if tainted and source_info:
@@ -217,18 +211,6 @@ class FunctionVisitorMixin:
                     # If we have callee's AST, propagate taint to its parameter
                     if callee.ast_node and i < len(callee.parameters):
                         param_taint_info = copy.deepcopy(source_info)
-                        if "propagation_path" not in param_taint_info:
-                            param_taint_info["propagation_path"] = []
-                        param_taint_info["propagation_path"].append(
-                            f"Param {param_name} from arg {i} at line {getattr(node, 'lineno', 0)}"
-                        )
-
-                        # Store taint information for parameter
-                        if param_name not in self.taint_propagation_paths:
-                            self.taint_propagation_paths[param_name] = []
-                        self.taint_propagation_paths[param_name].append(
-                            param_taint_info
-                        )
 
                         if self.debug:
                             print(
@@ -257,9 +239,6 @@ class FunctionVisitorMixin:
                                 "name": "FunctionReturn",
                                 "line": getattr(node, "lineno", 0),
                                 "col": getattr(node, "col_offset", 0),
-                                "propagation_path": [
-                                    f"Return value from {func_name} at line {getattr(node, 'lineno', 0)}"
-                                ],
                             }
 
                             self.variable_taint[target.id] = return_taint_info

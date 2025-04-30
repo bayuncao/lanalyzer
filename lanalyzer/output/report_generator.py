@@ -603,9 +603,15 @@ class ReportGenerator:
         # Convert all vulnerabilities to dictionaries
         for vuln in self.vulns:
             if hasattr(vuln, "to_dict"):
-                report_data["vulnerabilities"].append(vuln.to_dict())
+                vuln_dict = vuln.to_dict()
             else:
-                report_data["vulnerabilities"].append(vuln)
+                vuln_dict = vuln.copy() if isinstance(vuln, dict) else vuln
+
+            # 删除propagation_path字段
+            if isinstance(vuln_dict, dict) and "propagation_path" in vuln_dict:
+                del vuln_dict["propagation_path"]
+
+            report_data["vulnerabilities"].append(vuln_dict)
 
         # Generate JSON
         if pretty:

@@ -32,19 +32,5 @@ class DefUseChain:
         if source_info not in self.taint_sources:
             self.taint_sources.append(source_info)
 
-    def get_propagation_path(self) -> List[Tuple[str, int]]:
-        """Get the propagation path for this variable."""
-        path = []
-
-        # Add definitions in order
-        for node, line in sorted(self.definitions, key=lambda x: x[1]):
-            path.append(("definition", line))
-
-        # Add uses in order
-        for node, line in sorted(self.uses, key=lambda x: x[1]):
-            path.append(("use", line))
-
-        return path
-
     def __repr__(self) -> str:
         return f"DefUseChain(name='{self.name}', tainted={self.tainted}, defs={len(self.definitions)}, uses={len(self.uses)})"
