@@ -12,6 +12,17 @@ from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
 from lanalyzer.analysis.call_chain import CallChainBuilder
 from lanalyzer.analysis.vulnerability_finder import VulnerabilityFinder
 from lanalyzer.analysis.utils import TaintAnalysisUtils
+from lanalyzer.logger import (
+    log_function,
+    log_analysis_file,
+    log_result,
+    log_vulnerabilities,
+    debug,
+    info,
+    warning,
+    error,
+    critical,
+)
 
 
 class EnhancedTaintTracker:
@@ -93,7 +104,7 @@ class EnhancedTaintTracker:
             # Visit the AST with enhanced visitor
             visitor = EnhancedTaintAnalysisVisitor(
                 parent_map=parent_visitor.parent_map,
-                debug=self.debug,
+                debug_mode=self.debug,
                 verbose=False,
                 file_path=file_path,
             )
@@ -418,7 +429,7 @@ class EnhancedTaintTracker:
         self, vulnerabilities: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """
-        Get a detailed summary of the analysis with statistics about propagation chains.
+        Get a detailed summary of the analysis results.
 
         Args:
             vulnerabilities: List of vulnerability dictionaries
@@ -428,12 +439,6 @@ class EnhancedTaintTracker:
         """
         # Basic summary
         summary = self.get_summary()
-
-        # Propagation statistics
-        total_prop_steps = 0
-        max_prop_steps = 0
-        min_prop_steps = float("inf")
-        vuln_with_prop = 0
 
         # Call chain statistics
         total_call_steps = 0
@@ -459,15 +464,6 @@ class EnhancedTaintTracker:
             pair = f"{source_name} -> {sink_name}"
             source_sink_pairs[pair] = source_sink_pairs.get(pair, 0) + 1
 
-            # Propagation statistics
-            prop_chain = vuln.get("propagation_chain", [])
-            if prop_chain:
-                vuln_with_prop += 1
-                steps = len(prop_chain)
-                total_prop_steps += steps
-                max_prop_steps = max(max_prop_steps, steps)
-                min_prop_steps = min(min_prop_steps, steps)
-
             # Call chain statistics
             call_chain = vuln.get("call_chain", [])
             if call_chain:
@@ -478,7 +474,6 @@ class EnhancedTaintTracker:
                 min_call_steps = min(min_call_steps, steps)
 
         # Calculate averages
-        avg_prop_steps = total_prop_steps / vuln_with_prop if vuln_with_prop > 0 else 0
         avg_call_steps = (
             total_call_steps / vuln_with_calls if vuln_with_calls > 0 else 0
         )
@@ -487,12 +482,6 @@ class EnhancedTaintTracker:
         summary.update(
             {
                 "vulnerabilities_found": len(vulnerabilities),
-                "vulnerabilities_with_propagation": vuln_with_prop,
-                "average_propagation_steps": round(avg_prop_steps, 2),
-                "max_propagation_steps": max_prop_steps,
-                "min_propagation_steps": min_prop_steps
-                if min_prop_steps != float("inf")
-                else 0,
                 "vulnerabilities_with_call_chains": vuln_with_calls,
                 "average_call_chain_length": round(avg_call_steps, 2),
                 "max_call_chain_length": max_call_steps,
@@ -507,6 +496,7 @@ class EnhancedTaintTracker:
 
         return summary
 
+    @log_function(level="info")
     def print_detailed_vulnerability(self, vulnerability: Dict[str, Any]) -> None:
         """
         Print a detailed vulnerability report with enhanced call chain information.
@@ -514,110 +504,104 @@ class EnhancedTaintTracker:
         Args:
             vulnerability: The vulnerability dictionary
         """
-        print("\n" + "=" * 80)
-        print(f"VULNERABILITY REPORT: {vulnerability.get('rule', 'Unknown Rule')}")
-        print("=" * 80)
+        divider = "=" * 80
+        # 使用一个字符串构建器来收集输出，然后一次性输出
+        output_lines = []
 
-        # Print file info
-        file_path = vulnerability.get("file", "Unknown file")
-        print(f"File: {file_path}")
+        output_lines.append("\n" + divider)
+        output_lines.append(f"漏洞报告: {vulnerability.get('rule', '未知规则')}")
+        output_lines.append(divider)
 
-        # Print source info
+        # 文件信息
+        file_path = vulnerability.get("file", "未知文件")
+        output_lines.append(f"文件: {file_path}")
+
+        # 源信息
         source = vulnerability.get("source", {})
-        source_name = source.get("name", "Unknown")
+        source_name = source.get("name", "未知")
         source_line = source.get("line", 0)
-        print(f"Source: {source_name} at line {source_line}")
+        output_lines.append(f"源: {source_name} 在第 {source_line} 行")
 
-        # Print sink info
+        # 汇聚点信息
         sink = vulnerability.get("sink", {})
-        sink_name = sink.get("name", "Unknown")
+        sink_name = sink.get("name", "未知")
         sink_line = sink.get("line", 0)
-        print(f"Sink: {sink_name} at line {sink_line}")
+        output_lines.append(f"汇聚点: {sink_name} 在第 {sink_line} 行")
 
-        # Print tainted variable
-        tainted_var = vulnerability.get("tainted_variable", "Unknown")
-        print(f"Tainted Variable: {tainted_var}")
+        # 受污染的变量
+        tainted_var = vulnerability.get("tainted_variable", "未知")
+        output_lines.append(f"受污染的变量: {tainted_var}")
 
-        # Print severity and confidence
-        severity = vulnerability.get("severity", "Unknown")
-        confidence = vulnerability.get("confidence", "Unknown")
-        print(f"Severity: {severity}")
-        print(f"Confidence: {confidence}")
+        # 严重性和可信度
+        severity = vulnerability.get("severity", "未知")
+        confidence = vulnerability.get("confidence", "未知")
+        output_lines.append(f"严重性: {severity}")
+        output_lines.append(f"可信度: {confidence}")
 
-        # Print description
-        description = vulnerability.get("description", "No description available")
-        print(f"\nDescription: {description}")
+        # 描述
+        description = vulnerability.get("description", "无可用描述")
+        output_lines.append(f"\n描述: {description}")
 
-        # Print enhanced call chain information
+        # 调用链信息
         call_chain = vulnerability.get("call_chain", [])
         if call_chain:
-            print("\nCall Chain:")
+            output_lines.append("\n调用链:")
             for i, call_item in enumerate(call_chain):
-                # Enhanced call chain display
+                # 增强的调用链显示
                 call_type = call_item.get("type", "unknown")
-                call_func = call_item.get("function", "Unknown")
+                call_func = call_item.get("function", "未知")
                 call_line = call_item.get("line", 0)
-                call_file = call_item.get("file", "Unknown")
+                call_file = call_item.get("file", "未知")
 
-                # Use colored output to distinguish different types of call chain nodes
-                type_colors = {
-                    "source": "\033[92m",  # green
-                    "sink": "\033[91m",  # red
-                    "intermediate": "\033[94m",  # blue
-                    "source+sink": "\033[93m",  # yellow
-                    "sink_container": "\033[95m",  # purple
-                    "related_path": "\033[96m",  # cyan
-                }
-                color = type_colors.get(call_type, "\033[0m")
-                reset = "\033[0m"
+                # 可区分不同类型调用链节点的标题
+                title = f"[{i+1}] {call_type.upper()}: {call_func} @ {os.path.basename(call_file)}:{call_line}"
+                output_lines.append(f"\n  {title}")
 
-                # Print colored title line
-                title = f"{color}[{i+1}] {call_type.upper()}: {call_func} @ {os.path.basename(call_file)}:{call_line}{reset}"
-                print(f"\n  {title}")
-
-                # Print statement (if available)
+                # 语句 (如果可用)
                 if "statement" in call_item:
                     statement = call_item["statement"]
-                    print(f"      Statement: {statement}")
+                    output_lines.append(f"      语句: {statement}")
 
-                # Print context lines (if available)
+                # 上下文行 (如果可用)
                 if "context_lines" in call_item and call_item["context_lines"]:
                     context_start, context_end = call_item["context_lines"]
-                    print(f"      Context: Lines {context_start}-{context_end}")
+                    output_lines.append(f"      上下文: 第 {context_start}-{context_end} 行")
 
-                    # If source code is available, try to display context code
+                    # 如果有源代码，尝试显示上下文代码
                     if (
                         hasattr(self, "current_file_contents")
                         and self.current_file_contents
                     ):
-                        # Extract context from current file contents
+                        # 从当前文件内容中提取上下文
                         try:
                             context_lines = self.current_file_contents.splitlines()[
                                 context_start - 1 : context_end
                             ]
                             if context_lines:
-                                print("      Code:")
+                                output_lines.append("      代码:")
                                 for i, line in enumerate(context_lines, context_start):
-                                    # Highlight current line
+                                    # 高亮当前行
                                     if i == call_line:
-                                        print(f"      > {i}: {line}")
+                                        output_lines.append(f"      > {i}: {line}")
                                     else:
-                                        print(f"        {i}: {line}")
+                                        output_lines.append(f"        {i}: {line}")
                         except Exception as e:
-                            if self.debug:
-                                print(f"Error displaying context: {str(e)}")
+                            error(f"显示上下文时出错: {str(e)}")
 
-                # Print description
+                # 描述
                 description = call_item.get("description", "")
                 if description:
-                    print(f"      Description: {description}")
+                    output_lines.append(f"      描述: {description}")
 
-                # Print call information (if available)
+                # 调用信息 (如果可用)
                 if "calls" in call_item:
-                    print("      Calls:")
+                    output_lines.append("      调用:")
                     for call in call_item["calls"]:
                         func_name = call.get("function", "unknown")
                         statement = call.get("statement", "")
-                        print(f"        -> {func_name}: {statement}")
+                        output_lines.append(f"        -> {func_name}: {statement}")
 
-        print("=" * 80 + "\n")
+        output_lines.append(divider + "\n")
+
+        # 将所有输出作为一个信息日志条目输出
+        info("\n".join(output_lines))

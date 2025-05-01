@@ -22,7 +22,7 @@ class TaintVisitor(ast.NodeVisitor):
     def __init__(
         self,
         parent_map=None,
-        debug: bool = False,
+        debug_mode: bool = False,
         verbose: bool = False,
         file_path: Optional[str] = None,
     ):
@@ -31,7 +31,7 @@ class TaintVisitor(ast.NodeVisitor):
 
         Args:
             parent_map: Dictionary mapping AST nodes to their parents
-            debug: Whether to enable debug output
+            debug_mode: Whether to enable debug output
             verbose: Whether to enable verbose output
             file_path: Path to the file being analyzed
         """
@@ -39,13 +39,12 @@ class TaintVisitor(ast.NodeVisitor):
         self.found_sources = []
         self.found_sinks = []
         self.found_vulnerabilities = []
-        self.tainted = {}  # Track which variables are tainted
-        self.debug = debug
+        self.tainted = {}
+        self.debug = debug_mode
         self.verbose = verbose
         self.file_path = file_path
-        self.source_lines = None  # Store source code lines
+        self.source_lines = None
 
-        # If file path is provided, try to load the source code
         if file_path and os.path.exists(file_path):
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
@@ -58,9 +57,9 @@ class TaintVisitor(ast.NodeVisitor):
                 if self.debug:
                     print(f"Failed to load source code: {str(e)}")
 
-        self.import_aliases = {}  # Track import aliases, e.g., 'import module as alias'
-        self.from_imports = {}  # Track from imports, e.g., 'from module import func'
-        self.direct_imports = set()  # Track direct imports
+        self.import_aliases = {}
+        self.from_imports = {}
+        self.direct_imports = set()
 
     def visit_Import(self, node: ast.Import) -> None:
         """
@@ -79,7 +78,6 @@ class TaintVisitor(ast.NodeVisitor):
                     print(f"  Recording alias: {name.asname} -> {name.name}")
             else:
                 self.direct_imports.add(name.name)
-                # Also add module name to from_imports for later lookup
                 self.from_imports[name.name] = name.name
                 if self.debug:
                     print(f"  Recording direct import: {name.name}")
@@ -112,7 +110,6 @@ class TaintVisitor(ast.NodeVisitor):
         Args:
             node: AST node representing a function call
         """
-        # Get the full function name, considering imports and aliases
         func_name, full_name = self._get_func_name_with_module(node.func)
         self.full_func_name = full_name
 
@@ -130,7 +127,6 @@ class TaintVisitor(ast.NodeVisitor):
                 )
                 print(f"  Keywords: {keywords_str}")
 
-        # Check if this call is a source
         if func_name and self._is_source(func_name, full_name):
             source_type = self._get_source_type(func_name, full_name)
 
@@ -146,10 +142,8 @@ class TaintVisitor(ast.NodeVisitor):
             if self.debug:
                 print(f"Found source: {source_type} at line {line_no}")
 
-            # Track taint if this is part of an assignment
             self._track_assignment_taint(node, source_info)
 
-        # Check if this call is a sink
         if func_name and self._is_sink(func_name, full_name):
             sink_type = self._get_sink_type(func_name, full_name)
             vulnerability_type = self._get_sink_vulnerability_type(sink_type)
@@ -165,24 +159,20 @@ class TaintVisitor(ast.NodeVisitor):
             self.found_sinks.append(sink_info)
             self._check_sink_args(node, sink_type, sink_info)
 
-        # Special handling for eval, exec, execfile
         if func_name in ["eval", "exec", "execfile"]:
             if node.args:
                 arg = node.args[0]
                 arg_name = None
 
-                # Get the name of the argument
                 if isinstance(arg, ast.Name):
                     arg_name = arg.id
                 elif isinstance(arg, ast.Call) and isinstance(arg.func, ast.Attribute):
-                    # Handle method calls like data.encode()
                     if isinstance(arg.func.value, ast.Name):
                         arg_name = f"{arg.func.value.id}.{arg.func.attr}()"
 
                 if arg_name and arg_name in self.tainted:
                     source_info = self.tainted[arg_name]
 
-                    # Create a sink info if not already created
                     sink_info = None
                     for sink in self.found_sinks:
                         if sink["line"] == line_no and sink["name"] == "CodeExecution":
@@ -198,11 +188,9 @@ class TaintVisitor(ast.NodeVisitor):
                         }
                         self.found_sinks.append(sink_info)
                     else:
-                        # Make sure tainted_args exists
                         if "tainted_args" not in sink_info:
                             sink_info["tainted_args"] = []
 
-                    # Add the tainted argument to the sink
                     sink_info["tainted_args"].append((arg_name, source_info))
 
                     if self.debug:
@@ -210,7 +198,6 @@ class TaintVisitor(ast.NodeVisitor):
                             f"Found tainted argument {arg_name} from {source_info['name']} in {func_name} call"
                         )
 
-        # Continue visiting children
         self.generic_visit(node)
 
     def _print_function_args(self, node: ast.Call) -> None:
@@ -251,7 +238,6 @@ class TaintVisitor(ast.NodeVisitor):
         Args:
             node: AST node representing an assignment
         """
-        # Check if the right-hand side is a function call that might be a source
         if isinstance(node.value, ast.Call):
             func_name, full_name = self._get_func_name_with_module(node.value.func)
 
@@ -279,7 +265,6 @@ class TaintVisitor(ast.NodeVisitor):
                         f"Found source in assignment: {source_type} at line {line_no}"
                     )
 
-                # Track taint for the variables being assigned
                 for target in node.targets:
                     if isinstance(target, ast.Name):
                         self.tainted[target.id] = source_info
@@ -288,7 +273,6 @@ class TaintVisitor(ast.NodeVisitor):
                                 f"Tainted variable '{target.id}' from source {source_type}"
                             )
 
-            # Special handling for input() function which is a common source
             elif func_name == "input":
                 line_no = getattr(node.value, "lineno", 0)
                 col_offset = getattr(node.value, "col_offset", 0)
@@ -310,7 +294,6 @@ class TaintVisitor(ast.NodeVisitor):
                                 f"Tainted variable '{target.id}' from UserInput at line {line_no}"
                             )
 
-            # Special handling for os.getenv() which is a source for environment variables
             elif func_name == "getenv" and full_name == "os.getenv":
                 line_no = getattr(node.value, "lineno", 0)
                 col_offset = getattr(node.value, "col_offset", 0)
@@ -332,7 +315,6 @@ class TaintVisitor(ast.NodeVisitor):
                                 f"Tainted variable '{target.id}' from EnvironmentVariables at line {line_no}"
                             )
 
-            # Special handling for file read operations
             elif func_name == "read" and isinstance(node.value.func, ast.Attribute):
                 line_no = getattr(node.value, "lineno", 0)
                 col_offset = getattr(node.value, "col_offset", 0)
@@ -354,7 +336,6 @@ class TaintVisitor(ast.NodeVisitor):
                                 f"Tainted variable '{target.id}' from FileRead at line {line_no}"
                             )
 
-        # Track taint propagation through assignments
         elif isinstance(node.value, ast.Name) and node.value.id in self.tainted:
             for target in node.targets:
                 if isinstance(target, ast.Name):
@@ -364,7 +345,6 @@ class TaintVisitor(ast.NodeVisitor):
                             f"Propagated taint from {node.value.id} to {target.id} at line {getattr(node, 'lineno', 0)}"
                         )
 
-        # Track taint propagation through attribute access
         elif isinstance(node.value, ast.Attribute) and isinstance(
             node.value.value, ast.Name
         ):
@@ -377,7 +357,6 @@ class TaintVisitor(ast.NodeVisitor):
                                 f"Propagated taint from {node.value.value.id}.{node.value.attr} to {target.id} at line {getattr(node, 'lineno', 0)}"
                             )
 
-        # Track taint propagation through subscript
         elif isinstance(node.value, ast.Subscript) and isinstance(
             node.value.value, ast.Name
         ):
@@ -390,7 +369,6 @@ class TaintVisitor(ast.NodeVisitor):
                                 f"Propagated taint from {node.value.value.id}[...] to {target.id} at line {getattr(node, 'lineno', 0)}"
                             )
 
-        # Special handling for sys.argv which is a source for command line arguments
         elif (
             isinstance(node.value, ast.Subscript)
             and isinstance(node.value.value, ast.Attribute)
@@ -435,7 +413,6 @@ class TaintVisitor(ast.NodeVisitor):
         if self.debug:
             print(f"\n[Function Name Parsing] Starting parsing: {ast.dump(func)}")
 
-        # 如果输入为None，直接返回(None, None)
         if func is None:
             if self.debug:
                 print("  Function node is None")
@@ -444,7 +421,6 @@ class TaintVisitor(ast.NodeVisitor):
         if isinstance(func, ast.Name):
             simple_name = func.id
 
-            # Check if this is an imported name
             if simple_name in self.from_imports:
                 full_name = self.from_imports[simple_name]
                 if self.debug:
@@ -453,7 +429,6 @@ class TaintVisitor(ast.NodeVisitor):
                     )
                 return simple_name, full_name
 
-            # Check if this is an alias
             if simple_name in self.import_aliases:
                 module_name = self.import_aliases[simple_name]
                 if self.debug:
@@ -462,7 +437,6 @@ class TaintVisitor(ast.NodeVisitor):
                     )
                 return simple_name, module_name
 
-            # Check if this is a direct import
             if simple_name in self.direct_imports:
                 if self.debug:
                     print(f"  Found in direct_imports: {simple_name}")
@@ -477,7 +451,6 @@ class TaintVisitor(ast.NodeVisitor):
                 module_name = func.value.id
                 attr_name = func.attr
 
-                # Check if the module is an alias
                 if module_name in self.import_aliases:
                     real_module = self.import_aliases[module_name]
                     full_name = f"{real_module}.{attr_name}"
@@ -492,7 +465,6 @@ class TaintVisitor(ast.NodeVisitor):
 
                 return attr_name, full_name
 
-            # Handle nested attributes like module.submodule.function
             elif isinstance(func.value, ast.Attribute):
                 _, parent_full = self._get_func_name_with_module(func.value)
                 if parent_full:
@@ -501,33 +473,12 @@ class TaintVisitor(ast.NodeVisitor):
                         print(f"  Handling nested attributes: {full_name}")
                     return func.attr, full_name
 
-        # 处理Subscript类型（如dic[key]）
-        elif isinstance(func, ast.Subscript):
-            if self.debug:
-                print(f"  Encountered subscript expression: {ast.dump(func)}")
-            if isinstance(func.value, ast.Name):
-                # 尝试获取基础名称，如dic[key]中的"dic"
-                base_name = func.value.id
-                if self.debug:
-                    print(f"  Subscript base name: {base_name}")
-                return base_name, None
-            elif isinstance(func.value, ast.Attribute):
-                # 处理obj.attr[key]形式
-                _, parent_full = self._get_func_name_with_module(func.value)
-                if parent_full:
-                    if self.debug:
-                        print(f"  Subscript with attribute: {parent_full}[...]")
-                    return parent_full, parent_full
-
-        # 处理其他复杂表达式
         try:
-            # 尝试获取一个可用于日志和调试的字符串表示
             expr_str = ast.unparse(func)
             if self.debug:
                 print(f"  Complex expression: {expr_str}")
             return expr_str, None
         except (AttributeError, ValueError):
-            # ast.unparse在Python 3.9+才可用
             pass
 
         if self.debug:
@@ -545,13 +496,11 @@ class TaintVisitor(ast.NodeVisitor):
         Returns:
             True if the function is a source, False otherwise
         """
-        # 确保func_name是字符串类型
         if not isinstance(func_name, str):
             if self.debug:
                 print(f"Warning: func_name is not a string: {type(func_name)}")
             return False
 
-        # 确保full_name是字符串类型或None
         if full_name is not None and not isinstance(full_name, str):
             if self.debug:
                 print(f"Warning: full_name is not a string: {type(full_name)}")
@@ -559,15 +508,12 @@ class TaintVisitor(ast.NodeVisitor):
 
         for source in self.sources:
             for pattern in source["patterns"]:
-                # Check if pattern matches simple name
                 if pattern == func_name:
                     return True
 
-                # Check if pattern matches full name
                 if full_name and pattern in full_name:
                     return True
 
-                # Check for wildcard patterns
                 if "*" in pattern:
                     regex_pattern = pattern.replace(".", "\\.").replace("*", ".*")
                     if re.match(regex_pattern, func_name) or (
@@ -588,7 +534,6 @@ class TaintVisitor(ast.NodeVisitor):
         Returns:
             Type of the source
         """
-        # 确保func_name是字符串类型
         if not isinstance(func_name, str):
             if self.debug:
                 print(
@@ -596,7 +541,6 @@ class TaintVisitor(ast.NodeVisitor):
                 )
             return "Unknown"
 
-        # 确保full_name是字符串类型或None
         if full_name is not None and not isinstance(full_name, str):
             if self.debug:
                 print(
@@ -609,7 +553,6 @@ class TaintVisitor(ast.NodeVisitor):
                 if pattern == func_name or (full_name and pattern in full_name):
                     return source["name"]
 
-                # Check for wildcard patterns
                 if "*" in pattern:
                     regex_pattern = pattern.replace(".", "\\.").replace("*", ".*")
                     if re.match(regex_pattern, func_name) or (
@@ -623,7 +566,6 @@ class TaintVisitor(ast.NodeVisitor):
         """
         Check if a function name is a sink based on configuration patterns.
         """
-        # 确保func_name是字符串类型
         if not isinstance(func_name, str):
             if self.debug:
                 print(
@@ -631,7 +573,6 @@ class TaintVisitor(ast.NodeVisitor):
                 )
             return False
 
-        # 确保full_name是字符串类型或None
         if full_name is not None and not isinstance(full_name, str):
             if self.debug:
                 print(
@@ -660,22 +601,18 @@ class TaintVisitor(ast.NodeVisitor):
                         f"      Comparing: function name='{func_name}', full name='{full_name}'"
                     )
 
-                # Check simple name match
                 if pattern == func_name:
                     if self.debug:
                         print(f"    ✓ Match found: simple name match - {pattern}")
                     return True
 
-                # Check full name match
                 if full_name:
-                    # Check exact match
                     if pattern == full_name:
                         if self.debug:
                             print(
                                 f"    ✓ Match successful: Exact full name match - {pattern}"
                             )
                         return True
-                    # Check partial match
                     if pattern in full_name:
                         if self.debug:
                             print(
@@ -683,7 +620,6 @@ class TaintVisitor(ast.NodeVisitor):
                             )
                         return True
 
-                # Check for wildcard patterns
                 if "*" in pattern:
                     regex_pattern = pattern.replace(".", "\\.").replace("*", ".*")
                     if re.match(regex_pattern, func_name):
@@ -717,7 +653,6 @@ class TaintVisitor(ast.NodeVisitor):
         Returns:
             Type of the sink
         """
-        # 确保func_name是字符串类型
         if not isinstance(func_name, str):
             if self.debug:
                 print(
@@ -725,7 +660,6 @@ class TaintVisitor(ast.NodeVisitor):
                 )
             return "Unknown"
 
-        # 确保full_name是字符串类型或None
         if full_name is not None and not isinstance(full_name, str):
             if self.debug:
                 print(
@@ -757,11 +691,9 @@ class TaintVisitor(ast.NodeVisitor):
             node: AST node representing a function call
             source_info: Information about the source
         """
-        # Check if the call is part of an assignment
         if hasattr(node, "parent"):
             parent = node.parent
 
-            # Direct assignment: x = source()
             if isinstance(parent, ast.Assign):
                 for target in parent.targets:
                     if isinstance(target, ast.Name):
@@ -771,7 +703,6 @@ class TaintVisitor(ast.NodeVisitor):
                                 f"Tainted variable '{target.id}' from direct assignment at line {getattr(parent, 'lineno', 0)}"
                             )
 
-            # Augmented assignment: x += source()
             elif isinstance(parent, ast.AugAssign) and isinstance(
                 parent.target, ast.Name
             ):
@@ -781,7 +712,6 @@ class TaintVisitor(ast.NodeVisitor):
                         f"Tainted variable '{parent.target.id}' from augmented assignment at line {getattr(parent, 'lineno', 0)}"
                     )
 
-            # For loop: for x in source()
             elif isinstance(parent, ast.For) and node == parent.iter:
                 if isinstance(parent.target, ast.Name):
                     self.tainted[parent.target.id] = source_info
@@ -811,10 +741,8 @@ class TaintVisitor(ast.NodeVisitor):
         """
         tainted_args = []
 
-        # Check if the function is an open() call, track file handles and path relationships
         func_name, full_name = self._get_func_name_with_module(node.func)
         if func_name == "open" and len(node.args) >= 1:
-            # Find the assignment expression where open() is called
             if (
                 hasattr(node, "parent")
                 and isinstance(node.parent, ast.Assign)
@@ -823,7 +751,6 @@ class TaintVisitor(ast.NodeVisitor):
                 if isinstance(node.parent.targets[0], ast.Name):
                     file_handle_name = node.parent.targets[0].id
 
-                    # Check if the path argument is tainted
                     path_arg = node.args[0]
                     if isinstance(path_arg, ast.Name) and path_arg.id in self.tainted:
                         if not hasattr(self, "file_handles"):
@@ -839,19 +766,16 @@ class TaintVisitor(ast.NodeVisitor):
                                 f"Tracking file handle '{file_handle_name}' from tainted path '{path_arg.id}'"
                             )
 
-        # Check positional arguments
         for i, arg in enumerate(node.args):
             tainted = False
             source_info = None
             arg_name = None
 
-            # Check if the argument is a tainted variable
             if isinstance(arg, ast.Name):
                 arg_name = arg.id
                 if arg_name in self.tainted:
                     source_info = self.tainted[arg_name]
                     tainted = True
-                # Check if the argument is a tainted file handle
                 elif hasattr(self, "file_handles") and arg_name in self.file_handles:
                     file_info = self.file_handles[arg_name]
                     source_info = file_info["source_info"]
@@ -861,7 +785,6 @@ class TaintVisitor(ast.NodeVisitor):
                     if self.debug:
                         print(f"Found tainted file handle '{arg_name}' passed to sink")
 
-            # Check if the argument is a method call (e.g. tainted.encode())
             elif (
                 isinstance(arg, ast.Call)
                 and isinstance(arg.func, ast.Attribute)
@@ -879,12 +802,9 @@ class TaintVisitor(ast.NodeVisitor):
                             f"Found tainted method call '{arg_name}' from tainted variable '{base_var}'"
                         )
 
-            # Check if the argument is a direct function call
             elif isinstance(arg, ast.Call):
-                # Check if the function is an open() call
                 sub_func_name, sub_full_name = self._get_func_name_with_module(arg.func)
                 if sub_func_name == "open":
-                    # Directly identify as FileRead source
                     source_info = {
                         "name": "FileRead",
                         "line": getattr(arg, "lineno", 0),
@@ -893,7 +813,6 @@ class TaintVisitor(ast.NodeVisitor):
                     tainted = True
                     arg_name = f"direct_call_{i}"
 
-            # Check if the argument is a tainted file handle created in a with statement
             elif (
                 isinstance(arg, ast.Name)
                 and arg.id in self.file_handles
@@ -916,7 +835,6 @@ class TaintVisitor(ast.NodeVisitor):
                         f"Found tainted argument '{arg_name}' (position {i}) to sink '{sink_type}' at line {getattr(node, 'lineno', 0)}"
                     )
 
-        # Check keyword arguments
         for i, kw in enumerate(node.keywords):
             tainted = False
             source_info = None
@@ -927,14 +845,12 @@ class TaintVisitor(ast.NodeVisitor):
                 if kw.value.id in self.tainted:
                     source_info = self.tainted[kw.value.id]
                     tainted = True
-                # Check if the argument is a tainted file handle
                 elif hasattr(self, "file_handles") and kw.value.id in self.file_handles:
                     file_info = self.file_handles[kw.value.id]
                     source_info = file_info["source_info"]
                     tainted = True
                     arg_name = f"{kw.arg}={kw.value.id}(from {file_info['source_var']})"
 
-            # Check if the argument is a method call (e.g. tainted.encode())
             elif (
                 isinstance(kw.value, ast.Call)
                 and isinstance(kw.value.func, ast.Attribute)
@@ -948,7 +864,6 @@ class TaintVisitor(ast.NodeVisitor):
                     arg_name = f"{kw.arg}={base_var}.{method_name}()"
 
             elif isinstance(kw.value, ast.Call):
-                # Check if the argument is a direct call to a source
                 sub_func_name, sub_full_name = self._get_func_name_with_module(
                     kw.value.func
                 )
@@ -980,7 +895,6 @@ class TaintVisitor(ast.NodeVisitor):
             print(
                 f"No tainted arguments found for sink '{sink_type}' at line {getattr(node, 'lineno', 0)}"
             )
-            # Print all arguments for debugging
             arg_names = []
             for arg in node.args:
                 if isinstance(arg, ast.Name):
@@ -1003,9 +917,7 @@ class TaintVisitor(ast.NodeVisitor):
                     item.context_expr.func
                 )
 
-                # Check if the context_expr is an open() call
                 if func_name == "open" and len(item.context_expr.args) >= 1:
-                    # Check if the path argument is tainted
                     path_arg = item.context_expr.args[0]
                     if (
                         isinstance(item.optional_vars, ast.Name)
@@ -1027,7 +939,6 @@ class TaintVisitor(ast.NodeVisitor):
                                 f"Tracking file handle '{file_handle_name}' from tainted path '{path_arg.id}' in with statement"
                             )
 
-        # Continue visiting the body of the with statement
         self.generic_visit(node)
 
     def _get_sink_vulnerability_type(self, sink_type: str) -> str:
@@ -1040,7 +951,6 @@ class TaintVisitor(ast.NodeVisitor):
         Returns:
             The vulnerability type name
         """
-        # Map the sink type to the vulnerability type
         vulnerability_map = {
             "SQLQuery": "SQL Injection",
             "CommandExecution": "Command Injection",
@@ -1051,14 +961,11 @@ class TaintVisitor(ast.NodeVisitor):
             "XMLOperation": "XXE Injection",
         }
 
-        # If the sink type is in the vulnerability map, return the corresponding vulnerability type
         if sink_type in vulnerability_map:
             return vulnerability_map[sink_type]
 
-        # For custom sinks, check if the vulnerability_type is directly defined in the sinks configuration
         for sink in self.sinks:
             if sink.get("name") == sink_type and "vulnerability_type" in sink:
                 return sink["vulnerability_type"]
 
-        # Default return the sink type as the vulnerability type
         return f"{sink_type} Vulnerability"
