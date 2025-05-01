@@ -24,7 +24,6 @@ def load_configuration(
     if not config_path:
         if debug:
             print("No configuration file provided, using default")
-        # Use a built-in default configuration
         return {
             "sources": [],
             "sinks": [],
@@ -42,7 +41,6 @@ def load_configuration(
         if debug:
             print(f"Loaded configuration from {config_path}")
 
-        # Validate configuration format
         if not isinstance(config, dict):
             raise ValueError("Configuration must be a JSON object")
 
@@ -70,18 +68,15 @@ def validate_configuration(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
     """
     issues = []
 
-    # Check basic structure
     if not isinstance(config, dict):
         issues.append("Configuration must be a JSON object")
         return False, issues
 
-    # Check required keys
     required_keys = ["sources", "sinks", "rules"]
     for key in required_keys:
         if key not in config:
             issues.append(f"Missing required key: {key}")
 
-    # Validate sources
     if "sources" in config:
         if not isinstance(config["sources"], list):
             issues.append("'sources' must be a list")
@@ -108,7 +103,6 @@ def validate_configuration(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
                         f"Source '{source.get('name', f'#{i+1}')}' 'patterns' must be a list"
                     )
 
-    # Validate sinks
     if "sinks" in config:
         if not isinstance(config["sinks"], list):
             issues.append("'sinks' must be a list")
@@ -135,7 +129,6 @@ def validate_configuration(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
                         f"Sink '{sink.get('name', f'#{i+1}')}' 'patterns' must be a list"
                     )
 
-    # Validate sanitizers if present
     if "sanitizers" in config:
         if not isinstance(config["sanitizers"], list):
             issues.append("'sanitizers' must be a list")
@@ -162,12 +155,10 @@ def validate_configuration(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
                         f"Sanitizer '{sanitizer.get('name', f'#{i+1}')}' 'patterns' must be a list"
                     )
 
-    # Validate rules
     if "rules" in config:
         if not isinstance(config["rules"], list):
             issues.append("'rules' must be a list")
         else:
-            # Get all defined source and sink names
             source_names = {source.get("name") for source in config.get("sources", [])}
             sink_names = {sink.get("name") for sink in config.get("sinks", [])}
             sanitizer_names = {
@@ -191,7 +182,6 @@ def validate_configuration(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
                         f"Rule '{rule.get('name', f'#{i+1}')}' 'sources' must be a list"
                     )
                 else:
-                    # Check that sources exist
                     for source in rule["sources"]:
                         if source not in source_names:
                             issues.append(
@@ -207,7 +197,6 @@ def validate_configuration(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
                         f"Rule '{rule.get('name', f'#{i+1}')}' 'sinks' must be a list"
                     )
                 else:
-                    # Check that sinks exist
                     for sink in rule["sinks"]:
                         if sink not in sink_names:
                             issues.append(
@@ -219,7 +208,6 @@ def validate_configuration(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
                         f"Rule '{rule.get('name', f'#{i+1}')}' missing 'message' field"
                     )
 
-                # Validate sanitizers references
                 if "sanitizers" in rule:
                     if not isinstance(rule["sanitizers"], list):
                         issues.append(
@@ -246,7 +234,6 @@ def save_output(vulnerabilities, output_path, pretty=False, debug=False):
         debug: Whether to enable debug output
     """
     try:
-        # Create output directory if it doesn't exist
         output_dir = os.path.dirname(output_path)
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir)
@@ -279,22 +266,16 @@ def prepare_for_json(obj):
         A serializable object
     """
     if isinstance(obj, ast.AST):
-        # Handle AST nodes
         return f"<{obj.__class__.__name__}>"
     elif isinstance(obj, dict):
-        # Recursively process dictionaries
         return {k: prepare_for_json(v) for k, v in obj.items()}
     elif isinstance(obj, (list, tuple)):
-        # Recursively process lists and tuples
         return [prepare_for_json(item) for item in obj]
     elif isinstance(obj, set):
-        # Handle sets
         return [prepare_for_json(item) for item in obj]
     elif hasattr(obj, "__dict__"):
-        # Handle custom objects
         return f"<{obj.__class__.__name__}>"
     else:
-        # Try to return directly, convert to string if not serializable
         try:
             json.dumps(obj)
             return obj

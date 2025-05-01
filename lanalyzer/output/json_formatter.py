@@ -38,22 +38,17 @@ class JSONFormatter(OutputFormatter):
 
         filtered_vulnerabilities = []
         for vuln in vulnerabilities:
-            # 创建漏洞对象的副本
             vuln_copy = vuln.copy()
-
             filtered_vulnerabilities.append(vuln_copy)
 
         result = {"vulnerabilities": filtered_vulnerabilities}
 
-        # Add timestamp if requested
         if include_timestamp:
             result["timestamp"] = datetime.datetime.now().isoformat()
 
-        # Add summary statistics if requested
         if include_summary:
             summary = {"total": len(vulnerabilities), "by_rule": {}}
 
-            # Generate statistics by rule
             for vuln in vulnerabilities:
                 rule = vuln.get("rule", "Unknown")
                 if rule in summary["by_rule"]:
@@ -61,7 +56,6 @@ class JSONFormatter(OutputFormatter):
                 else:
                     summary["by_rule"][rule] = 1
 
-            # Add statistics by file
             summary["by_file"] = {}
             for vuln in vulnerabilities:
                 file = vuln.get("file", "Unknown")
@@ -72,7 +66,6 @@ class JSONFormatter(OutputFormatter):
 
             result["summary"] = summary
 
-        # Format as JSON
         if pretty:
             return json.dumps(result, indent=2)
         return json.dumps(result)
@@ -91,14 +84,11 @@ class JSONFormatter(OutputFormatter):
             output_file: Path to output file (None for stdout)
             **kwargs: Additional formatter-specific options
         """
-        # Format results
         formatted_results = self.format_results(vulnerabilities, **kwargs)
 
-        # Write to file or stdout
         with contextlib.closing(self._get_output_stream(output_file)) as output:
             output.write(formatted_results)
 
-            # Add newline if writing to file
             if output_file:
                 output.write("\n")
                 debug(f"Wrote JSON output to {output_file}")

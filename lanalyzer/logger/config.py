@@ -1,7 +1,7 @@
 """
-日志配置工具
+Logging configuration utilities
 
-提供函数来配置应用程序的日志行为。
+Provides functions to configure the application's logging behavior.
 """
 
 import logging
@@ -14,11 +14,11 @@ from lanalyzer.logger.core import configure_logger
 
 def setup_file_logging(log_file: str, level: int = logging.INFO) -> None:
     """
-    配置将日志记录到文件。
+    Configure logging to a file.
 
-    参数:
-        log_file: 日志文件路径
-        level: 日志级别 (默认: INFO)
+    Args:
+        log_file: Log file path
+        level: Log level (default: INFO)
     """
     # 确保日志目录存在
     log_dir = os.path.dirname(log_file)
@@ -30,11 +30,11 @@ def setup_file_logging(log_file: str, level: int = logging.INFO) -> None:
 
 def setup_console_logging(level: int = logging.INFO, detailed: bool = False) -> None:
     """
-    配置控制台日志输出。
+    Configure console logging output.
 
-    参数:
-        level: 日志级别 (默认: INFO)
-        detailed: 是否使用详细格式 (默认: False)
+    Args:
+        level: Log level (default: INFO)
+        detailed: Use detailed format (default: False)
     """
     log_format = (
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -54,15 +54,15 @@ def setup_application_logging(
     console: bool = True,
 ) -> None:
     """
-    配置应用程序日志。
+    Configure application logging.
 
-    参数:
-        app_name: 应用程序名称 (默认: "lanalyzer")
-        level: 日志级别 (默认: INFO)
-        log_file: 日志文件路径 (默认: None)
-        verbose: 是否启用详细日志 (默认: False)
-        debug: 是否启用调试日志 (默认: False)
-        console: 是否输出到控制台 (默认: True)
+    Args:
+        app_name: Application name (default: "lanalyzer")
+        level: Log level (default: INFO)
+        log_file: Log file path (default: None)
+        verbose: Enable verbose logging (default: False)
+        debug: Enable debug logging (default: False)
+        console: Output to console (default: True)
     """
     # 确定日志级别
     if debug:
@@ -84,6 +84,6 @@ def setup_application_logging(
 
     # 输出初始日志消息
     logger = logging.getLogger(app_name)
-    logger.info(f"{app_name} 日志已配置 - 级别: {logging.getLevelName(level)}")
+    logger.info(f"{app_name} logging configured - Level: {logging.getLevelName(level)}")
     if log_file:
-        logger.info(f"日志文件: {log_file}")
+        logger.info(f"Log file: {log_file}")

@@ -1,11 +1,11 @@
 """
-日志装饰器模块 - 提供自动添加日志功能的装饰器。
+Logger decorator module - provides decorators for automatic logging functionality.
 """
 
 import functools
 import inspect
 import os
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypeVar, Union, cast
+from typing import Any, Callable, TypeVar, cast
 
 from lanalyzer.logger.core import debug, info, warning, error, critical
 
@@ -15,13 +15,13 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 def log_function(level: str = "info") -> Callable[[F], F]:
     """
-    函数执行日志装饰器 - 记录函数的开始和结束。
+    Function execution logger decorator - logs the start and end of a function.
 
-    参数:
-        level: 日志级别，可选值: "debug", "info", "warning", "error", "critical"
+    Args:
+        level: Log level, options: "debug", "info", "warning", "error", "critical"
 
-    返回:
-        装饰器函数
+    Returns:
+        Decorator function
     """
     log_funcs = {
         "debug": debug,
@@ -42,16 +42,16 @@ def log_function(level: str = "info") -> Callable[[F], F]:
             func_name = f"{module_name}.{func.__name__}"
 
             # 记录函数开始执行
-            log_func(f"开始执行 {func_name}")
+            log_func(f"Start executing {func_name}")
 
             try:
                 result = func(*args, **kwargs)
                 # 记录函数执行成功
-                log_func(f"完成执行 {func_name}")
+                log_func(f"Finished executing {func_name}")
                 return result
             except Exception as e:
                 # 记录函数执行异常
-                error(f"{func_name} 执行出错: {type(e).__name__}: {str(e)}")
+                error(f"{func_name} execution error: {type(e).__name__}: {str(e)}")
                 raise
 
         return cast(F, wrapper)
@@ -61,12 +61,12 @@ def log_function(level: str = "info") -> Callable[[F], F]:
 
 def log_analysis_file(func: F) -> F:
     """
-    用于记录文件分析的装饰器，专门针对处理文件分析的函数。
+    Decorator for logging file analysis, specifically for functions handling file analysis.
 
-    此装饰器假设被装饰的函数至少有一个参数是文件路径。
+    This decorator assumes the decorated function has at least one argument as the file path.
 
-    返回:
-        装饰后的函数
+    Returns:
+        Decorated function
     """
 
     @functools.wraps(func)
@@ -84,18 +84,20 @@ def log_analysis_file(func: F) -> F:
                 file_path = kwargs["file_path"]
 
         if file_path:
-            info(f"🔍 开始分析文件: {file_path}")
+            info(f"🔍 Start analyzing file: {file_path}")
 
         try:
             result = func(*args, **kwargs)
 
             if file_path:
-                info(f"✅ 完成分析文件: {file_path}")
+                info(f"✅ Finished analyzing file: {file_path}")
 
             return result
         except Exception as e:
             if file_path:
-                error(f"❌ 分析文件出错 {file_path}: {type(e).__name__}: {str(e)}")
+                error(
+                    f"❌ File analysis error {file_path}: {type(e).__name__}: {str(e)}"
+                )
             raise
 
     return cast(F, wrapper)
@@ -103,11 +105,11 @@ def log_analysis_file(func: F) -> F:
 
 def log_result(func: F) -> F:
     """
-    记录函数返回结果的装饰器。
-    适用于返回值是简单类型的函数。
+    Decorator for logging the return value of a function.
+    Suitable for functions that return simple types.
 
-    返回:
-        装饰后的函数
+    Returns:
+        Decorated function
     """
 
     @functools.wraps(func)
@@ -116,11 +118,11 @@ def log_result(func: F) -> F:
 
         # 检查结果并记录
         if isinstance(result, (list, set, tuple)) and len(result) > 0:
-            info(f"{func.__name__} 返回了 {len(result)} 个项目")
+            info(f"{func.__name__} returned {len(result)} items")
         elif isinstance(result, dict) and len(result) > 0:
-            info(f"{func.__name__} 返回了 {len(result)} 个键值对")
+            info(f"{func.__name__} returned {len(result)} key-value pairs")
         elif result is not None:
-            debug(f"{func.__name__} 返回结果: {result}")
+            debug(f"{func.__name__} return value: {result}")
 
         return result
 
@@ -131,15 +133,15 @@ def conditional_log(
     condition_arg: str, log_message: str, level: str = "info"
 ) -> Callable[[F], F]:
     """
-    基于条件参数值的日志装饰器。
+    Conditional logging decorator based on argument value.
 
-    参数:
-        condition_arg: 要检查的参数名称
-        log_message: 日志消息模板，可以使用 '{param}' 格式引用参数值
-        level: 日志级别，可选值: "debug", "info", "warning", "error", "critical"
+    Args:
+        condition_arg: The argument name to check
+        log_message: Log message template, can use '{param}' to reference argument value
+        level: Log level, options: "debug", "info", "warning", "error", "critical"
 
-    返回:
-        装饰器函数
+    Returns:
+        Decorator function
     """
     log_funcs = {
         "debug": debug,
@@ -185,12 +187,12 @@ def conditional_log(
 
 def log_vulnerabilities(func: F) -> F:
     """
-    专门用于记录漏洞查找结果的装饰器。
+    Decorator specifically for logging vulnerability findings.
 
-    假设被装饰的函数返回漏洞列表。
+    Assumes the decorated function returns a list of vulnerabilities.
 
-    返回:
-        装饰后的函数
+    Returns:
+        Decorated function
     """
 
     @functools.wraps(func)
@@ -201,9 +203,9 @@ def log_vulnerabilities(func: F) -> F:
         if isinstance(result, list):
             vulnerability_count = len(result)
             if vulnerability_count > 0:
-                info(f"发现 {vulnerability_count} 个潜在漏洞")
+                info(f"Found {vulnerability_count} potential vulnerabilities")
             else:
-                info("未发现漏洞")
+                info("No vulnerabilities found")
 
         return result
 
