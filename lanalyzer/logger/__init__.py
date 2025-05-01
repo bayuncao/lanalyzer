@@ -12,6 +12,8 @@ from lanalyzer.logger.core import (
     warning,
     error,
     critical,
+    LogTee,
+    get_timestamp,
 )
 
 from lanalyzer.logger.decorators import (
@@ -47,4 +49,7 @@ __all__ = [
     "setup_file_logging",
     "setup_console_logging",
     "setup_application_logging",
+    # 输出重定向工具
+    "LogTee",
+    "get_timestamp",
 ]

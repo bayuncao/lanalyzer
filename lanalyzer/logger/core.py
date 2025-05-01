@@ -1,12 +1,13 @@
 """
-核心日志工具
+Core logging utilities
 
-提供整个应用程序的一致日志接口。
+Provides a consistent logging interface for the entire application.
 """
 
 import logging
 import sys
-from typing import Optional
+import datetime
+from typing import Optional, TextIO
 
 # 配置默认日志器
 logger = logging.getLogger("lanalyzer")
@@ -22,15 +23,38 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 
+class LogTee:
+    """Send output to two file objects simultaneously"""
+
+    def __init__(self, file1: TextIO, file2: TextIO):
+        self.file1 = file1
+        self.file2 = file2
+
+    def write(self, data: str) -> None:
+        self.file1.write(data)
+        self.file2.write(data)
+        self.file1.flush()  # Ensure real-time output
+        self.file2.flush()
+
+    def flush(self) -> None:
+        self.file1.flush()
+        self.file2.flush()
+
+
+def get_timestamp() -> str:
+    """Return the current formatted timestamp"""
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
 def get_logger(name: str = "lanalyzer") -> logging.Logger:
     """
-    获取指定名称的日志器实例。
+    Get a logger instance with the specified name.
 
-    参数:
-        name: 日志器名称 (默认: "lanalyzer")
+    Args:
+        name: Logger name (default: "lanalyzer")
 
-    返回:
-        日志器实例
+    Returns:
+        Logger instance
     """
     return logging.getLogger(name)
 
@@ -43,14 +67,14 @@ def configure_logger(
     debug: bool = False,
 ) -> None:
     """
-    配置全局日志器设置。
+    Configure global logger settings.
 
-    参数:
-        level: 日志级别 (默认: INFO)
-        log_format: 日志消息格式 (默认: 带时间戳的标准格式)
-        log_file: 日志文件路径 (默认: None，仅输出到控制台)
-        verbose: 是否启用详细日志 (设置级别为 INFO)
-        debug: 是否启用调试日志 (设置级别为 DEBUG)
+    Args:
+        level: Log level (default: INFO)
+        log_format: Log message format (default: standard format with timestamp)
+        log_file: Log file path (default: None, only output to console)
+        verbose: Enable verbose logging (set level to INFO)
+        debug: Enable debug logging (set level to DEBUG)
     """
     # 根据调试/详细标志设置日志级别
     if debug:
@@ -75,59 +99,59 @@ def configure_logger(
 
 def debug(message: str, *args, **kwargs) -> None:
     """
-    记录调试消息。
+    Log a debug message.
 
-    参数:
-        message: 要记录的消息
-        *args: 要传递给 logger.debug 的附加参数
-        **kwargs: 要传递给 logger.debug 的附加关键字参数
+    Args:
+        message: Message to log
+        *args: Additional arguments to pass to logger.debug
+        **kwargs: Additional keyword arguments to pass to logger.debug
     """
     logger.debug(message, *args, **kwargs)
 
 
 def info(message: str, *args, **kwargs) -> None:
     """
-    记录信息消息。
+    Log an info message.
 
-    参数:
-        message: 要记录的消息
-        *args: 要传递给 logger.info 的附加参数
-        **kwargs: 要传递给 logger.info 的附加关键字参数
+    Args:
+        message: Message to log
+        *args: Additional arguments to pass to logger.info
+        **kwargs: Additional keyword arguments to pass to logger.info
     """
     logger.info(message, *args, **kwargs)
 
 
 def warning(message: str, *args, **kwargs) -> None:
     """
-    记录警告消息。
+    Log a warning message.
 
-    参数:
-        message: 要记录的消息
-        *args: 要传递给 logger.warning 的附加参数
-        **kwargs: 要传递给 logger.warning 的附加关键字参数
+    Args:
+        message: Message to log
+        *args: Additional arguments to pass to logger.warning
+        **kwargs: Additional keyword arguments to pass to logger.warning
     """
     logger.warning(message, *args, **kwargs)
 
 
 def error(message: str, *args, **kwargs) -> None:
     """
-    记录错误消息。
+    Log an error message.
 
-    参数:
-        message: 要记录的消息
-        *args: 要传递给 logger.error 的附加参数
-        **kwargs: 要传递给 logger.error 的附加关键字参数
+    Args:
+        message: Message to log
+        *args: Additional arguments to pass to logger.error
+        **kwargs: Additional keyword arguments to pass to logger.error
     """
     logger.error(message, *args, **kwargs)
 
 
 def critical(message: str, *args, **kwargs) -> None:
     """
-    记录严重错误消息。
+    Log a critical error message.
 
-    参数:
-        message: 要记录的消息
-        *args: 要传递给 logger.critical 的附加参数
-        **kwargs: 要传递给 logger.critical 的附加关键字参数
+    Args:
+        message: Message to log
+        *args: Additional arguments to pass to logger.critical
+        **kwargs: Additional keyword arguments to pass to logger.critical
     """
     logger.critical(message, *args, **kwargs)

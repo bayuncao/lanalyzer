@@ -8,7 +8,7 @@ as well as report generators for creating comprehensive vulnerability reports.
 from lanalyzer.output.console_formatter import ConsoleFormatter, format_for_console
 from lanalyzer.output.formatter import OutputFormatter
 from lanalyzer.output.json_formatter import JSONFormatter, format_as_json
-from lanalyzer.output.report_generator import ReportGenerator
+
 
 __all__ = [
     "OutputFormatter",
@@ -16,5 +16,4 @@ __all__ = [
     "format_as_json",
     "ConsoleFormatter",
     "format_for_console",
-    "ReportGenerator",
 ]

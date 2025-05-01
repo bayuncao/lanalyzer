@@ -34,18 +34,15 @@ def analyze_files_with_logging(
         f"[Analysis] Start time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     )
 
-    # Log configuration info - use tracker.config instead of direct access to rules
     print(f"[Config] Source types: {[s['name'] for s in tracker.sources]}")
     print(f"[Config] Sink types: {[s['name'] for s in tracker.sinks]}")
     print(f"[Config] Number of rules: {len(tracker.config.get('rules', []))}")
 
-    # Log sink patterns of special interest
     sink_patterns = []
     for sink in tracker.sinks:
         sink_patterns.extend(sink.get("patterns", []))
     print(f"[Config] Sink patterns: {sink_patterns}")
 
-    # Special focus on sinks within `with open` context
     with_open_sinks = [p for p in sink_patterns if "load" in p or "loads" in p]
     if with_open_sinks:
         print(
@@ -56,18 +53,15 @@ def analyze_files_with_logging(
         file_start_time = time.time()
 
         try:
-            # Print analysis progress
             progress = f"[{idx}/{total_files}]"
             print(f"\n{progress} {'='*50}")
             print(f"{progress} Starting analysis of file: {file_path}")
             print(f"{progress} {'='*50}")
 
-            # Print file information
             if os.path.exists(file_path):
                 file_size = os.path.getsize(file_path)
                 print(f"{progress} File size: {file_size} bytes")
 
-                # Calculate file line count
                 try:
                     with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                         content = f.read()
@@ -78,20 +72,17 @@ def analyze_files_with_logging(
                 except Exception as e:
                     print(f"{progress} Error reading file content: {e}")
 
-            # Record current time before execution
             analysis_start = time.time()
             print(f"{progress} Starting AST analysis...")
 
-            # Analyze file, continue processing regardless of success
             try:
                 file_vulnerabilities = tracker.analyze_file(file_path)
             except Exception as e:
                 print(f"{progress} Exception during analysis: {e}")
                 if debug:
                     print(traceback.format_exc())
-                file_vulnerabilities = []  # Set to empty list on error
+                file_vulnerabilities = []
 
-            # Record analysis results
             file_end_time = time.time()
             analysis_duration = file_end_time - file_start_time
             ast_analysis_time = file_end_time - analysis_start
@@ -104,11 +95,9 @@ def analyze_files_with_logging(
                 f"{progress} Number of vulnerabilities found: {len(file_vulnerabilities)}"
             )
 
-            # Modified part: Force analysis even if no visitor
             sources_count = 0
             sinks_count = 0
 
-            # Attempt to get source and sink info, but don't block processing
             if hasattr(tracker, "visitor") and tracker.visitor:
                 sources_count = (
                     len(tracker.visitor.found_sources)
@@ -124,14 +113,12 @@ def analyze_files_with_logging(
                 print(f"{progress} Number of sources found: {sources_count}")
                 print(f"{progress} Number of sinks found: {sinks_count}")
 
-                # Log file handles related to `with open`
                 if hasattr(tracker.visitor, "file_handles"):
                     file_handles = tracker.visitor.file_handles
                     print(
                         f"{progress} Number of tracked file handles: {len(file_handles)}"
                     )
 
-                    # Log details for each file handle
                     if file_handles:
                         print(f"{progress} File handle details:")
                         for handle, info in file_handles.items():
@@ -142,17 +129,13 @@ def analyze_files_with_logging(
                                 f"{progress}   - {handle}: from_with={from_with}, mode={mode}, source={source}"
                             )
             else:
-                # Continue analysis even without visitor
                 print(
                     f"{progress} Note: No visitor information available for this file. Skipping detailed analysis but continuing processing."
                 )
 
-                # Custom analysis logic can be added here, independent of the visitor
-                # Example: Use regex or other methods to find potential issues
                 try:
                     with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                         content = f.read()
-                        # Simple example: Check for specific sensitive function calls
                         for pattern in tracker.sinks:
                             for sink_pattern in pattern.get("patterns", []):
                                 if sink_pattern in content:
@@ -174,7 +157,6 @@ def analyze_files_with_logging(
                     sink_line = vuln.get("sink", {}).get("line", 0)
                     tainted_var = vuln.get("tainted_variable", "Unknown")
 
-                    # Check if it's an auto-detected vulnerability
                     is_auto_detected = vuln.get("auto_detected", False)
 
                     if is_auto_detected:
@@ -186,12 +168,10 @@ def analyze_files_with_logging(
                             f"{progress}   {i}. {rule}: {source_name}(line {source_line}) -> {sink_name}(line {sink_line}), tainted variable: {tainted_var}"
                         )
 
-                    # Check if it's a sink in `with open` context - Modified code for robust check
                     is_with_open_sink = (
                         "with open" in source_name or "FileRead" in source_name
                     )
 
-                    # Only check file_handles if tracker.visitor exists
                     if (
                         hasattr(tracker, "visitor")
                         and tracker.visitor
@@ -216,14 +196,12 @@ def analyze_files_with_logging(
             if debug:
                 print(traceback.format_exc())
 
-    # Print summary
     end_time = time.time()
     total_duration = end_time - start_time
     print(f"\n[Analysis] Analysis complete, total time: {total_duration:.2f} seconds")
     print(f"[Analysis] Average time per file: {total_duration/total_files:.2f} seconds")
     print(f"[Analysis] Total vulnerabilities found: {len(all_vulnerabilities)}")
 
-    # Count vulnerability types
     vuln_types = {}
     auto_detected_vulns = 0
 
@@ -241,13 +219,11 @@ def analyze_files_with_logging(
         for rule, count in sorted(vuln_types.items(), key=lambda x: x[1], reverse=True):
             print(f"  - {rule}: {count}")
 
-        # Display count of auto-detected vulnerabilities
         if auto_detected_vulns > 0:
             print(
                 f"[Analysis] Auto-detected potential vulnerabilities: {auto_detected_vulns}"
             )
 
-    # Special count for vulnerabilities in `with open` context
     with_open_vulns = []
     for vuln in all_vulnerabilities:
         source_name = vuln.get("source", {}).get("name", "")
