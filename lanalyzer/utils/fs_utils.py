@@ -1,7 +1,7 @@
 """
-File utilities for LanaLyzer.
+文件系统实用工具模块，为 LanaLyzer 提供文件和路径操作。
 
-Provides common file and path operations used by the taint analysis engine.
+本模块提供污点分析引擎使用的常见文件和路径操作。
 """
 
 import os
@@ -11,13 +11,13 @@ from typing import List, Optional
 
 def is_python_file(file_path: str) -> bool:
     """
-    Check if a file is a Python file.
+    检查文件是否为 Python 文件。
 
     Args:
-        file_path: Path to the file
+        file_path: 文件路径
 
     Returns:
-        True if the file has a .py extension, False otherwise
+        如果文件扩展名为 .py 则返回 True，否则返回 False
     """
     return file_path.lower().endswith(".py")
 
@@ -26,20 +26,20 @@ def get_python_files_in_directory(
     directory: str, recursive: bool = True, exclude_dirs: List[str] = None
 ) -> List[str]:
     """
-    Get all Python files in a directory.
+    获取目录中的所有 Python 文件。
 
     Args:
-        directory: Directory to search for Python files
-        recursive: Whether to search recursively in subdirectories
-        exclude_dirs: List of directory names to exclude (e.g., ["venv", "__pycache__"])
+        directory: 用于搜索 Python 文件的目录
+        recursive: 是否递归搜索子目录
+        exclude_dirs: 要排除的目录名称列表（例如 ["venv", "__pycache__"]）
 
     Returns:
-        List of paths to Python files
+        Python 文件路径列表
     """
     exclude_dirs = exclude_dirs or ["__pycache__", "venv", ".git", ".github"]
     python_files = []
 
-    # Handle the case where the input is a file, not a directory
+    # 处理输入是文件而非目录的情况
     if os.path.isfile(directory):
         if is_python_file(directory):
             return [directory]
@@ -47,14 +47,14 @@ def get_python_files_in_directory(
 
     if recursive:
         for root, dirs, files in os.walk(directory):
-            # Skip excluded directories
+            # 跳过被排除的目录
             dirs[:] = [d for d in dirs if d not in exclude_dirs]
 
             for file in files:
                 if is_python_file(file):
                     python_files.append(os.path.join(root, file))
     else:
-        # Non-recursive search
+        # 非递归搜索
         for item in os.listdir(directory):
             item_path = os.path.join(directory, item)
             if os.path.isfile(item_path) and is_python_file(item_path):
@@ -65,42 +65,42 @@ def get_python_files_in_directory(
 
 def ensure_directory_exists(directory_path: str) -> None:
     """
-    Ensure a directory exists, creating it if necessary.
+    确保目录存在，如有必要则创建目录。
 
     Args:
-        directory_path: Path to the directory
+        directory_path: 目录路径
     """
     Path(directory_path).mkdir(parents=True, exist_ok=True)
 
 
 def get_relative_path(base_path: str, full_path: str) -> str:
     """
-    Convert an absolute path to a path relative to the base path.
+    将绝对路径转换为相对于基础路径的路径。
 
     Args:
-        base_path: Base directory path
-        full_path: Full path to convert to relative
+        base_path: 基础目录路径
+        full_path: 要转换为相对路径的完整路径
 
     Returns:
-        Path relative to the base path
+        相对于基础路径的路径
     """
     try:
         return os.path.relpath(full_path, base_path)
     except ValueError:
-        # Handle case where paths are on different drives (Windows)
+        # 处理路径在不同驱动器上的情况（Windows）
         return full_path
 
 
 def get_absolute_path(path: str, relative_to: Optional[str] = None) -> str:
     """
-    Convert a relative path to an absolute path.
+    将相对路径转换为绝对路径。
 
     Args:
-        path: Path to convert to absolute
-        relative_to: Base directory for relative paths (default: current working directory)
+        path: 要转换为绝对路径的路径
+        relative_to: 相对路径的基础目录（默认值：当前工作目录）
 
     Returns:
-        Absolute path
+        绝对路径
     """
     if os.path.isabs(path):
         return path

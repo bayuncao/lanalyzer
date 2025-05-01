@@ -12,15 +12,15 @@ class DataStructureNode:
 
     def __init__(self, name: str, node_type: str):
         self.name = name
-        self.node_type = node_type  # 'dict', 'list', 'tuple', 'object', etc.
+        self.node_type = node_type
         self.tainted = False
-        self.tainted_keys = set()  # For dictionaries
-        self.tainted_indices = set()  # For lists and tuples
-        self.tainted_attributes = set()  # For objects
-        self.source_info = None  # Information about the source of taint
-        self.propagation_history = []  # Track propagation steps
-        self.parent_structures = set()  # Track parent data structures
-        self.child_structures = set()  # Track child data structures
+        self.tainted_keys = set()
+        self.tainted_indices = set()
+        self.tainted_attributes = set()
+        self.source_info = None
+        self.propagation_history = []
+        self.parent_structures = set()
+        self.child_structures = set()
 
     def mark_tainted(
         self, source_info: Dict[str, Any], propagation_step: Optional[str] = None
@@ -103,63 +103,6 @@ class DataStructureNode:
         return self.tainted and (
             len(self.tainted_attributes) == 0 or attr in self.tainted_attributes
         )
-
-    def get_propagation_chain(self) -> List[Dict[str, Any]]:
-        """Get the complete propagation chain for this data structure."""
-        chain = []
-
-        # Start with the source
-        if self.source_info:
-            chain.append(
-                {
-                    "var_name": self.name,
-                    "operation": "DataStructure_Source",
-                    "description": f"Data structure originates from {self.source_info.get('name', 'Unknown')} source",
-                    "line": self.source_info.get("line", 0),
-                    "col": self.source_info.get("col", 0),
-                }
-            )
-
-        # Add propagation history
-        for i, step in enumerate(self.propagation_history):
-            chain.append(
-                {
-                    "step_no": i + 1,
-                    "operation": "DataStructure_Propagation",
-                    "description": step,
-                    "var_name": self.name,
-                }
-            )
-
-        # Add information about tainted elements
-        if self.node_type == "dict" and self.tainted_keys:
-            chain.append(
-                {
-                    "operation": "DataStructure_TaintedKeys",
-                    "description": f"Dictionary has tainted keys: {', '.join(str(k) for k in self.tainted_keys)}",
-                    "var_name": self.name,
-                }
-            )
-
-        if self.node_type == "list" and self.tainted_indices:
-            chain.append(
-                {
-                    "operation": "DataStructure_TaintedIndices",
-                    "description": f"List has tainted indices: {', '.join(str(i) for i in self.tainted_indices)}",
-                    "var_name": self.name,
-                }
-            )
-
-        if self.tainted_attributes:
-            chain.append(
-                {
-                    "operation": "DataStructure_TaintedAttributes",
-                    "description": f"Object has tainted attributes: {', '.join(self.tainted_attributes)}",
-                    "var_name": self.name,
-                }
-            )
-
-        return chain
 
     def __repr__(self) -> str:
         return f"DataStructureNode(name='{self.name}', type='{self.node_type}', tainted={self.tainted})"

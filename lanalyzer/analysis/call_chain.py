@@ -52,14 +52,12 @@ class CallChainBuilder:
                 f"Building call chain from source {source_name}(line {source_line}) to sink {sink_name}(line {sink_line})"
             )
 
-        # 1. Find function containing the source
         source_func = None
         for func_name, func_node in visitor.functions.items():
             if func_node.line_no <= source_line <= func_node.end_line_no:
                 source_func = func_node
                 break
 
-        # 2. Find function containing the sink
         sink_func = None
         for func_name, func_node in visitor.functions.items():
             if func_node.line_no <= sink_line <= func_node.end_line_no:
@@ -88,7 +86,6 @@ class CallChainBuilder:
             visitor, sink_line, context_lines=1
         )
 
-        # 3. First add the specific sink statement with detailed information
         sink_operation = self.tracker.utils.extract_operation_at_line(
             visitor, sink_line
         )
@@ -104,7 +101,6 @@ class CallChainBuilder:
             }
             call_chain.append(sink_stmt)
 
-        # 4. Next add the specific source statement with detailed information
         source_operation = self.tracker.utils.extract_operation_at_line(
             visitor, source_line
         )
@@ -120,7 +116,6 @@ class CallChainBuilder:
             }
             call_chain.append(source_stmt)
 
-        # 5. If source and sink are in the same function, return detailed info
         if source_func and sink_func and source_func.name == sink_func.name:
             func_info = {
                 "function": source_func.name,
@@ -134,21 +129,17 @@ class CallChainBuilder:
             call_chain.append(func_info)
             return call_chain
 
-        # 6. Build the complete call chain from source to sink
         if source_func and sink_func:
-            # Use Breadth-First Search (BFS) to find the path from source function to sink function
-            queue = [(source_func, [source_func])]  # (current_node, path)
+            queue = [(source_func, [source_func])]
             visited = {source_func.name}
-            max_depth = 20  # Prevent overly deep search
+            max_depth = 20
             found_path = None
 
             while queue and not found_path:
                 current, path = queue.pop(0)
 
-                # Check callees of the current node
                 for callee in current.callees:
                     if callee.name == sink_func.name:
-                        # Path found
                         found_path = path + [sink_func]
                         break
 
@@ -156,10 +147,8 @@ class CallChainBuilder:
                         visited.add(callee.name)
                         queue.append((callee, path + [callee]))
 
-            # If path found, build the call chain with function and statement info
             if found_path:
                 for i, func in enumerate(found_path):
-                    # Determine node type
                     node_type = "intermediate"
                     description = "Intermediate function in the call chain"
 
@@ -172,14 +161,10 @@ class CallChainBuilder:
                         node_type = "sink"
                         description = f"Contains sink {sink_name} at line {sink_line}"
 
-                    # Find a representative line number for this function where it's called
                     line_num = func.line_no
-
-                    # Try to find the actual call statement if this is an intermediate function
                     call_statement = ""
 
                     if i > 0 and i < len(found_path) - 1:
-                        # This is an intermediate function - try to find where it's called
                         prev_func = found_path[i - 1]
                         for callee in prev_func.callees:
                             if callee.name == func.name and hasattr(
@@ -208,11 +193,9 @@ class CallChainBuilder:
 
                 return call_chain
 
-            # If direct path not found, try finding common callers...
             if not found_path and self.debug:
                 print("No direct path found, trying to find common callers...")
 
-            # Try to find common callers path
             return self._build_common_callers_path(
                 visitor,
                 source_func,
@@ -225,7 +208,6 @@ class CallChainBuilder:
                 sink_stmt_info,
             )
 
-        # 7. If full call chain cannot be built, but source or sink function exists, add them
         if source_func:
             source_func_info = {
                 "function": source_func.name,
@@ -281,7 +263,6 @@ class CallChainBuilder:
         Returns:
             Call chain via common caller
         """
-        # Build reverse call graph (from callee to caller)
         reverse_call_graph = {}
         for func_name, func_node in visitor.functions.items():
             reverse_call_graph[func_name] = []
@@ -292,7 +273,6 @@ class CallChainBuilder:
                     reverse_call_graph[callee.name] = []
                 reverse_call_graph[callee.name].append(func_name)
 
-        # Use BFS to find common callers of source and sink functions
         source_callers = self._find_callers(source_func.name, reverse_call_graph, 20)
         sink_callers = self._find_callers(sink_func.name, reverse_call_graph, 20)
 
@@ -301,9 +281,7 @@ class CallChainBuilder:
         if common_callers and self.debug:
             print(f"Found common callers: {common_callers}")
 
-        # If common callers found, build path
         if common_callers:
-            # Select a common caller
             common_caller = next(iter(common_callers))
             common_caller_node = None
 
@@ -313,7 +291,6 @@ class CallChainBuilder:
                     break
 
             if common_caller_node:
-                # Try to extract call statements for both source and sink functions
                 source_call_stmt = ""
                 sink_call_stmt = ""
 
@@ -327,7 +304,6 @@ class CallChainBuilder:
                             visitor, callee.call_line
                         )["statement"]
 
-                # Source function -> Common caller -> Sink function
                 call_chain = [
                     {
                         "function": source_func.name,
@@ -393,7 +369,7 @@ class CallChainBuilder:
         """
         callers = set()
         visited = {func_name}
-        queue = [(func_name, 0)]  # (function_name, depth)
+        queue = [(func_name, 0)]
 
         while queue:
             current, depth = queue.pop(0)
@@ -401,7 +377,6 @@ class CallChainBuilder:
             if depth >= max_depth:
                 continue
 
-            # Get all callers of the current function
             current_callers = reverse_call_graph.get(current, [])
 
             for caller in current_callers:
@@ -428,10 +403,7 @@ class CallChainBuilder:
             List of dictionaries representing the call chain
         """
         call_chain = []
-        # Set for deduplication
-        added_sources = (
-            set()
-        )  # Tracks already added sources, format is "line:statement"
+        added_sources = set()
 
         sink_line = sink_info.get("line", 0)
         sink_name = sink_info.get("name", "Unknown Sink")
@@ -449,18 +421,15 @@ class CallChainBuilder:
                 print("[DEBUG] Sink line number is 0 or missing")
             return []
 
-        # Step 1: Get the exact statement at the sink line
         sink_stmt_info = self.tracker.utils.get_statement_at_line(
             visitor, sink_line, context_lines=2
         )
 
-        # Step 2: Find the direct sink operation (the actual dangerous call)
         sink_operation = self.tracker.utils.extract_operation_at_line(
             visitor, sink_line
         )
         sink_entry = None
         if sink_operation:
-            # If direct operation is found, create sink entry (but don't add to chain yet)
             sink_entry = {
                 "function": sink_operation,
                 "file": visitor.file_path,
@@ -473,12 +442,10 @@ class CallChainBuilder:
                 "description": f"Unsafe {sink_name} operation, potentially leading to {vulnerability_type}",
             }
 
-        # Step 3: Find function containing the sink
         sink_function_node = self.tracker.utils.find_function_containing_line(
             visitor, sink_line
         )
 
-        # Record function range where sink is located for prioritizing sources within same function
         sink_function_range = None
         if sink_function_node:
             sink_function_range = (
@@ -486,18 +453,13 @@ class CallChainBuilder:
                 sink_function_node.end_line_no,
             )
 
-        # Create container function info, but don't add to chain yet
         sink_container_entry = None
         if sink_function_node:
             file_path = getattr(sink_function_node, "file_path", visitor.file_path)
-
-            # Find where this function is defined (to provide context)
             func_def_start = sink_function_node.line_no
             func_def_end = getattr(
                 sink_function_node, "end_line_no", func_def_start + 1
             )
-
-            # Try to get the function definition statement
             func_def_stmt = ""
             if (
                 hasattr(visitor, "source_lines")
@@ -519,31 +481,25 @@ class CallChainBuilder:
                 "description": f"Function containing sink {sink_name}, at line {sink_line}",
             }
 
-        # Step 4: Try to find tainted variables used in the sink
         tainted_vars_in_sink = self.tracker.utils.find_tainted_vars_in_sink(
             visitor, sink_line
         )
 
-        # Categorize sources by location
-        same_function_sources = []  # Sources in the same function
-        other_sources = []  # Sources in other functions
-        parser_sources = []  # Command line argument sources
+        same_function_sources = []
+        other_sources = []
+        parser_sources = []
 
-        # Step 5: If we found tainted variables, try to find their source statements
         if (
             tainted_vars_in_sink
             and hasattr(visitor, "tainted")
             and hasattr(visitor, "source_statements")
         ):
             for var_name in tainted_vars_in_sink:
-                # Check if variable is tainted and has source info
                 if var_name in visitor.tainted:
                     source_info = visitor.tainted.get(var_name)
                     if source_info and "line" in source_info:
                         source_line = source_info.get("line", 0)
                         source_name = source_info.get("name", "Unknown")
-
-                        # Get detailed source statement information
                         if source_line > 0:
                             source_stmt_info = self.tracker.utils.get_statement_at_line(
                                 visitor, source_line, context_lines=1
@@ -553,8 +509,6 @@ class CallChainBuilder:
                                     visitor, source_line
                                 )
                             )
-
-                            # Create source statement info
                             source_stmt = {
                                 "function": source_operation or f"Source of {var_name}",
                                 "file": visitor.file_path,
@@ -566,13 +520,9 @@ class CallChainBuilder:
                                 "type": "source",
                                 "description": f"Source of tainted data ({source_name}) assigned to variable {var_name}",
                             }
-
-                            # Deduplication
                             source_key = f"{source_line}:{source_stmt['statement']}"
                             if source_key not in added_sources:
                                 added_sources.add(source_key)
-
-                                # Determine if source is in the same function as sink
                                 if (
                                     sink_function_range
                                     and sink_function_range[0]
@@ -582,13 +532,11 @@ class CallChainBuilder:
                                     same_function_sources.append(source_stmt)
                                 else:
                                     other_sources.append(source_stmt)
-
                             if self.debug:
                                 print(
                                     f"[DEBUG] Added source statement for var {var_name} at line {source_line}"
                                 )
 
-        # Step 6: Search for possible source statements within function, prioritize same function
         (
             same_function_sources,
             other_sources,
@@ -605,43 +553,31 @@ class CallChainBuilder:
             added_sources,
         )
 
-        # Build final call chain in priority order
         final_call_chain = []
 
-        # 1. Sources within same function (highest priority)
         for entry in same_function_sources:
             final_call_chain.append(entry)
 
-        # 2. Command line argument sources
         for entry in parser_sources:
             final_call_chain.append(entry)
 
-        # 3. Sources from other functions (only if no sources in same function)
         if not same_function_sources:
             for entry in other_sources:
                 final_call_chain.append(entry)
 
-        # 4. Container function
         if sink_container_entry:
             final_call_chain.append(sink_container_entry)
 
-        # 5. Sink
         if sink_entry:
             final_call_chain.append(sink_entry)
 
-        # For source entries of same type, sort by line number
         if len(same_function_sources) > 1:
-            # Sort in-function sources by distance to sink (near→far)
             same_function_sources_sorted = sorted(
                 same_function_sources, key=lambda x: abs(x["line"] - sink_line)
             )
-
-            # Remove previously added same function sources
             final_call_chain = [
                 e for e in final_call_chain if e not in same_function_sources
             ]
-
-            # Insert sorted same function sources at beginning of call chain
             for entry in reversed(same_function_sources_sorted):
                 final_call_chain.insert(0, entry)
 

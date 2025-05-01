@@ -6,6 +6,7 @@ This is the main aggregation file that imports and combines all visitor componen
 from typing import Optional
 import os
 
+from lanalyzer.logger import debug, info, warning, error
 
 from .visitor_base import EnhancedTaintVisitor
 from .visitor_function import FunctionVisitorMixin
@@ -14,7 +15,6 @@ from .visitor_control import ControlFlowVisitorMixin
 
 import importlib
 
-# Create dynamic imports to avoid circular references
 for module_name in ["callgraph", "datastructures", "defuse", "pathsensitive"]:
     globals()[module_name] = importlib.import_module(
         f".{module_name}", package="lanalyzer.analysis"
@@ -39,41 +39,31 @@ class EnhancedTaintAnalysisVisitor(
     def __init__(
         self,
         parent_map=None,
-        debug: bool = False,
+        debug_mode: bool = False,
         verbose: bool = False,
         file_path: Optional[str] = None,
     ):
         """Initialize the complete taint analysis visitor."""
-        # Setup module references to avoid circular imports
         self.callgraph = globals()["callgraph"]
         self.datastructures = globals()["datastructures"]
         self.defuse = globals()["defuse"]
         self.pathsensitive = globals()["pathsensitive"]
-
-        # Initialize the base visitor
-        super().__init__(parent_map, debug, verbose, file_path)
-
-        # Ensure file_path is set and source lines are loaded
+        super().__init__(parent_map, debug_mode, verbose, file_path)
         if not hasattr(self, "source_lines") or not self.source_lines:
             if file_path and os.path.exists(file_path):
                 try:
                     with open(file_path, "r", encoding="utf-8") as f:
                         self.source_lines = f.readlines()
                     if self.debug:
-                        print(
-                            f"Loaded {len(self.source_lines)} lines of source code from {file_path} in EnhancedTaintAnalysisVisitor"
+                        debug(
+                            f"从 {file_path} 加载了 {len(self.source_lines)} 行源代码到 EnhancedTaintAnalysisVisitor"
                         )
                 except Exception as e:
                     if self.debug:
-                        print(
-                            f"Failed to load source code in EnhancedTaintAnalysisVisitor: {str(e)}"
-                        )
-
+                        error(f"在 EnhancedTaintAnalysisVisitor 中加载源代码失败: {str(e)}")
         if self.debug:
-            print(f"Initializing complete taint analysis visitor for file: {file_path}")
+            debug(f"正在初始化完整污点分析访问器，文件: {file_path}")
             if hasattr(self, "source_lines") and self.source_lines:
-                print(
-                    f"Successfully loaded source code lines: {len(self.source_lines)} lines"
-                )
+                debug(f"成功加载源代码行: {len(self.source_lines)} 行")
             else:
-                print("Warning: Failed to load source code lines")
+                warning("警告: 加载源代码行失败")

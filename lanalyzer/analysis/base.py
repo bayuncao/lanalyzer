@@ -10,7 +10,8 @@ import time
 from typing import Any, Dict, List, Type, TypeVar
 
 from lanalyzer.models import AnalysisResults, Vulnerability
-from lanalyzer.utils.file import get_python_files_in_directory
+from lanalyzer.utils.fs_utils import get_python_files_in_directory
+from lanalyzer.logger import debug, info, warning, error, critical
 
 # Type variable for better type hinting
 T = TypeVar("T", bound="BaseAnalyzer")
@@ -72,7 +73,7 @@ class BaseAnalyzer(abc.ABC):
 
         for file_path in python_files:
             if self.debug or self.verbose:
-                print(f"Analyzing {file_path}")
+                info(f"正在分析 {file_path}")
             file_vulnerabilities = self.analyze_file(file_path)
             vulnerabilities.extend(file_vulnerabilities)
             self.analyzed_files.add(file_path)
@@ -138,7 +139,7 @@ class BaseAnalyzer(abc.ABC):
             message: Message to log
         """
         if self.debug:
-            print(f"[DEBUG] {message}")
+            debug(message)
 
     def info(self, message: str) -> None:
         """
@@ -148,7 +149,7 @@ class BaseAnalyzer(abc.ABC):
             message: Message to log
         """
         if self.verbose:
-            print(f"[INFO] {message}")
+            info(message)
 
     @classmethod
     def from_config_file(

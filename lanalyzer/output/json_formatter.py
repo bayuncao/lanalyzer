@@ -10,7 +10,7 @@ import json
 from typing import Any, Dict, List, Optional
 
 from lanalyzer.output.formatter import OutputFormatter
-from lanalyzer.utils.logging import debug
+from lanalyzer.logger import debug
 
 
 class JSONFormatter(OutputFormatter):

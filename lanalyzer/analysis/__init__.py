@@ -21,6 +21,15 @@ from lanalyzer.analysis.pathsensitive import PathNode
 from lanalyzer.analysis.tracker import EnhancedTaintTracker
 from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
 
+# 导入日志装饰器从新的logger模块
+from lanalyzer.logger import (
+    log_function,
+    log_analysis_file,
+    log_result,
+    conditional_log,
+    log_vulnerabilities,
+)
+
 # For backward compatibility
 from lanalyzer.analysis.visitor import (
     EnhancedTaintAnalysisVisitor as EnhancedTaintVisitor,
@@ -33,7 +42,7 @@ from lanalyzer.utils.ast_utils import (
     extract_function_calls,
 )
 from lanalyzer.utils.ast_utils import parse_file as parse_ast
-from lanalyzer.utils.file import get_python_files_in_directory as get_python_files
+from lanalyzer.utils.fs_utils import get_python_files_in_directory as get_python_files
 
 
 def analyze_file(
