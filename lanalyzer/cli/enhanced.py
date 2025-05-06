@@ -67,23 +67,38 @@ def create_parser() -> argparse.ArgumentParser:
         help="Path to log file for debug and analysis output",
     )
 
-    mcp_parser = subparsers.add_parser("mcp", help="Start MCP server")
-    mcp_parser.add_argument(
+    mcp_parser = subparsers.add_parser("mcp", help="MCP服务器命令")
+    mcp_subparsers = mcp_parser.add_subparsers(dest="mcp_command", help="MCP命令")
+
+    # 运行命令
+    run_parser = mcp_subparsers.add_parser("run", help="启动MCP服务器")
+    run_parser.add_argument(
         "--host",
         default="127.0.0.1",
-        help="Host to bind the server to (default: 127.0.0.1)",
+        help="主机地址 (默认: 127.0.0.1)",
     )
-    mcp_parser.add_argument(
+    run_parser.add_argument(
         "--port",
         type=int,
         default=8000,
-        help="Port to bind the server to (default: 8000)",
+        help="端口号 (默认: 8000)",
     )
-    mcp_parser.add_argument(
+    run_parser.add_argument(
         "--debug",
         action="store_true",
-        help="Enable debug mode",
+        help="启用调试模式",
     )
+
+    # 开发模式命令
+    dev_parser = mcp_subparsers.add_parser("dev", help="以开发模式启动MCP")
+    dev_parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="启用调试模式",
+    )
+
+    # 安装命令
+    install_parser = mcp_subparsers.add_parser("install", help="安装MCP到Claude Desktop")
 
     parser.add_argument(
         "--target",
@@ -124,27 +139,103 @@ def enhanced_cli_main() -> int:
 
     if args.command == "mcp":
         try:
-            from lanalyzer.mcp.server import MCPServer
+            from lanalyzer.mcp.mcp_cmd import create_mcp_server, mcp_server
+            import sys
 
-            print(f"Starting Lanalyzer MCP Server on {args.host}:{args.port}")
-            if args.debug:
-                print("Debug mode: enabled")
+            print(f"启动 Lanalyzer MCP 服务器，使用 FastMCP")
 
-            server = MCPServer(
-                host=args.host,
-                port=args.port,
-                debug=args.debug,
-            )
+            debug = False
+            host = "127.0.0.1"
+            port = 8000
 
-            server.run()
+            # 获取参数
+            if hasattr(args, "debug") and args.debug:
+                debug = True
+            if hasattr(args, "host") and args.host:
+                host = args.host
+            if hasattr(args, "port") and args.port:
+                port = args.port
+
+            # 创建并启动服务器
+            if hasattr(args, "mcp_command") and args.mcp_command == "dev":
+                print(f"以开发模式启动服务器: {host}:{port}")
+                # 使用FastMCP命令行工具的dev模式
+                import subprocess
+                import os
+
+                # 获取mcp_cmd.py的绝对路径
+                from pathlib import Path
+
+                mcp_module_path = Path(__file__).parent.parent / "mcp" / "mcp_cmd.py"
+
+                # 使用绝对路径调用FastMCP
+                cmd = ["fastmcp", "dev", f"{mcp_module_path}:server"]
+                if debug:
+                    cmd.append("--with-debug")
+
+                print(f"执行命令: {' '.join(cmd)}")
+                try:
+                    subprocess.run(cmd, check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"命令执行失败: {e}")
+                    if debug:
+                        import traceback
+
+                        traceback.print_exc()
+                    return 1
+                except FileNotFoundError:
+                    print("错误: fastmcp 命令未找到。请确保已安装 FastMCP：pip install fastmcp")
+                    return 1
+            elif hasattr(args, "mcp_command") and args.mcp_command == "install":
+                print(f"安装MCP服务器到Claude Desktop")
+                # 使用FastMCP命令行工具的install模式
+                import subprocess
+                import os
+
+                # 获取mcp_cmd.py的绝对路径
+                from pathlib import Path
+
+                mcp_module_path = Path(__file__).parent.parent / "mcp" / "mcp_cmd.py"
+
+                # 使用绝对路径调用FastMCP
+                cmd = ["fastmcp", "install", f"{mcp_module_path}:server"]
+                print(f"执行命令: {' '.join(cmd)}")
+                try:
+                    subprocess.run(cmd, check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"命令执行失败: {e}")
+                    if debug:
+                        import traceback
+
+                        traceback.print_exc()
+                    return 1
+                except FileNotFoundError:
+                    print("错误: fastmcp 命令未找到。请确保已安装 FastMCP：pip install fastmcp")
+                    return 1
+            else:
+                # 标准运行模式
+                print(f"启动服务器: {host}:{port}")
+                if debug:
+                    print("调试模式: 已启用")
+
+                server = create_mcp_server(debug=debug)
+                server.run(
+                    transport="http", host=host, port=port, enable_mcp_endpoint=True
+                )
+
             return 0
-        except ImportError:
-            print("Error: MCP server dependencies not installed.")
-            print("Please install with: pip install lanalyzer[mcp]")
+        except ImportError as e:
+            print("错误: MCP 服务器依赖未安装。")
+            print("请使用以下命令安装: pip install lanalyzer[mcp]")
+            if hasattr(args, "debug") and args.debug:
+                print(f"详细错误: {str(e)}")
+                import traceback
+
+                traceback.print_exc()
             return 1
         except Exception as e:
-            print(f"Error starting MCP server: {e}")
-            if args.debug:
+            print(f"错误: 启动MCP服务器失败: {str(e)}")
+            if hasattr(args, "debug") and args.debug:
                 import traceback
 
                 traceback.print_exc()

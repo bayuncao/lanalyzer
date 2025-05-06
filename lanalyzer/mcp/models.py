@@ -79,9 +79,7 @@ class AnalysisRequest(BaseModel):
 
     code: str = Field(..., description="The code to analyze")
     file_path: str = Field(..., description="The file path to associate with the code")
-    config_path: Optional[str] = Field(
-        None, description="Path to the configuration file"
-    )
+    config_path: str = Field(..., description="Path to the configuration file")
     config: Optional[Dict[str, Any]] = Field(
         None, description="Configuration data (alternative to config_path)"
     )
@@ -164,9 +162,7 @@ class FileAnalysisRequest(BaseModel):
     """Request model for file or directory analysis."""
 
     target_path: str = Field(..., description="本地文件或目录路径")
-    config_path: Optional[str] = Field(
-        None, description="配置文件路径，默认使用pickle_analysis_config.json"
-    )
+    config_path: str = Field(..., description="配置文件路径")
     output_path: Optional[str] = Field(None, description="结果输出路径")
     options: Dict[str, Any] = Field(default_factory=dict, description="分析选项")
 
