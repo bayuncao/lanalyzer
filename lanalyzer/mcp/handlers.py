@@ -10,12 +10,10 @@ import logging
 import json
 import subprocess
 import time
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional
 
 from lanalyzer.analysis.tracker import EnhancedTaintTracker
 from lanalyzer.cli.config_utils import load_configuration, validate_configuration
-from lanalyzer.cli.file_utils import gather_target_files
-from lanalyzer.cli.analysis_utils import analyze_files_with_logging
 from lanalyzer.mcp.models import (
     AnalysisRequest,
     AnalysisResponse,
@@ -77,6 +75,20 @@ class LanalyzerMCPHandler:
             AnalysisResponse: The analysis response
         """
         try:
+            # 检查配置文件路径是否有效
+            if not request.config_path:
+                return AnalysisResponse(
+                    success=False,
+                    errors=["配置文件路径不能为空"],
+                )
+
+            # 检查配置文件是否存在
+            if not os.path.exists(request.config_path):
+                return AnalysisResponse(
+                    success=False,
+                    errors=[f"配置文件不存在: {request.config_path}"],
+                )
+
             # Create a temporary file for the code
             with tempfile.NamedTemporaryFile(
                 mode="w", suffix=".py", delete=False
@@ -86,18 +98,8 @@ class LanalyzerMCPHandler:
 
             try:
                 # Load configuration
-                config = None
-                if request.config_path:
-                    config = load_configuration(request.config_path, self.debug)
-                elif request.config:
-                    config = request.config
-                else:
-                    # Use default configuration
-                    default_config_path = os.path.join(
-                        os.path.dirname(__file__),
-                        "../../rules/pickle_analysis_config.json",
-                    )
-                    config = load_configuration(default_config_path, self.debug)
+                logger.debug(f"使用配置文件: {request.config_path}")
+                config = load_configuration(request.config_path, self.debug)
 
                 # Initialize tracker with config
                 tracker = EnhancedTaintTracker(config, debug=self.debug)
@@ -130,46 +132,135 @@ class LanalyzerMCPHandler:
             )
 
     async def handle_file_analysis_request(
-        self, file_path: str, config_path: Optional[str] = None
+        self, file_path: str, config_path: str
     ) -> AnalysisResponse:
         """
         Handle a request to analyze an existing file.
 
         Args:
             file_path: Path to the file to analyze
-            config_path: Optional path to the configuration file
+            config_path: Path to the configuration file (required)
 
         Returns:
             AnalysisResponse: The analysis response
         """
+        # 添加调试日志
+        logger.debug(
+            f"handle_file_analysis_request被调用: file_path={file_path}, config_path={config_path}"
+        )
+        logger.debug(f"config_path类型: {type(config_path)}")
+
         try:
-            # Load configuration
-            if config_path:
-                config = load_configuration(config_path, self.debug)
-            else:
-                # Use default configuration
-                default_config_path = os.path.join(
-                    os.path.dirname(__file__), "../../rules/pickle_analysis_config.json"
+            # 检查文件是否存在
+            if not os.path.exists(file_path):
+                return AnalysisResponse(
+                    success=False,
+                    errors=[f"文件不存在: {file_path}"],
                 )
-                config = load_configuration(default_config_path, self.debug)
 
-            # Initialize tracker with config
-            tracker = EnhancedTaintTracker(config, debug=self.debug)
+            # 检查配置文件是否存在
+            if not os.path.exists(config_path):
+                return AnalysisResponse(
+                    success=False,
+                    errors=[f"配置文件不存在: {config_path}"],
+                )
 
-            # Analyze the file
-            vulnerabilities = tracker.analyze_file(file_path)
+            # 生成输出文件路径
+            base_name = os.path.splitext(os.path.basename(file_path))[0]
+            output_path = f"./analysis_{base_name}_{int(time.time())}.json"
 
-            # Convert vulnerabilities to response format
-            vuln_info_list = self._convert_vulnerabilities(vulnerabilities, file_path)
+            # 生成临时日志文件路径
+            log_file = f"./log_{int(time.time())}.txt"
 
-            # Get analysis summary
-            summary = tracker.get_summary()
+            # 构建命令行
+            cmd = [
+                "lanalyzer",
+                "--target",
+                file_path,
+                "--config",
+                config_path,
+                "--pretty",
+                "--output",
+                output_path,
+                "--log-file",
+                log_file,
+                "--debug",
+            ]
 
-            return AnalysisResponse(
-                success=True,
-                vulnerabilities=vuln_info_list,
-                summary=summary,
+            if self.debug:
+                logger.debug(f"执行命令: {' '.join(cmd)}")
+
+            # 执行命令
+            process = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
             )
+            stdout, stderr = process.communicate()
+
+            if process.returncode != 0:
+                logger.error(f"分析失败，退出码: {process.returncode}")
+                logger.error(f"错误输出: {stderr}")
+                return AnalysisResponse(
+                    success=False,
+                    errors=[f"分析失败: {stderr}"],
+                )
+
+            # 读取分析结果
+            if os.path.exists(output_path):
+                try:
+                    with open(output_path, "r", encoding="utf-8") as f:
+                        vulnerabilities_json = json.load(f)
+
+                    # 将结果转换为VulnerabilityInfo对象
+                    vulnerabilities = []
+                    for vuln in vulnerabilities_json:
+                        try:
+                            file_path_in_result = vuln.get("file", file_path)
+
+                            source = vuln.get("source", {}) or {}
+                            sink = vuln.get("sink", {}) or {}
+                            rule = {"name": vuln.get("rule", "Unknown"), "id": None}
+
+                            vuln_info = VulnerabilityInfo(
+                                rule_name=rule["name"],
+                                rule_id=rule["id"],
+                                message=vuln.get("description", "潜在安全漏洞"),
+                                severity=vuln.get("severity", "HIGH"),
+                                source=source,
+                                sink=sink,
+                                file_path=file_path_in_result,
+                                line=sink.get("line", 0),
+                                call_chain=vuln.get("call_chain"),
+                                code_snippet=None,
+                            )
+                            vulnerabilities.append(vuln_info)
+                        except Exception as e:
+                            logger.exception(f"转换漏洞信息时出错: {e}")
+
+                    # 构建分析摘要
+                    summary = {
+                        "files_analyzed": 1,
+                        "vulnerabilities_count": len(vulnerabilities),
+                        "output_file": output_path,
+                        "command": " ".join(cmd),
+                    }
+
+                    return AnalysisResponse(
+                        success=True,
+                        vulnerabilities=vulnerabilities,
+                        summary=summary,
+                    )
+
+                except Exception as e:
+                    logger.exception(f"读取分析结果时出错: {e}")
+                    return AnalysisResponse(
+                        success=False,
+                        errors=[f"读取分析结果时出错: {str(e)}"],
+                    )
+            else:
+                return AnalysisResponse(
+                    success=False,
+                    errors=[f"分析完成但未找到输出文件: {output_path}"],
+                )
 
         except Exception as e:
             logger.exception(f"Error analyzing file {file_path}")
@@ -390,12 +481,19 @@ class LanalyzerMCPHandler:
                     errors=[f"目标路径不存在: {target_path}"],
                 )
 
-            # 确定配置文件路径
+            # 检查配置文件路径
             config_path = request.config_path
             if not config_path:
-                config_path = os.path.join(
-                    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-                    "rules/pickle_analysis_config.json",
+                return AnalysisResponse(
+                    success=False,
+                    errors=["配置文件路径不能为空"],
+                )
+
+            # 检查配置文件是否存在
+            if not os.path.exists(config_path):
+                return AnalysisResponse(
+                    success=False,
+                    errors=[f"配置文件不存在: {config_path}"],
                 )
 
             # 确定输出文件路径

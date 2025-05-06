@@ -44,6 +44,7 @@ mcp = [
     "fastapi>=0.103.0,<0.104.0",
     "uvicorn[standard]>=0.23.2,<0.24.0",
     "pydantic>=2.4.0,<3.0.0",
+    "fastmcp>=2.0.0",
 ]
 
 [dependency-groups]

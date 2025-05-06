@@ -1,0 +1,153 @@
+[Log] Started logging to file: ./log_1746533575.txt
+[Log] Time: 2025-05-06 20:12:55
+[Start] Lanalyzer enhanced mode starting
+[Args] Target: /Users/bayuncao/Code/github/mxcrafts/lanalyzer/examples/job.py
+[Args] Config: /Users/bayuncao/Code/github/mxcrafts/lanalyzer/rules/pickle_analysis_config.json
+[Args] Output: ./analysis_job_1746533575.json
+[Args] Debug Mode: True
+[Args] Log File: ./log_1746533575.txt
+Loaded configuration from /Users/bayuncao/Code/github/mxcrafts/lanalyzer/rules/pickle_analysis_config.json
+[File List] The following 1 files will be analyzed:
+  1. /Users/bayuncao/Code/github/mxcrafts/lanalyzer/examples/job.py
+
+[Analysis] Starting analysis of 1 files
+[Analysis] Start time: 2025-05-06 20:12:55
+[Config] Source types: ['UserInput', 'FileRead', 'NetworkInput', 'DatabaseRead', 'EnvironmentVariables', 'CommandLineArgs']
+[Config] Sink types: ['PickleDeserialization']
+[Config] Number of rules: 1
+[Config] Sink patterns: ['pickle.load', 'pickle.loads', 'cPickle.load', 'cPickle.loads', '_pickle.load', '_pickle.loads']
+[Config] Special focus on sinks in 'with open' context: ['pickle.load', 'pickle.loads', 'cPickle.load', 'cPickle.loads', '_pickle.load', '_pickle.loads']
+
+[1/1] ==================================================
+[1/1] Starting analysis of file: /Users/bayuncao/Code/github/mxcrafts/lanalyzer/examples/job.py
+[1/1] ==================================================
+[1/1] File size: 20314 bytes
+[1/1] File line count: 472
+[1/1] Starting AST analysis...
+
+🔍 Starting analysis of file: /Users/bayuncao/Code/github/mxcrafts/lanalyzer/examples/job.py
+Tracking method call on tainted variable: th.setDaemon at line 93
+Tracking method call on tainted variable: th.start at line 94
+Detected potential recv function: recv_multipart at line 104
+  Return value assigned to: _
+  Marked _ as tainted from source NetworkInput
+Detected potential recv function: recv at line 123
+Detected potential recv function: recv at line 124
+Tracking method call on tainted variable: ping_thread.setDaemon at line 134
+Tracking method call on tainted variable: ping_thread.start at line 135
+Tracking method call on tainted variable: worker_heartbeat_server_thread.setDaemon at line 144
+Tracking method call on tainted variable: worker_heartbeat_server_thread.start at line 145
+Tracking method call on tainted variable: worker_heartbeat_server_thread.get_address at line 148
+Tracked taint to method chain result: initialized_job
+Detected potential recv function: recv_multipart at line 154
+  Return value assigned to: message
+  Marked message as tainted from source NetworkInput
+Tracking method call on tainted variable: worker_heartbeat_server_thread.set_host_pid at line 165
+Detected potential recv function: recv_multipart at line 189
+  Return value assigned to: _
+  Marked _ as tainted from source NetworkInput
+Detected potential recv function: recv_multipart at line 198
+  Return value assigned to: message
+  Marked message as tainted from source NetworkInput
+Detected potential recv function: recv_multipart at line 211
+  Return value assigned to: _
+  Marked _ as tainted from source NetworkInput
+Tracking method call on tainted variable: memory_monitor_thread.setDaemon at line 226
+Tracking method call on tainted variable: memory_monitor_thread.start at line 227
+Detected potential recv function: recv_multipart at line 247
+  Return value assigned to: message
+  Marked message as tainted from source NetworkInput
+Detected potential recv function: recv_multipart at line 298
+  Return value assigned to: message
+  Marked message as tainted from source NetworkInput
+Detected potential recv function: recv_multipart at line 387
+  Return value assigned to: message
+  Marked message as tainted from source NetworkInput
+Tracking method call on tainted variable: parser.add_argument at line 464
+Tracking method call on tainted variable: parser.add_argument at line 465
+Tracking method call on tainted variable: parser.parse_args at line 470
+  Taint propagated to: args
+Found 2 potential sinks
+✓ Visitor has source_lines attribute with 471 lines of source code
+[DEBUG] Building call chain for sink 'PickleDeserialization' (line 250)
+[DEBUG] Found tainted variable message used in sink at line 250
+[DEBUG] Added source statement for var message at line 387
+[DEBUG] Found source using pattern 'recv' at line 247
+[DEBUG] Built call chain with 3 nodes
+[DEBUG] Sources in call chain: 1
+Auto-detected potential vulnerability: PickleDeserialization at line 250
+[DEBUG] Building call chain for sink 'PickleDeserialization' (line 309)
+[DEBUG] Found tainted variable message used in sink at line 309
+[DEBUG] Found tainted variable args used in sink at line 309
+[DEBUG] Added source statement for var message at line 387
+[DEBUG] Added source statement for var args at line 463
+[DEBUG] Found source using pattern 'recv' at line 298
+[DEBUG] Built call chain with 3 nodes
+[DEBUG] Sources in call chain: 1
+Auto-detected potential vulnerability: PickleDeserialization at line 309
+Enhanced analysis complete for /Users/bayuncao/Code/github/mxcrafts/lanalyzer/examples/job.py
+Found 2 vulnerabilities with enhanced tracking
+Tracked 0 variables with def-use chains
+Identified 0 complex data structures
+[1/1] Analysis complete, total time: 0.02 seconds
+[1/1] AST analysis time: 0.02 seconds
+[1/1] Number of vulnerabilities found: 2
+[1/1] Number of sources found: 57
+[1/1] Number of sinks found: 2
+[1/1] Vulnerability details:
+[1/1]   1. PotentialPickleDeserialization Vulnerability: [Auto-detected] PickleDeserialization(line 250), no specific source found
+[1/1]   2. PotentialPickleDeserialization Vulnerability: [Auto-detected] PickleDeserialization(line 309), no specific source found
+
+[Analysis] Analysis complete, total time: 0.02 seconds
+[Analysis] Average time per file: 0.02 seconds
+[Analysis] Total vulnerabilities found: 2
+[Analysis] Vulnerability type statistics:
+  - PotentialPickleDeserialization Vulnerability: 2
+[Analysis] Auto-detected potential vulnerabilities: 2
+[Analysis] End time: 2025-05-06 20:12:55
+Saved output to ./analysis_job_1746533575.json
+
+============================================================
+ENHANCED TAINT ANALYSIS RESULTS
+------------------------------------------------------------
+Files analyzed: 1
+Functions analyzed: 10
+Vulnerabilities found: 2
+------------------------------------------------------------
+VULNERABILITIES BY TYPE:
+  PotentialPickleDeserialization Vulnerability: 2
+
+TOP 5 AFFECTED FILES:
+  job.py: 2
+============================================================
+
+============================================================
+DETAILED ANALYSIS STATISTICS
+------------------------------------------------------------
+Files analyzed: 1
+Functions analyzed: 10
+Vulnerabilities found: 2
+
+PROPAGATION STATISTICS:
+Vulnerabilities with propagation chains: 0
+Average propagation steps: 0
+Max propagation steps: 0
+Min propagation steps: 0
+
+CALL CHAIN STATISTICS:
+Vulnerabilities with call chains: 2
+Average call chain length: 3.0
+Max call chain length: 3
+Min call chain length: 3
+
+SOURCE TYPE STATISTICS:
+  UnknownSource: 2
+
+SINK TYPE STATISTICS:
+  PickleDeserialization: 2
+
+TOP SOURCE-SINK PAIRS:
+  UnknownSource -> PickleDeserialization: 2
+============================================================
+[Log] End time: 2025-05-06 20:12:55
+[Log] Logging complete
