@@ -219,9 +219,7 @@ def enhanced_cli_main() -> int:
                     print("调试模式: 已启用")
 
                 server = create_mcp_server(debug=debug)
-                server.run(
-                    transport="http", host=host, port=port, enable_mcp_endpoint=True
-                )
+                server.run(transport="sse", host=host, port=port)
 
             return 0
         except ImportError as e:
