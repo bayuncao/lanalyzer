@@ -56,14 +56,12 @@ def create_mcp_server(debug: bool = False) -> FastMCP:
         logging.warning("无法确定FastMCP版本")
         fastmcp_version = "未知"
 
-    # 创建FastMCP实例
+    # 创建FastMCP实例 - 针对2.2.8版本兼容性移除部分参数
     mcp = FastMCP(
         "Lanalyzer",
         title="Lanalyzer - Python污点分析工具",
         description="Lanalyzer的MCP服务器，提供Python代码的污点分析功能，用于检测安全漏洞。",
         version=__version__,
-        # 注意：确保启用MCP端点，这是与MCP客户端兼容的关键
-        enable_mcp_endpoint=True,
         debug=debug,
     )
 
@@ -555,18 +553,17 @@ def run(debug, host, port):
     click.echo(f"服务器版本: {__version__}")
     click.echo(f"服务器地址: {host}:{port}")
 
-    # 使用FastMCP运行服务器
+    # 创建FastMCP服务器实例
     server = create_mcp_server(debug=debug)
 
-    # 使用HTTP传输并明确启用MCP端点
-    click.echo(f"传输方式: HTTP")
-    click.echo(f"MCP端点: 已启用 (.well-known/mcp/v1)")
+    # 使用兼容2.2.8版本的方式启动服务器
+    click.echo(f"使用SSE传输启动FastMCP服务器")
 
+    # 从帮助文档可以看出，FastMCP 2.2.8只支持'stdio'和'sse'两种传输方式
     server.run(
-        transport="http",  # 使用HTTP传输而不是SSE，确保与客户端兼容
+        transport="sse",  # 明确指定使用sse传输
         host=host,
         port=port,
-        enable_mcp_endpoint=True,  # 明确启用MCP端点
     )
 
 
@@ -589,6 +586,11 @@ def mcp(mcp_command, debug):
 
     # 添加模块路径
     cmd.append(script_path + ":mcp")
+
+    # 明确指定传输方式为sse，避免默认使用http
+    # 注意：FastMCP 2.2.8只支持stdio和sse传输
+    if mcp_command and mcp_command[0] in ["dev", "run"]:
+        cmd.append("--transport=sse")
 
     if debug:
         cmd.append("--with-debug")
