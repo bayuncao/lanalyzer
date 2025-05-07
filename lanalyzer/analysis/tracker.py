@@ -252,10 +252,8 @@ class EnhancedTaintTracker:
                 }
 
                 # Attempt to build a partial call chain based on sink location
-                partial_call_chain = (
-                    self.call_chain_builder.build_partial_call_chain_for_sink(
-                        visitor, serializable_sink
-                    )
+                partial_call_chain = self.call_chain_builder.build_enhanced_call_chain(
+                    visitor, serializable_sink
                 )
 
                 # Create vulnerability record
