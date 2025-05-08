@@ -48,6 +48,24 @@
         "message": "Potential unsafe pickle deserialization detected. Untrusted data from {source} is being deserialized with pickle.load, which could lead to remote code execution."
       }
     ],
+    "control_flow": {
+      "entry_points": [
+        {
+          "name": "main",
+          "patterns": ["main", "run", "__main__", "if __name__ == \"__main__\""]
+        },
+        {
+          "name": "app_entry",
+          "patterns": ["app.run", "application.run", "server.run"]
+        },
+        {
+          "name": "class_methods",
+          "patterns": ["JobQueueWorker.run", "Worker.run", "Server.start"]
+        }
+      ],
+      "max_call_depth": 15,
+      "follow_imports": true
+    },
     "taint_propagation": {
       "special_variables": {
         "object_tensor": {
