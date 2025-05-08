@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Type, TypeVar
 
 from lanalyzer.models import AnalysisResults, Vulnerability
 from lanalyzer.utils.fs_utils import get_python_files_in_directory
-from lanalyzer.logger import debug, info, warning, error, critical
+from lanalyzer.logger import debug, info
 
 # Type variable for better type hinting
 T = TypeVar("T", bound="BaseAnalyzer")

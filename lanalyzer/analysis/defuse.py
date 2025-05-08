@@ -3,7 +3,7 @@ Definition-use chain analysis for enhanced taint tracking.
 """
 
 import ast
-from typing import Any, List, Tuple
+from typing import Any
 
 
 class DefUseChain:

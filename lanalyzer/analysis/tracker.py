@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Tuple, Set
 
 from lanalyzer.analysis.ast_parser import ParentNodeVisitor
 from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
-from lanalyzer.analysis.call_chain import CallChainBuilder
+from lanalyzer.analysis.call_chain_builder import CallChainBuilder
 from lanalyzer.analysis.vulnerability_finder import VulnerabilityFinder
 from lanalyzer.analysis.utils import TaintAnalysisUtils
 from lanalyzer.logger import (
@@ -252,8 +252,10 @@ class EnhancedTaintTracker:
                 }
 
                 # Attempt to build a partial call chain based on sink location
-                partial_call_chain = self.call_chain_builder.build_enhanced_call_chain(
-                    visitor, serializable_sink
+                partial_call_chain = (
+                    self.call_chain_builder.build_partial_call_chain_for_sink(
+                        visitor, serializable_sink
+                    )
                 )
 
                 # Create vulnerability record
