@@ -7,7 +7,7 @@ import os
 from typing import Callable, Dict, Optional, Tuple
 
 from lanalyzer.analysis.ast_parser import TaintVisitor
-from lanalyzer.logger import debug, info, warning, error
+from lanalyzer.logger import debug, error
 
 from .pathsensitive import PathNode
 

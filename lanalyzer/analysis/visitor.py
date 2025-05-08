@@ -6,7 +6,7 @@ This is the main aggregation file that imports and combines all visitor componen
 from typing import Optional
 import os
 
-from lanalyzer.logger import debug, info, warning, error
+from lanalyzer.logger import debug, warning, error
 
 from .visitor_base import EnhancedTaintVisitor
 from .visitor_function import FunctionVisitorMixin
@@ -56,14 +56,18 @@ class EnhancedTaintAnalysisVisitor(
                         self.source_lines = f.readlines()
                     if self.debug:
                         debug(
-                            f"从 {file_path} 加载了 {len(self.source_lines)} 行源代码到 EnhancedTaintAnalysisVisitor"
+                            f"Loaded {len(self.source_lines)} lines of source code from {file_path} into EnhancedTaintAnalysisVisitor"
                         )
                 except Exception as e:
                     if self.debug:
-                        error(f"在 EnhancedTaintAnalysisVisitor 中加载源代码失败: {str(e)}")
+                        error(
+                            f"Failed to load source code in EnhancedTaintAnalysisVisitor: {str(e)}"
+                        )
         if self.debug:
-            debug(f"正在初始化完整污点分析访问器，文件: {file_path}")
+            debug(f"Initializing complete taint analysis visitor, file: {file_path}")
             if hasattr(self, "source_lines") and self.source_lines:
-                debug(f"成功加载源代码行: {len(self.source_lines)} 行")
+                debug(
+                    f"Successfully loaded source code lines: {len(self.source_lines)} lines"
+                )
             else:
-                warning("警告: 加载源代码行失败")
+                warning("Warning: Failed to load source code lines")

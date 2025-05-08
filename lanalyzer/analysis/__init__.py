@@ -44,6 +44,19 @@ from lanalyzer.utils.ast_utils import (
 from lanalyzer.utils.ast_utils import parse_file as parse_ast
 from lanalyzer.utils.fs_utils import get_python_files_in_directory as get_python_files
 
+from lanalyzer.analysis.call_chain_builder import CallChainBuilder
+from lanalyzer.analysis.chain_utils import ChainUtils
+from lanalyzer.analysis.control_flow_analyzer import ControlFlowAnalyzer
+from lanalyzer.analysis.data_flow_analyzer import DataFlowAnalyzer
+
+# 为兼容性保留旧的导入
+# 从旧的call_chain.py导入CallChainBuilder类保持向后兼容
+try:
+    from lanalyzer.analysis.call_chain import CallChainBuilder as LegacyCallChainBuilder
+except ImportError:
+    # 如果旧文件已删除，则使用新的实现
+    LegacyCallChainBuilder = CallChainBuilder
+
 
 def analyze_file(
     target_path: str,
@@ -164,4 +177,9 @@ __all__ = [
     "extract_call_targets",
     "extract_function_calls",
     "contains_sink_patterns",
+    "CallChainBuilder",
+    "ChainUtils",
+    "ControlFlowAnalyzer",
+    "DataFlowAnalyzer",
+    "LegacyCallChainBuilder",
 ]
