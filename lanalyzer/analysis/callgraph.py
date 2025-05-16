@@ -31,6 +31,12 @@ class CallGraphNode:
         self.return_tainted = False  # Whether this function returns tainted data
         self.return_taint_sources = []  # Sources of taint for return values
 
+        # 增加调用点信息
+        self.call_line = 0  # 被调用的行号
+        self.call_points = []  # 所有调用点的详细信息
+        self.is_self_method_call = False  # 是否是self.method()调用
+        self.self_method_name = None  # 如果是self方法调用，记录方法名
+
     def add_caller(self, caller: "CallGraphNode") -> None:
         if caller not in self.callers:
             self.callers.append(caller)
@@ -38,6 +44,12 @@ class CallGraphNode:
     def add_callee(self, callee: "CallGraphNode") -> None:
         if callee not in self.callees:
             self.callees.append(callee)
+
+    def add_call_point(self, line_no: int, statement: str, caller_name: str) -> None:
+        """添加详细的调用点信息"""
+        call_point = {"line": line_no, "statement": statement, "caller": caller_name}
+        self.call_points.append(call_point)
+        self.call_line = line_no  # 更新最近的调用行号
 
     def __repr__(self) -> str:
         return f"CallGraphNode(name='{self.name}', file='{self.file_path}', line={self.line_no}, end_line={self.end_line_no})"

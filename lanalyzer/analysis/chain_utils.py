@@ -36,6 +36,7 @@ class ChainUtils:
         # 按类型分类节点
         sources = []
         data_flows = []
+        function_calls = []
         sink_containers = []
         sinks = []
         others = []
@@ -46,6 +47,8 @@ class ChainUtils:
                 sources.append(node)
             elif node_type == "data_flow":
                 data_flows.append(node)
+            elif node_type == "function_call":
+                function_calls.append(node)
             elif node_type == "sink_container":
                 sink_containers.append(node)
             elif node_type == "sink":
@@ -56,6 +59,7 @@ class ChainUtils:
         # 按行号排序源节点和流节点
         sources.sort(key=lambda x: x.get("line", 0))
         data_flows.sort(key=lambda x: x.get("line", 0))
+        function_calls.sort(key=lambda x: x.get("line", 0))
 
         # 构造新的调用链
         reordered_chain = []
@@ -68,15 +72,19 @@ class ChainUtils:
         for node in data_flows:
             reordered_chain.append(node)
 
-        # 3. 如果有其他节点，保持它们的相对顺序
+        # 3. 添加函数调用点节点 - 按调用顺序排列
+        for node in function_calls:
+            reordered_chain.append(node)
+
+        # 4. 如果有其他节点，保持它们的相对顺序
         for node in others:
             reordered_chain.append(node)
 
-        # 4. 添加包含sink的容器节点
+        # 5. 添加包含sink的容器节点
         for node in sink_containers:
             reordered_chain.append(node)
 
-        # 5. 最后添加sink节点
+        # 6. 最后添加sink节点
         for node in sinks:
             reordered_chain.append(node)
 
