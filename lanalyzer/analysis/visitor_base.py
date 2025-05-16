@@ -212,7 +212,7 @@ class EnhancedTaintVisitor(TaintVisitor):
         line_no = getattr(node, "lineno", 0)
         if func_name == "recv" or "recv" in func_name:
             if self.debug:
-                print(
+                debug(
                     f"Detected potential recv function: {func_name} at line {line_no}"
                 )
             parent = self.parent_map.get(node)
@@ -221,7 +221,7 @@ class EnhancedTaintVisitor(TaintVisitor):
                     if isinstance(target, ast.Name):
                         var_name = target.id
                         if self.debug:
-                            print(f"  Return value assigned to: {var_name}")
+                            debug(f"  Return value assigned to: {var_name}")
                         if self._is_source(func_name, full_name):
                             source_type = self._get_source_type(func_name, full_name)
                             source_info = {
@@ -235,7 +235,7 @@ class EnhancedTaintVisitor(TaintVisitor):
                             self.source_statements[var_name] = source_info
                             self.found_sources.append(source_info)
                             if self.debug:
-                                print(
+                                debug(
                                     f"  Marked {var_name} as tainted from source {source_type}"
                                 )
         if isinstance(node.func, ast.Attribute) and isinstance(
@@ -246,7 +246,7 @@ class EnhancedTaintVisitor(TaintVisitor):
             if var_name in self.tainted:
                 operation = f"{var_name}.{method_name}"
                 if self.debug:
-                    print(
+                    debug(
                         f"Tracking method call on tainted variable: {operation} at line {line_no}"
                     )
                 parent = self.parent_map.get(node)
@@ -256,7 +256,7 @@ class EnhancedTaintVisitor(TaintVisitor):
                             new_var = target.id
                             self.tainted[new_var] = self.tainted[var_name]
                             if self.debug:
-                                print(f"  Taint propagated to: {new_var}")
+                                debug(f"  Taint propagated to: {new_var}")
         super().visit_Call(node)
 
     def _track_assignment_taint(self, node: ast.Call, source_info: Dict) -> None:
@@ -275,7 +275,7 @@ class EnhancedTaintVisitor(TaintVisitor):
                             var_name = target.id
                             self.tainted[var_name] = source_info
                             if self.debug:
-                                print(
+                                debug(
                                     f"Tracked taint to method chain result: {var_name}"
                                 )
                     break
@@ -291,7 +291,7 @@ class EnhancedTaintVisitor(TaintVisitor):
                                 source_info
                             )
                             if self.debug:
-                                print(
+                                debug(
                                     f"Function {self.current_function.name} returns tainted value"
                                 )
 

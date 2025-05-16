@@ -3,7 +3,7 @@ Data flow analysis for taint analysis call chains.
 """
 
 import re
-from typing import Any, Dict, List, Set, Optional
+from typing import Any, Dict, List, Set
 
 from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
 

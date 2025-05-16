@@ -36,6 +36,10 @@ class EnhancedTaintAnalysisVisitor(
     - ControlFlowVisitorMixin: Control flow analysis
     """
 
+    visit_FunctionDef = FunctionVisitorMixin.visit_FunctionDef
+    visit_ClassDef = FunctionVisitorMixin.visit_ClassDef
+    visit_Module = FunctionVisitorMixin.visit_Module
+
     def __init__(
         self,
         parent_map=None,
@@ -64,10 +68,21 @@ class EnhancedTaintAnalysisVisitor(
                             f"Failed to load source code in EnhancedTaintAnalysisVisitor: {str(e)}"
                         )
         if self.debug:
-            debug(f"Initializing complete taint analysis visitor, file: {file_path}")
+            debug(
+                f"[FORCE] EnhancedTaintAnalysisVisitor initialized for file: {file_path}"
+            )
             if hasattr(self, "source_lines") and self.source_lines:
                 debug(
                     f"Successfully loaded source code lines: {len(self.source_lines)} lines"
                 )
             else:
                 warning("Warning: Failed to load source code lines")
+
+    def visit(self, node):
+        if self.debug:
+            node_type = type(node).__name__
+            node_name = getattr(node, "name", None)
+            debug(
+                f"[FORCE] EnhancedTaintAnalysisVisitor visiting node: {node_type}, name={node_name}"
+            )
+        return super().visit(node)

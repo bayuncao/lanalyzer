@@ -11,7 +11,7 @@ import argparse
 from typing import List, Optional
 
 from lanalyzer.analysis.tracker import EnhancedTaintTracker
-from lanalyzer.logger import LogTee, get_timestamp
+from lanalyzer.logger import LogTee, get_timestamp, setup_application_logging
 from lanalyzer.cli.file_utils import list_target_files, gather_target_files
 from lanalyzer.cli.config_utils import load_configuration, save_output
 from lanalyzer.cli.analysis_utils import (
@@ -259,6 +259,9 @@ def run_analysis(args) -> int:
     Returns:
         Exit code
     """
+    setup_application_logging(
+        debug=getattr(args, "debug", False), log_file=getattr(args, "log_file", None)
+    )
     log_file = None
     original_stdout = sys.stdout
     original_stderr = sys.stderr

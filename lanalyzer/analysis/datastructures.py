@@ -2,7 +2,7 @@
 Complex data structure analysis for enhanced taint tracking.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 
 class DataStructureNode:

@@ -6,6 +6,7 @@ import re
 from typing import Any, Dict, List, Set, Optional
 
 from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
+from lanalyzer.logger import debug
 
 
 class ChainUtils:
@@ -147,14 +148,14 @@ class ChainUtils:
         patterns = []
         if not hasattr(self.tracker, "config"):
             if self.debug:
-                print(f"[DEBUG] No configuration found in tracker")
+                debug(f"[DEBUG] No configuration found in tracker")
             return patterns
 
         config = self.tracker.config
 
         if not isinstance(config, dict):
             if self.debug:
-                print(f"[DEBUG] Configuration is not a dictionary")
+                debug(f"[DEBUG] Configuration is not a dictionary")
             return patterns
 
         if pattern_type in config and isinstance(config[pattern_type], list):
@@ -167,7 +168,7 @@ class ChainUtils:
                     patterns.extend(item["patterns"])
 
         if self.debug:
-            print(f"[DEBUG] Extracted {len(patterns)} patterns for {pattern_type}")
+            debug(f"[DEBUG] Extracted {len(patterns)} patterns for {pattern_type}")
 
         return patterns
 
@@ -318,7 +319,7 @@ class ChainUtils:
         merged_chain.sort(key=lambda x: x.get("line", 0))
 
         if self.debug:
-            print(
+            debug(
                 f"[DEBUG] Merged control flow ({len(control_flow_chain)} nodes) and data flow ({len(data_flow_chain)} nodes) into {len(merged_chain)} nodes"
             )
 

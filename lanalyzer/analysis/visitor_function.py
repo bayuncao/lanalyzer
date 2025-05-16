@@ -7,6 +7,7 @@ import copy
 
 from .visitor_base import EnhancedTaintVisitor
 from .defuse import DefUseChain
+from lanalyzer.logger import debug
 
 
 class FunctionVisitorMixin:
@@ -14,6 +15,9 @@ class FunctionVisitorMixin:
 
     def visit_FunctionDef(self: "EnhancedTaintVisitor", node: ast.FunctionDef) -> None:
         """Visit a function definition node to build call graph."""
+        debug(
+            f"[FORCE] Enter visit_FunctionDef: {getattr(node, 'name', None)}, self.debug={getattr(self, 'debug', None)}"
+        )
         func_name = node.name
         start_line = getattr(node, "lineno", 0)
         end_line = getattr(node, "end_lineno", start_line)
@@ -31,11 +35,14 @@ class FunctionVisitorMixin:
             self.functions[func_name].parameters.append(arg.arg)
         previous_function = self.current_function
         self.current_function = self.functions[func_name]
+        if self.current_path is None:
+            self.current_path = self.pathsensitive.PathNode(node, None)
         function_path = self.pathsensitive.PathNode(node, self.current_path)
         self.current_path.add_child(function_path)
         old_path = self.current_path
         self.current_path = function_path
         old_variable_taint = copy.deepcopy(self.variable_taint)
+        self.current_function.self_method_calls = []
         for i, param in enumerate(self.current_function.parameters):
             if i in self.current_function.tainted_parameters:
                 param_source_info = {
@@ -53,6 +60,27 @@ class FunctionVisitorMixin:
                 )
         self.generic_visit(node)
         self._check_function_return_taint(node)
+        if (
+            hasattr(self.current_function, "self_method_calls")
+            and self.current_function.self_method_calls
+        ):
+            if self.debug:
+                debug(
+                    f"[DEBUG] Function '{self.current_function.name}' 内 self.method() 调用统计："
+                )
+                for call in self.current_function.self_method_calls:
+                    debug(
+                        f"  - self.{call['method']}() at line {call['line']} (调用点: {call['call_statement']})"
+                    )
+            # 新增：输出当前函数的 callees 方法名
+            if self.debug:
+                callee_names = [
+                    callee.name
+                    for callee in getattr(self.current_function, "callees", [])
+                ]
+                debug(
+                    f"[DEBUG] Function '{self.current_function.name}' 的 callees: {callee_names}"
+                )
         self.current_function = previous_function
         self.current_path = old_path
         self.variable_taint = old_variable_taint
@@ -88,16 +116,19 @@ class FunctionVisitorMixin:
         self.current_function.return_taint_sources = taint_sources
         self.function_returns_tainted[self.current_function.name] = returns_tainted
         if returns_tainted and self.debug:
-            print(
+            debug(
                 f"Function {self.current_function.name} returns tainted data from sources: {taint_sources}"
             )
 
     def visit_Call(self: "EnhancedTaintVisitor", node: ast.Call) -> None:
         """Visit a call node with enhanced tracking."""
+        debug(
+            f"[FORCE] Enter visit_Call: in function {getattr(self, 'current_function', None) and self.current_function.name}, call at line {getattr(node, 'lineno', None)}"
+        )
         super().visit_Call(node)
         func_name, full_name = self._get_func_name_with_module(node.func)
         if self.debug:
-            print(
+            debug(
                 f"Enhanced visit_Call: {func_name} (full: {full_name}) at line {getattr(node, 'lineno', 0)}"
             )
         if self.current_function and func_name:
@@ -128,15 +159,30 @@ class FunctionVisitorMixin:
                         # 记录这是一个self方法调用
                         callee_node.is_self_method_call = True
                         callee_node.self_method_name = node.func.attr
+                        if not hasattr(self, "self_method_call_map"):
+                            self.self_method_call_map = {}
+                        key = f"{self.current_function.name} -> self.{node.func.attr}"
+                        self.self_method_call_map.setdefault(key, []).append(call_line)
+                        if hasattr(self.current_function, "self_method_calls"):
+                            self.current_function.self_method_calls.append(
+                                {
+                                    "method": node.func.attr,
+                                    "line": call_line,
+                                    "call_statement": call_statement,
+                                }
+                            )
                         if self.debug:
-                            print(
+                            debug(
                                 f"  -> Recorded self.{node.func.attr}() call at line {call_line} in {self.current_function.name}"
                             )
-
+                        if hasattr(self.callgraph, "add_self_method_call"):
+                            self.callgraph.add_self_method_call(
+                                self.current_function.name, node.func.attr, call_line
+                            )
                 self._track_parameter_taint_propagation(node, func_name)
             else:
                 if self.debug:
-                    print(
+                    debug(
                         f"  -> Call to external/undefined function '{func_name}' ignored for self.functions population."
                     )
         self._track_return_taint_propagation(node, func_name)
@@ -176,7 +222,7 @@ class FunctionVisitorMixin:
                     if callee.ast_node and i < len(callee.parameters):
                         param_taint_info = copy.deepcopy(source_info)
                         if self.debug:
-                            print(
+                            debug(
                                 f"Propagated taint to parameter {param_name} in function {func_name}"
                             )
 
@@ -209,7 +255,7 @@ class FunctionVisitorMixin:
                                 parent, getattr(parent, "lineno", 0)
                             )
                             if self.debug:
-                                print(
+                                debug(
                                     f"Propagated taint from {func_name} return to {target.id}"
                                 )
 
@@ -254,7 +300,7 @@ class FunctionVisitorMixin:
                         }
                         self.variable_taint[file_var] = source_info
                         if self.debug:
-                            print(
+                            debug(
                                 f"Marked file handle '{file_var}' as tainted (from with statement)"
                             )
         self.generic_visit(node)
@@ -269,3 +315,16 @@ class FunctionVisitorMixin:
         ):
             return self.source_lines[line_no - 1].strip()
         return ""
+
+    def visit_Module(self: "EnhancedTaintVisitor", node: ast.Module) -> None:
+        debug(f"[FORCE] Enter visit_Module: {getattr(self, 'file_path', None)}")
+        self.generic_visit(node)
+
+    def visit_ClassDef(self: "EnhancedTaintVisitor", node: ast.ClassDef) -> None:
+        debug(f"[FORCE] Enter visit_ClassDef: {getattr(node, 'name', None)}")
+        # 输出类下所有成员的类型和名称
+        for item in node.body:
+            item_type = type(item).__name__
+            item_name = getattr(item, "name", None)
+            debug(f"[FORCE] Class member: type={item_type}, name={item_name}")
+        self.generic_visit(node)
