@@ -3,6 +3,7 @@ Enhanced taint tracker implementation.
 """
 
 import ast
+import json
 import os
 import traceback
 from typing import Any, Dict, List, Tuple, Set
@@ -38,7 +39,25 @@ class EnhancedTaintTracker:
             config: Configuration dictionary
             debug: Whether to enable debug output
         """
-        self.config = config
+        # Load additional taint rules configuration if available
+        taint_rules_config = {}
+        taint_rules_path = os.path.join(
+            os.path.dirname(__file__), "../../rules/taint_rules_config.json"
+        )
+        if os.path.exists(taint_rules_path):
+            try:
+                with open(taint_rules_path, "r") as f:
+                    taint_rules_config = json.load(f)
+                if debug:
+                    print(f"Loaded taint rules configuration from {taint_rules_path}")
+            except Exception as e:
+                if debug:
+                    print(f"Error loading taint rules configuration: {e}")
+
+        # Merge configurations
+        self.config = config.copy()
+        self.config.update(taint_rules_config)
+
         self.sources = config["sources"]
         self.sinks = config["sinks"]
         self.debug = debug
@@ -111,6 +130,8 @@ class EnhancedTaintTracker:
             # Set sources and sinks from the tracker
             visitor.sources = self.sources
             visitor.sinks = self.sinks
+            # Pass the config to the visitor
+            visitor.config = self.config
             visitor.visit(tree)
 
             # Update global call graph
