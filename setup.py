@@ -8,21 +8,51 @@ from setuptools import setup, find_packages
 setup(
     name="lanalyzer",
     version="0.1.0",
-    description="Python taint analysis tool",
-    author="MXCrafts",
+    description="Python Taint Analysis Tool for finding security vulnerabilities",
+    author="LanaLyzer Team",
+    author_email="lanalyzer@example.com",
     packages=find_packages(),
     install_requires=[
-        # Add dependencies here
+        "requests>=2.32.3,<3",
+        "colorama>=0.4.6,<0.5",
+        "rich>=13.7.0,<14",
+        "jinja2>=3.1.3,<4",
+        "pyyaml>=6.0.1,<7",
+        "astroid>=3.0.2,<4",
+        "click>=8.1.7,<9",
     ],
+    extras_require={
+        "mcp": [
+            "fastapi>=0.103.0,<0.104.0",
+            "uvicorn[standard]>=0.23.2,<0.24.0",
+            "pydantic>=2.4.0,<3.0.0",
+            "fastmcp>=2.0.0",
+        ],
+    },
     entry_points={
         "console_scripts": [
-            "lanalyzer=lanalyzer.cli.enhanced:main",
+            "lanalyzer=lanalyzer.main:run_lanalyzer",
         ],
     },
     classifiers=[
-        "Programming Language :: Python :: 3",
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.10",
+        "Topic :: Security",
+        "Topic :: Software Development :: Quality Assurance",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.10",
+    keywords=[
+        "security",
+        "static-analysis",
+        "taint-analysis",
+        "vulnerability-detection",
+        "mcp",
+        "model-context-protocol",
+    ],
+    url="https://github.com/yourusername/lanalyzer",
+    long_description_content_type="text/markdown",
+    include_package_data=True,
 )
