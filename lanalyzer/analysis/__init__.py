@@ -21,14 +21,6 @@ from lanalyzer.analysis.pathsensitive import PathNode
 from lanalyzer.analysis.tracker import EnhancedTaintTracker
 from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
 
-# 导入日志装饰器从新的logger模块
-from lanalyzer.logger import (
-    log_function,
-    log_analysis_file,
-    log_result,
-    conditional_log,
-    log_vulnerabilities,
-)
 
 # For backward compatibility
 from lanalyzer.analysis.visitor import (
@@ -48,14 +40,6 @@ from lanalyzer.analysis.call_chain_builder import CallChainBuilder
 from lanalyzer.analysis.chain_utils import ChainUtils
 from lanalyzer.analysis.control_flow_analyzer import ControlFlowAnalyzer
 from lanalyzer.analysis.data_flow_analyzer import DataFlowAnalyzer
-
-# 为兼容性保留旧的导入
-# 从旧的call_chain.py导入CallChainBuilder类保持向后兼容
-try:
-    from lanalyzer.analysis.call_chain import CallChainBuilder as LegacyCallChainBuilder
-except ImportError:
-    # 如果旧文件已删除，则使用新的实现
-    LegacyCallChainBuilder = CallChainBuilder
 
 
 def analyze_file(

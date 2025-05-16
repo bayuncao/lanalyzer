@@ -5,7 +5,7 @@ This is the main aggregation file that imports and combines all visitor componen
 
 from typing import Optional
 import os
-import ast  # 添加ast模块导入
+import ast
 
 from lanalyzer.logger import debug, warning, error
 
@@ -16,6 +16,7 @@ from .visitor_control import ControlFlowVisitorMixin
 
 import importlib
 
+# Dynamically import analysis submodules
 for module_name in ["callgraph", "datastructures", "defuse", "pathsensitive"]:
     globals()[module_name] = importlib.import_module(
         f".{module_name}", package="lanalyzer.analysis"
@@ -37,169 +38,149 @@ class EnhancedTaintAnalysisVisitor(
     - ControlFlowVisitorMixin: Control flow analysis
     """
 
-    def visit_ClassDef(self, node):
+    def visit_ClassDef(self, node: ast.ClassDef):
         """
-        直接实现visit_ClassDef方法，确保类内方法调用被正确识别和处理
+        Directly implement the visit_ClassDef method to ensure that intra-class method calls are correctly identified and processed.
         """
-        debug(f"[FORCE] 访问类定义: {node.name}")
+        debug(f"[FORCE] Visiting class definition: {node.name}")
 
-        # 保存上一个类上下文
+        # Save the previous class context
         previous_class = getattr(self, "current_class", None)
         self.current_class = node.name
 
-        # 初始化类方法映射
+        # Initialize class method mapping
         if not hasattr(self, "class_methods"):
             self.class_methods = {}
 
-        # 创建当前类的方法映射
+        # Create method mapping for the current class
         if self.current_class not in self.class_methods:
             self.class_methods[self.current_class] = {
-                "methods": set(),  # 类中所有方法名
-                "calls": {},  # 方法间调用关系
+                "methods": set(),  # All method names in the class
+                "calls": {},  # Inter-method call relationships
             }
 
-        # 处理类成员
+        # Process class members
         for item in node.body:
             item_type = type(item).__name__
             item_name = getattr(item, "name", None)
             debug(
-                f"[FORCE] 类 {self.current_class} 成员: type={item_type}, name={item_name}"
+                f"[FORCE] Class {self.current_class} member: type={item_type}, name={item_name}"
             )
 
-            # 设置父节点引用
+            # Set parent node reference
             if not hasattr(item, "parent"):
-                item.parent = node
+                item.parent = node  # type: ignore
 
-            # 标记类方法
+            # Mark class method
             if isinstance(item, ast.FunctionDef):
-                debug(f"[FORCE] 找到类方法: {self.current_class}.{item.name}")
+                debug(f"[FORCE] Found class method: {self.current_class}.{item.name}")
                 self.class_methods[self.current_class]["methods"].add(item.name)
 
-                # 重要：设置方法所属类信息
+                # Important: Set the class information to which the method belongs
                 if not hasattr(item, "class_name"):
-                    item.class_name = self.current_class
+                    item.class_name = self.current_class  # type: ignore
 
-                # 新增：检查方法体中对其他类方法的调用
+                # New: Check for calls to other class methods within the method body
                 for stmt in item.body:
+                    # Handle direct calls like self.method()
                     if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
-                        call = stmt.value
-                        if isinstance(call.func, ast.Attribute) and isinstance(
-                            call.func.value, ast.Name
+                        call_node = stmt.value
+                        if (
+                            isinstance(call_node.func, ast.Attribute)
+                            and isinstance(call_node.func.value, ast.Name)
+                            and call_node.func.value.id == "self"
                         ):
-                            if call.func.value.id == "self":
-                                called_method = call.func.attr
-                                if (
-                                    called_method
-                                    in self.class_methods[self.current_class]["methods"]
-                                ):
-                                    # 记录方法调用关系
-                                    if (
-                                        item.name
-                                        not in self.class_methods[self.current_class][
-                                            "calls"
-                                        ]
-                                    ):
-                                        self.class_methods[self.current_class]["calls"][
-                                            item.name
-                                        ] = {}
+                            called_method_name = call_node.func.attr
+                            if (
+                                called_method_name
+                                in self.class_methods[self.current_class]["methods"]
+                            ):
+                                # Record method call relationship
+                                self.class_methods[self.current_class][
+                                    "calls"
+                                ].setdefault(item.name, {}).setdefault(
+                                    called_method_name, []
+                                ).append(
+                                    getattr(stmt, "lineno", 0)
+                                )
+                                debug(
+                                    f"[FORCE] Recording intra-class method call: {self.current_class}.{item.name} calls {self.current_class}.{called_method_name} at line {getattr(stmt, 'lineno', 0)}"
+                                )
 
-                                    if (
-                                        called_method
-                                        not in self.class_methods[self.current_class][
-                                            "calls"
-                                        ][item.name]
-                                    ):
-                                        self.class_methods[self.current_class]["calls"][
-                                            item.name
-                                        ][called_method] = []
-
-                                    line_no = getattr(stmt, "lineno", 0)
-                                    self.class_methods[self.current_class]["calls"][
-                                        item.name
-                                    ][called_method].append(line_no)
-                                    debug(
-                                        f"[FORCE] 记录类内方法调用: {self.current_class}.{item.name} 调用 {self.current_class}.{called_method} 在第 {line_no} 行"
-                                    )
-
-                    # 递归检查更复杂的结构（如If语句内的调用）
+                    # Recursively check more complex structures (e.g., calls within If statements)
                     for subnode in ast.walk(stmt):
                         if (
                             isinstance(subnode, ast.Call)
                             and isinstance(subnode.func, ast.Attribute)
                             and isinstance(subnode.func.value, ast.Name)
+                            and subnode.func.value.id == "self"
                         ):
-                            if subnode.func.value.id == "self":
-                                called_method = subnode.func.attr
-                                if (
-                                    called_method
-                                    in self.class_methods[self.current_class]["methods"]
-                                ):
-                                    # 记录方法调用关系
-                                    if (
-                                        item.name
-                                        not in self.class_methods[self.current_class][
-                                            "calls"
-                                        ]
-                                    ):
-                                        self.class_methods[self.current_class]["calls"][
-                                            item.name
-                                        ] = {}
+                            called_method_name = subnode.func.attr
+                            # Ensure it's a call to a known method of the current class
+                            if (
+                                called_method_name
+                                in self.class_methods[self.current_class]["methods"]
+                            ):
+                                # Record method call relationship
+                                self.class_methods[self.current_class][
+                                    "calls"
+                                ].setdefault(item.name, {}).setdefault(
+                                    called_method_name, []
+                                ).append(
+                                    getattr(subnode, "lineno", 0)
+                                )
+                                debug(
+                                    f"[FORCE] Recording intra-class method call (in walk): {self.current_class}.{item.name} calls {self.current_class}.{called_method_name} at line {getattr(subnode, 'lineno', 0)}"
+                                )
 
-                                    if (
-                                        called_method
-                                        not in self.class_methods[self.current_class][
-                                            "calls"
-                                        ][item.name]
-                                    ):
-                                        self.class_methods[self.current_class]["calls"][
-                                            item.name
-                                        ][called_method] = []
+        # Visit class members
+        super().generic_visit(node)  # Use super() for MRO consistency
 
-                                    line_no = getattr(subnode, "lineno", 0)
-                                    self.class_methods[self.current_class]["calls"][
-                                        item.name
-                                    ][called_method].append(line_no)
-                                    debug(
-                                        f"[FORCE] 记录类内方法调用: {self.current_class}.{item.name} 调用 {self.current_class}.{called_method} 在第 {line_no} 行"
-                                    )
-
-        # 访问类成员
-        self.generic_visit(node)
-
-        # 输出类方法调用关系用于调试
+        # Output class method call relationships for debugging
         if self.debug and self.current_class in self.class_methods:
             methods = self.class_methods[self.current_class]["methods"]
             calls = self.class_methods[self.current_class]["calls"]
-            debug(f"[FORCE] 类 {self.current_class} 的方法: {methods}")
-            debug(f"[FORCE] 类 {self.current_class} 的方法调用关系: {calls}")
+            debug(f"[FORCE] Methods of class {self.current_class}: {methods}")
+            debug(
+                f"[FORCE] Method call relationships of class {self.current_class}: {calls}"
+            )
 
-        # 恢复上一个类上下文
+        # Restore the previous class context
         self.current_class = previous_class
 
-    def visit_Module(self, node):
-        """直接实现visit_Module方法，确保所有顶级定义被正确处理"""
-        debug(f"[FORCE] 开始分析模块: {getattr(self, 'file_path', None)}")
+    def visit_Module(self, node: ast.Module):
+        """
+        Directly implement the visit_Module method to ensure all top-level definitions are correctly processed.
+        """
+        debug(
+            f"[FORCE] Starting module analysis: {getattr(self, 'file_path', 'Unknown File')}"
+        )
 
-        # 初始化路径分析
+        # Initialize path analysis
         self.path_root = self.pathsensitive.PathNode(node)
         self.current_path = self.path_root
 
-        # 为模块中的每个顶级定义设置父节点参考
+        # Set parent node reference for each top-level definition in the module
         for child in node.body:
             if not hasattr(child, "parent"):
-                child.parent = node
+                child.parent = node  # type: ignore
 
-        # 继续处理模块内容
-        self.generic_visit(node)
+        # Continue processing module content
+        super().generic_visit(node)  # Use super() for MRO consistency
 
-        # 输出分析结果统计
+        # Output analysis result statistics
         if self.debug:
-            debug(f"[FORCE] 模块分析完成，找到 {len(getattr(self, 'functions', {}))} 个函数")
-            debug(f"[FORCE] 类方法关系: {getattr(self, 'class_methods', {})}")
+            function_count = len(getattr(self, "functions", {}))
+            debug(
+                f"[FORCE] Module analysis complete, found {function_count} functions."
+            )
+            debug(
+                f"[FORCE] Class method relationships: {getattr(self, 'class_methods', {})}"
+            )
 
     def __init__(
         self,
-        parent_map=None,
+        parent_map=None,  # Consider type hinting for parent_map
         debug_mode: bool = False,
         verbose: bool = False,
         file_path: Optional[str] = None,
@@ -223,24 +204,42 @@ class EnhancedTaintAnalysisVisitor(
                 except Exception as e:
                     if self.debug:
                         error(
-                            f"Failed to load source code in EnhancedTaintAnalysisVisitor: {str(e)}"
+                            f"Failed to load source code in EnhancedTaintAnalysisVisitor for {file_path}: {str(e)}"
                         )
+            elif file_path:
+                if self.debug:
+                    warning(
+                        f"Source file not found for EnhancedTaintAnalysisVisitor: {file_path}"
+                    )
+            # else:
+            #    if self.debug:
+            #        warning("No file_path provided to EnhancedTaintAnalysisVisitor, source lines not loaded.")
+
         if self.debug:
             debug(
-                f"[FORCE] EnhancedTaintAnalysisVisitor initialized for file: {file_path}"
+                f"[FORCE] EnhancedTaintAnalysisVisitor initialized for file: {file_path if file_path else 'No file specified'}"
             )
             if hasattr(self, "source_lines") and self.source_lines:
                 debug(
                     f"Successfully loaded source code lines: {len(self.source_lines)} lines"
                 )
-            else:
-                warning("Warning: Failed to load source code lines")
+            elif (
+                file_path
+            ):  # Only warn if a file_path was given but lines weren't loaded
+                warning(f"Warning: Failed to load source code lines from {file_path}")
 
-    def visit(self, node):
+    def visit(self, node: ast.AST):
         if self.debug:
             node_type = type(node).__name__
-            node_name = getattr(node, "name", None)
+            node_name_attr = getattr(node, "name", None)
+            node_id_attr = getattr(node, "id", None)  # For ast.Name nodes
+            node_identifier = (
+                node_name_attr if node_name_attr is not None else node_id_attr
+            )
+
+            line_info = f" (line {node.lineno})" if hasattr(node, "lineno") else ""
+
             debug(
-                f"[FORCE] EnhancedTaintAnalysisVisitor visiting node: {node_type}, name={node_name}"
+                f"[FORCE] EnhancedTaintAnalysisVisitor visiting node: {node_type}{line_info}, name/id='{node_identifier if node_identifier else 'N/A'}'"
             )
         return super().visit(node)

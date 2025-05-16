@@ -141,7 +141,7 @@ def enhanced_cli_main() -> int:
 
     if args.command == "mcp":
         try:
-            from lanalyzer.mcp.mcp_cmd import create_mcp_server, mcp_server
+            from lanalyzer.mcp.mcpserver import create_mcp_server, server
             import sys
 
             print(f"Starting Lanalyzer MCP server using FastMCP")
@@ -165,10 +165,10 @@ def enhanced_cli_main() -> int:
                 import subprocess
                 import os
 
-                # Get absolute path to mcp_cmd.py
+                # Get absolute path to mcpserver.py
                 from pathlib import Path
 
-                mcp_module_path = Path(__file__).parent.parent / "mcp" / "mcp_cmd.py"
+                mcp_module_path = Path(__file__).parent.parent / "mcp" / "mcpserver.py"
 
                 # Use absolute path to call FastMCP
                 cmd = ["fastmcp", "dev", f"{mcp_module_path}:server"]
@@ -196,10 +196,10 @@ def enhanced_cli_main() -> int:
                 import subprocess
                 import os
 
-                # Get absolute path to mcp_cmd.py
+                # Get absolute path to mcpserver.py
                 from pathlib import Path
 
-                mcp_module_path = Path(__file__).parent.parent / "mcp" / "mcp_cmd.py"
+                mcp_module_path = Path(__file__).parent.parent / "mcp" / "mcpserver.py"
 
                 # Use absolute path to call FastMCP
                 cmd = ["fastmcp", "install", f"{mcp_module_path}:server"]

@@ -69,68 +69,134 @@ For questions or support, please open an issue on GitHub or email us at [lanalyz
 
 - Enhanced context analysis and call chain building: Fixed issues with source and sink association in taint analysis, prioritizing source finding within the same function to avoid incorrectly linking to identical statements in other functions.
 
-## MCP支持
+## Model Context Protocol (MCP) Support
 
-Lanalyzer现在支持[Model Context Protocol (MCP)](https://modelcontextprotocol.io/)，可以作为MCP服务器运行，允许AI代理通过标准接口访问污点分析功能。
+LanaLyzer now supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/), allowing it to run as an MCP server that AI models and tools can use to access taint analysis functionality through a standard interface.
 
-### 安装MCP依赖
+### Installing MCP Dependencies
 
-```bash
-pip install lanalyzer[mcp]
-```
-
-### 启动MCP服务器
+If you're using pip:
 
 ```bash
-lanalyzer mcp --host 127.0.0.1 --port 8000
+pip install "lanalyzer[mcp]"
 ```
 
-或者使用提供的脚本：
+If you're using uv:
 
 ```bash
-./lanalyzer_mcp.sh
+uv pip install -e ".[mcp]"
 ```
 
-### MCP服务器API
+### Starting the MCP Server
 
-MCP服务器提供以下端点：
+There are multiple ways to start the MCP server:
 
-- `/.well-known/mcp/v1` - 标准MCP协议端点
-- `/` - 服务器信息端点
-- `/analyze` - 代码分析端点
-- `/analyze/file` - 文件分析端点
-- `/analyze/path` - 本地文件/目录分析端点
-- `/explain` - 漏洞解释端点
-- `/configuration` - 配置管理端点
+1. **Using Python Module**:
 
-### 文件分析和漏洞解释功能
+```bash
+# View help information
+python -m lanalyzer.mcp --help
 
-Lanalyzer MCP服务器现在支持直接分析本地文件和目录，并提供友好的漏洞解释。
+# Start the server
+python -m lanalyzer.mcp run --host 127.0.0.1 --port 8000
 
-**分析本地文件或目录**：
+# Use debug mode
+python -m lanalyzer.mcp run --debug
+```
+
+2. **Using the lanalyzer Command-Line Tool**:
+
+```bash
+# View help information
+lanalyzer mcp --help
+
+# Start the server
+lanalyzer mcp run --host 127.0.0.1 --port 8000
+
+# Use FastMCP development mode
+lanalyzer mcp dev
+```
+
+### MCP Server Features
+
+The MCP server provides the following core functionalities:
+
+1. **Code Analysis**: Analyze Python code strings for security vulnerabilities
+2. **File Analysis**: Analyze specific files for security vulnerabilities
+3. **Path Analysis**: Analyze entire directories or projects for security vulnerabilities
+4. **Vulnerability Explanation**: Provide detailed explanations of discovered vulnerabilities
+5. **Configuration Management**: Get, validate, and create analysis configurations
+
+### Integration with AI Tools
+
+The MCP server can be integrated with AI tools that support the MCP protocol:
+
 ```python
-result = mcp_client.call({
+# Using the FastMCP client
+from fastmcp import FastMCPClient
+
+# Create a client connected to the server
+client = FastMCPClient("http://127.0.0.1:8000")
+
+# Analyze code
+result = client.call({
+    "type": "analyze_code",
+    "code": "user_input = input()\nquery = f\"SELECT * FROM users WHERE name = '{user_input}'\"",
+    "file_path": "example.py",
+    "config_path": "/path/to/config.json"
+})
+
+# Print analysis results
+print(result)
+```
+
+### Using in Cursor
+
+If you're working in the Cursor editor, you can directly ask the AI to use LanaLyzer to analyze your code:
+
+```
+Please use lanalyzer to analyze the current file for security vulnerabilities and explain the potential risks.
+```
+
+### Command-Line Options
+
+The MCP server supports the following command-line options:
+
+- `--debug`: Enable debug mode with detailed logging
+- `--host`: Set the server listening address (default: 127.0.0.1)
+- `--port`: Set the server listening port (default: 8000)
+
+### Advanced Usage
+
+#### Custom Configurations
+
+You can use the get_config, validate_config, and create_config tools to manage vulnerability detection configurations:
+
+```python
+# Get the default configuration
+config = client.call({
+    "type": "get_config"
+})
+
+# Create a new configuration
+result = client.call({
+    "type": "create_config",
+    "config_data": {...},  # Configuration data
+    "config_path": "/path/to/save/config.json"  # Optional
+})
+```
+
+#### Batch File Analysis
+
+Analyze an entire project or directory:
+
+```python
+result = client.call({
     "type": "analyze_path",
-    "target_path": "/path/to/your/file_or_directory.py",
-    "config_path": "/path/to/config.json",  # 可选
-    "output_path": "/path/to/output.json"   # 可选
+    "target_path": "/path/to/project",
+    "config_path": "/path/to/config.json",
+    "output_path": "/path/to/output.json"  # Optional
 })
-```
-
-**获取自然语言漏洞解释**：
-```python
-explanation = mcp_client.call({
-    "type": "explain_vulnerabilities",
-    "analysis_file": "/path/to/analysis_result.json",
-    "format": "markdown", # 或 "text"
-    "level": "detailed"   # 或 "brief"
-})
-```
-
-**在Cursor中与AI聊天**：
-现在您可以在Cursor中直接要求AI分析本地文件并解释漏洞，例如：
-```
-请使用lanalyzer分析examples/job.py文件中的安全漏洞，并以简洁的方式解释发现的问题
 ```
 
 ## Getting Started

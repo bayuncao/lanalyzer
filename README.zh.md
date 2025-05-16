@@ -69,4 +69,134 @@ python -m lanalyzer analyze example.py --config rules/sql_injection.json --prett
 
 - 增强了上下文分析和调用链构建逻辑：修复了在污点分析中源点和汇聚点关联的问题，优先在同一函数内查找源点，避免错误地关联到其他函数中相同的语句。
 
+## MCP 模块使用指南
+
+LanaLyzer 现在支持 Model Context Protocol (MCP)，可以作为 MCP 服务器运行，允许 AI 模型和工具通过标准接口访问污点分析功能。
+
+### 安装 MCP 依赖
+
+如果您使用的是 pip：
+
+```bash
+pip install "lanalyzer[mcp]"
+```
+
+如果您使用的是 uv：
+
+```bash
+uv pip install -e ".[mcp]"
+```
+
+### MCP 服务器启动方式
+
+有多种方式可以启动 MCP 服务器：
+
+1. **使用 Python 模块方式**:
+
+```bash
+# 查看帮助信息
+python -m lanalyzer.mcp --help
+
+# 启动服务器
+python -m lanalyzer.mcp run --host 127.0.0.1 --port 8000
+
+# 使用调试模式
+python -m lanalyzer.mcp run --debug
+```
+
+2. **使用 lanalyzer 命令行工具**:
+
+```bash
+# 查看帮助信息
+lanalyzer mcp --help
+
+# 启动服务器
+lanalyzer mcp run --host 127.0.0.1 --port 8000
+
+# 使用 FastMCP 开发模式
+lanalyzer mcp dev
+```
+
+### MCP 服务器功能
+
+MCP 服务器提供以下核心功能：
+
+1. **代码分析**：分析 Python 代码字符串中的安全漏洞
+2. **文件分析**：分析指定文件中的安全漏洞
+3. **路径分析**：分析整个目录或项目中的安全漏洞
+4. **漏洞解释**：提供对发现漏洞的详细解释
+5. **配置管理**：获取、验证和创建分析配置
+
+### 与 AI 工具集成
+
+MCP 服务器可以与支持 MCP 协议的 AI 工具集成，例如：
+
+```python
+# 使用 FastMCP 客户端
+from fastmcp import FastMCPClient
+
+# 创建客户端连接到服务器
+client = FastMCPClient("http://127.0.0.1:8000")
+
+# 分析代码
+result = client.call({
+    "type": "analyze_code",
+    "code": "user_input = input()\nquery = f\"SELECT * FROM users WHERE name = '{user_input}'\"",
+    "file_path": "example.py",
+    "config_path": "/path/to/config.json"
+})
+
+# 打印分析结果
+print(result)
+```
+
+### 在 Cursor 中使用
+
+如果您在 Cursor 编辑器中工作，可以直接要求 AI 使用 LanaLyzer 分析代码：
+
+```
+请使用 lanalyzer 分析当前文件中的安全漏洞，并解释可能的风险。
+```
+
+### 命令行选项
+
+MCP 服务器支持以下命令行选项：
+
+- `--debug`: 启用调试模式，显示详细日志
+- `--host`: 设置服务器监听地址（默认：127.0.0.1）
+- `--port`: 设置服务器监听端口（默认：8000）
+
+### 高级用法
+
+#### 自定义配置
+
+您可以使用 get_config、validate_config 和 create_config 工具来管理漏洞检测配置：
+
+```python
+# 获取默认配置
+config = client.call({
+    "type": "get_config"
+})
+
+# 创建新配置
+result = client.call({
+    "type": "create_config",
+    "config_data": {...},  # 配置数据
+    "config_path": "/path/to/save/config.json"  # 可选
+})
+```
+
+#### 批量文件分析
+
+分析整个项目或目录：
+
+```python
+result = client.call({
+    "type": "analyze_path",
+    "target_path": "/path/to/project",
+    "config_path": "/path/to/config.json",
+    "output_path": "/path/to/output.json"  # 可选
+})
+```
+
 ## 开始使用
