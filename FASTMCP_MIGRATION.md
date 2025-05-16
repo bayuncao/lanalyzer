@@ -10,12 +10,12 @@
    - 在`pyproject.toml`中添加了`fastmcp>=2.0.0`作为`[mcp]`可选依赖
 
 2. **MCP服务器实现**
-   - 重写了`lanalyzer/mcp/mcp_cmd.py`，使用`FastMCP`替代原有实现
+   - 重写了`lanalyzer/mcp/mcpserver.py`，使用`FastMCP`替代原有实现
    - 所有工具现在使用`async`实现，支持`Context`参数，可通过上下文进行日志记录和进度报告
    - 创建了全局`mcp`实例，可在其他模块中直接导入使用
 
 3. **包导出更新**
-   - 更新了`lanalyzer/mcp/__init__.py`，从`mcp_cmd.py`中导出`mcp`服务器实例
+   - 更新了`lanalyzer/mcp/__init__.py`，从`mcpserver.py`中导出`mcp`服务器实例
    - 添加了必要的导入检查，确保`fastmcp`依赖已安装
 
 4. **兼容性保障**

@@ -77,7 +77,7 @@
 - [ ] **lanalyzer/mcp/__init__.py**
 - [ ] **lanalyzer/mcp/__main__.py** - MCP entry point
 - [ ] **lanalyzer/mcp/handlers.py** - Handlers
-- [ ] **lanalyzer/mcp/mcp_cmd.py** - MCP commands
+- [ ] **lanalyzer/mcp/mcpserver.py** - MCP commands
 - [ ] **lanalyzer/mcp/models.py** - MCP models
 
 ### Data Model Module
