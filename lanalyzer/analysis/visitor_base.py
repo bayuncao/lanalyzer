@@ -207,7 +207,14 @@ class EnhancedTaintVisitor(TaintVisitor):
     def visit_Call(self, node: ast.Call) -> None:
         """
         Enhanced visit_Call to better track data flow and source propagation.
+        Also handles function call graph construction and self.method() calls.
         """
+        # 记录调试信息
+        debug(
+            f"[FORCE] Enter visit_Call: in function {getattr(self, 'current_function', None) and self.current_function.name}, call at line {getattr(node, 'lineno', None)}"
+        )
+
+        # 原始EnhancedTaintVisitor.visit_Call的功能 - 数据流分析
         func_name, full_name = self._get_func_name_with_module(node.func)
         line_no = getattr(node, "lineno", 0)
         if func_name == "recv" or "recv" in func_name:
@@ -257,7 +264,97 @@ class EnhancedTaintVisitor(TaintVisitor):
                             self.tainted[new_var] = self.tainted[var_name]
                             if self.debug:
                                 debug(f"  Taint propagated to: {new_var}")
+
+        # 从FunctionVisitorMixin.visit_Call集成的功能 - 函数调用图构建
+        if self.debug:
+            debug(
+                f"Enhanced visit_Call: {func_name} (full: {full_name}) at line {getattr(node, 'lineno', 0)}"
+            )
+
+        # 增加函数调用图的构建逻辑
+        if self.current_function and func_name:
+            if func_name in self.functions:
+                callee_node = self.functions[func_name]
+                self.current_function.add_callee(callee_node)
+                callee_node.add_caller(self.current_function)
+
+                # 记录调用行号,用于构建更完整的调用链
+                call_line = getattr(node, "lineno", 0)
+                callee_node.call_line = call_line
+
+                # 获取调用语句
+                call_statement = self._get_call_source_code(call_line)
+
+                # 添加详细的调用点信息
+                callee_node.add_call_point(
+                    call_line, call_statement, self.current_function.name
+                )
+
+                # 检查是否是self.method()调用
+                is_self_method_call = False
+                if isinstance(node.func, ast.Attribute) and isinstance(
+                    node.func.value, ast.Name
+                ):
+                    if node.func.value.id == "self":
+                        is_self_method_call = True
+                        # 记录这是一个self方法调用
+                        callee_node.is_self_method_call = True
+                        callee_node.self_method_name = node.func.attr
+                        if not hasattr(self, "self_method_call_map"):
+                            self.self_method_call_map = {}
+                        key = f"{self.current_function.name} -> self.{node.func.attr}"
+                        self.self_method_call_map.setdefault(key, []).append(call_line)
+                        if hasattr(self.current_function, "self_method_calls"):
+                            self.current_function.self_method_calls.append(
+                                {
+                                    "method": node.func.attr,
+                                    "line": call_line,
+                                    "call_statement": call_statement,
+                                }
+                            )
+                        if self.debug:
+                            debug(
+                                f"  -> Recorded self.{node.func.attr}() call at line {call_line} in {self.current_function.name}"
+                            )
+                        if hasattr(self.callgraph, "add_self_method_call"):
+                            self.callgraph.add_self_method_call(
+                                self.current_function.name, node.func.attr, call_line
+                            )
+
+                # 跟踪参数污点传播
+                if hasattr(self, "_track_parameter_taint_propagation"):
+                    self._track_parameter_taint_propagation(node, func_name)
+            else:
+                if self.debug:
+                    debug(
+                        f"  -> Call to external/undefined function '{func_name}' ignored for self.functions population."
+                    )
+
+        # 返回值污点传播
+        if hasattr(self, "_track_return_taint_propagation"):
+            self._track_return_taint_propagation(node, func_name)
+
+        # 数据结构操作跟踪
+        if hasattr(self, "_track_data_structure_operations"):
+            self._track_data_structure_operations(node, func_name, full_name)
+
+        # 容器方法跟踪
+        if hasattr(self, "_track_container_methods"):
+            self._track_container_methods(node)
+
+        # 调用父类的visit_Call方法，确保sink检测逻辑被执行
         super().visit_Call(node)
+
+    # 添加辅助方法来提取特定调用位置的源代码
+    def _get_call_source_code(self, line_no: int) -> str:
+        """获取特定行号的源代码"""
+        if (
+            hasattr(self, "source_lines")
+            and self.source_lines
+            and 0 < line_no <= len(self.source_lines)
+        ):
+            return self.source_lines[line_no - 1].strip()
+        return ""
 
     def _track_assignment_taint(self, node: ast.Call, source_info: Dict) -> None:
         """

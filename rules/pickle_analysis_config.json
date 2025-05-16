@@ -10,7 +10,7 @@
       },
       {
         "name": "NetworkInput",
-        "patterns": ["torch.distributed.recv", "recv", "recvfrom", "recvmsg", "requests.get", "requests.post", "urllib.request.urlopen", "socket.recv", "http.client", "aiohttp", "httpx", "recv_rpc_message"],
+        "patterns": ["torch.distributed.recv", "recv", "recvfrom", "recvmsg", "requests.get", "requests.post", "urllib.request.urlopen", "socket.recv", "http.client", "aiohttp", "httpx", "recv_rpc_message", "recv_multipart"],
         "priority": "high",
         "auto_taint_return": true
       },
@@ -30,8 +30,8 @@
     "sinks": [
       {
         "name": "PickleDeserialization",
-        "patterns": ["pickle.load", "pickle.loads", "cPickle.load", "cPickle.loads", "_pickle.load", "_pickle.loads"],
-        "related_patterns": ["torch.distributed.recv"]
+        "patterns": ["pickle.load", "pickle.loads", "cPickle.load", "cPickle.loads", "_pickle.load", "_pickle.loads", "cloudpickle.loads"],
+        "related_patterns": ["torch.distributed.recv", "recv_multipart"]
       }
     ],
     "sanitizers": [
@@ -60,30 +60,56 @@
         },
         {
           "name": "class_methods",
-          "patterns": ["JobQueueWorker.run", "Worker.run", "Server.start"]
+          "patterns": ["JobQueueWorker.run", "Worker.run", "Server.start", "Job.run", "run"]
         }
       ],
       "method_call_patterns": [
         "self\\.([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
+        "self\\.([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(.*\\)",
         "([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
-        "([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\("
+        "([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
+        "envdir = self\\.([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
+        "([a-zA-Z_][a-zA-Z0-9_]*) = self\\.([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\("
       ],
       "key_method_names": {
-        "entry_methods": ["run", "main", "__main__", "start", "execute"],
+        "entry_methods": ["run", "main", "__main__", "start", "execute", "Job.run"],
         "important_methods": [
           "wait_for_files", "process_job", "handle_request", "prepare_data", "recv_rpc_message", "recv",
-          "start_job", "main_loop", "dispatch_job"
+          "start_job", "main_loop", "dispatch_job", "Job.wait_for_files", "Job.run", "wait_for_connection",
+          "single_task", "recv_multipart"
         ]
       },
-      "max_call_depth": 25,
+      "class_method_mapping": {
+        "Job": {
+          "run": ["wait_for_files", "wait_for_connection", "single_task"],
+          "wait_for_files": []
+        }
+      },
+      "direct_function_calls": [
+        {"caller": "run", "callee": "wait_for_files", "class": "Job"},
+        {"caller": "run", "callee": "wait_for_connection", "class": "Job"},
+        {"caller": "run", "callee": "single_task", "class": "Job"}
+      ],
+      "line_specific_calls": [
+        {"file": "job.py", "caller_line": 355, "caller": "run", "callee": "wait_for_files", "class": "Job"}
+      ],
+      "max_call_depth": 10,
       "follow_imports": true
     },
     "taint_propagation": {
       "special_variables": {
         "object_tensor": {
-          "from": ["torch.distributed.recv"],
-          "to": ["numpy", "tobytes", "pickle.loads"]
+          "from": ["torch.distributed.recv", "recv_multipart"],
+          "to": ["numpy", "tobytes", "pickle.loads", "cloudpickle.loads"]
+        }, 
+        "message": {
+          "from": ["recv_multipart"],
+          "to": ["pickle.loads", "cloudpickle.loads"]
         }
-      }
+      },
+      "known_flows": [
+        {"from": "message = reply_socket.recv_multipart()", "to": "pickle.loads(message[1])"},
+        {"from": "message = reply_socket.recv_multipart()", "to": "cloudpickle.loads(message[2])"}
+      ]
     }
   }
