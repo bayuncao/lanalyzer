@@ -397,7 +397,7 @@ def run(debug, host, port):
     click.echo(
         f"Starting Lanalyzer MCP server - Using FastMCP v{__import__('fastmcp').__version__}"
     )
-    click.echo(f"Server Name: Lanalyzer")
+    click.echo("Server Name: Lanalyzer")
     click.echo(f"Server Version: {__version__}")
     click.echo(f"Server Address: http://{host}:{port}")  # Added http:// for clarity
 
@@ -454,7 +454,7 @@ def mcpcmd(command_args, debug):
     # Execute command and pass output to the current terminal
     try:
         # The 'server' instance at the bottom of the file will be used by fastmcp
-        process = subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as e:
         click.echo(f"Command execution failed: {e}", err=True)
         sys.exit(1)

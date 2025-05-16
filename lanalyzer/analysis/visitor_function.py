@@ -58,7 +58,7 @@ class FunctionVisitorMixin:
             class MockCallGraph:
                 CallGraphNode = MockCallGraphNode
 
-                def add_self_method_call(self, c, m, l):
+                def add_self_method_call(self, c, m, line_no):
                     pass
 
             self.callgraph = MockCallGraph()

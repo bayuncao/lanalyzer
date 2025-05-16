@@ -369,7 +369,6 @@ class EnhancedTaintVisitor(TaintVisitor):
             obj_name = node.func.value.id  # Name of the object
             method_name_str = node.func.attr  # Name of the method
             if obj_name in self.tainted:
-                operation_key = f"{type(self.tainted.get(obj_name)).__name__}.{method_name_str}"  # Generic, better to use actual type if known
                 # More specific keys like "str.join", "list.append" are handled by _initialize_operation_taint_rules
                 # This is a general propagation for method calls on any tainted object if not covered by specific rules.
                 if self.debug:

@@ -97,9 +97,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     # Install command
-    install_parser = mcp_subparsers.add_parser(
-        "install", help="Install MCP to Claude Desktop"
-    )
+    mcp_subparsers.add_parser("install", help="Install MCP to Claude Desktop")
 
     parser.add_argument(
         "--target",
@@ -161,7 +159,6 @@ def enhanced_cli_main() -> int:
                 print(f"Starting server in development mode: {host}:{port}")
                 # Use FastMCP command line tool in dev mode
                 import subprocess
-                import os
 
                 # Get absolute path to mcpserver.py
                 from pathlib import Path
