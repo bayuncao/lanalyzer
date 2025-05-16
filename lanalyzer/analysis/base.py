@@ -87,7 +87,7 @@ class BaseAnalyzer(abc.ABC):
                 vulnerabilities.extend(file_vulnerabilities)
                 self.analyzed_files.add(file_path)
             except Exception as e:
-                error(f"Error analyzing file {file_path}: {e}")
+                self.logger.error(f"Error analyzing file {file_path}: {e}")
                 if self.debug:
                     import traceback
 

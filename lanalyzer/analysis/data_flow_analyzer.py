@@ -196,7 +196,7 @@ class DataFlowAnalyzer:
 
                         if source_stmt:
                             flow_step = {
-                                "function": f"Data flow: Direct use of source variable",
+                                "function": "Data flow: Direct use of source variable",
                                 "file": visitor.file_path,
                                 "line": source_line,
                                 "statement": source_stmt,

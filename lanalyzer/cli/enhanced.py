@@ -11,13 +11,12 @@ import argparse
 from typing import List, Optional
 
 from lanalyzer.analysis.tracker import EnhancedTaintTracker
-from lanalyzer.logger import LogTee, get_timestamp, setup_application_logging
+from lanalyzer.logger import LogTee, setup_application_logging
 from lanalyzer.cli.file_utils import list_target_files, gather_target_files
 from lanalyzer.cli.config_utils import load_configuration, save_output
 from lanalyzer.cli.analysis_utils import (
     analyze_files_with_logging,
     print_summary,
-    print_detailed_summary,
 )
 
 
@@ -142,9 +141,8 @@ def enhanced_cli_main() -> int:
     if args.command == "mcp":
         try:
             from lanalyzer.mcp.mcpserver import create_mcp_server, server
-            import sys
 
-            print(f"Starting Lanalyzer MCP server using FastMCP")
+            print("Starting Lanalyzer MCP server using FastMCP")
 
             debug = False
             host = "127.0.0.1"
@@ -191,10 +189,9 @@ def enhanced_cli_main() -> int:
                     )
                     return 1
             elif hasattr(args, "mcp_command") and args.mcp_command == "install":
-                print(f"Installing MCP server to Claude Desktop")
+                print("Installing MCP server to Claude Desktop")
                 # Use FastMCP command line tool in install mode
                 import subprocess
-                import os
 
                 # Get absolute path to mcpserver.py
                 from pathlib import Path

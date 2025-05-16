@@ -14,7 +14,6 @@ from typing import (
     Set,
     Type,
     TypeVar,
-    ClassVar,
     Optional,
 )  # Added Optional
 
@@ -30,7 +29,6 @@ from lanalyzer.logger import (
     # log_vulnerabilities, # Not used here
     debug as log_debug,  # aliased to avoid conflict with self.debug
     info,
-    warning,
     error,
     # critical, # Not used here
 )

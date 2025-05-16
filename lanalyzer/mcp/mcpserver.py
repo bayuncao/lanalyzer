@@ -25,7 +25,6 @@ from lanalyzer.mcp.handlers import LanalyzerMCPHandler
 from lanalyzer.mcp.models import (
     AnalysisRequest,
     FileAnalysisRequest,  # Assuming this model will be used by the handler
-    ExplainVulnerabilityRequest,
     ConfigurationRequest,
 )
 
@@ -407,7 +406,7 @@ def run(debug, host, port):
     current_run_server = create_mcp_server(debug=debug)
 
     # Start server in a way compatible with version 2.2.8
-    click.echo(f"Starting FastMCP server using SSE transport")
+    click.echo("Starting FastMCP server using SSE transport")
 
     # According to the help documentation, FastMCP 2.2.8 only supports 'stdio' and 'sse' transport methods
     current_run_server.run(

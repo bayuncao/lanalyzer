@@ -3,9 +3,8 @@ Utility functions for call chain analysis.
 """
 
 import re
-from typing import Any, Dict, List, Set, Optional
+from typing import Any, Dict, List, Set
 
-from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
 from lanalyzer.logger import debug
 
 
@@ -149,14 +148,14 @@ class ChainUtils:
         patterns = []
         if not hasattr(self.tracker, "config"):
             if self.debug:
-                debug(f"[DEBUG] No configuration found in tracker")
+                debug("[DEBUG] No configuration found in tracker")
             return patterns
 
         config = self.tracker.config
 
         if not isinstance(config, dict):
             if self.debug:
-                debug(f"[DEBUG] Configuration is not a dictionary")
+                debug("[DEBUG] Configuration is not a dictionary")
             return patterns
 
         if pattern_type in config and isinstance(config[pattern_type], list):
