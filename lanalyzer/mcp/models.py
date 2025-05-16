@@ -161,25 +161,33 @@ class ServerInfoResponse(BaseModel):
 class FileAnalysisRequest(BaseModel):
     """Request model for file or directory analysis."""
 
-    target_path: str = Field(..., description="本地文件或目录路径")
-    config_path: str = Field(..., description="配置文件路径")
-    output_path: Optional[str] = Field(None, description="结果输出路径")
-    options: Dict[str, Any] = Field(default_factory=dict, description="分析选项")
+    target_path: str = Field(..., description="Local file or directory path")
+    config_path: str = Field(..., description="Configuration file path")
+    output_path: Optional[str] = Field(None, description="Result output path")
+    options: Dict[str, Any] = Field(
+        default_factory=dict, description="Analysis options"
+    )
 
 
 class ExplainVulnerabilityRequest(BaseModel):
     """Request model for vulnerability explanation."""
 
-    analysis_file: str = Field(..., description="分析结果文件路径")
-    format: str = Field("text", description="解释格式: text, markdown")
-    level: str = Field("detailed", description="解释详细程度: brief, detailed")
+    analysis_file: str = Field(..., description="Path to the analysis results file")
+    format: str = Field("text", description="Explanation format: text, markdown")
+    level: str = Field(
+        "detailed", description="Explanation detail level: brief, detailed"
+    )
 
 
 class ExplainVulnerabilityResponse(BaseModel):
     """Response model for vulnerability explanation."""
 
     success: bool = Field(..., description="Whether the operation was successful")
-    explanation: str = Field("", description="漏洞解释文本")
-    vulnerabilities_count: int = Field(0, description="发现的漏洞数量")
-    files_affected: List[str] = Field(default_factory=list, description="受影响的文件列表")
-    errors: List[str] = Field(default_factory=list, description="错误信息列表")
+    explanation: str = Field("", description="Vulnerability explanation text")
+    vulnerabilities_count: int = Field(0, description="Number of vulnerabilities found")
+    files_affected: List[str] = Field(
+        default_factory=list, description="List of affected files"
+    )
+    errors: List[str] = Field(
+        default_factory=list, description="List of error messages"
+    )

@@ -67,38 +67,40 @@ def create_parser() -> argparse.ArgumentParser:
         help="Path to log file for debug and analysis output",
     )
 
-    mcp_parser = subparsers.add_parser("mcp", help="MCP服务器命令")
-    mcp_subparsers = mcp_parser.add_subparsers(dest="mcp_command", help="MCP命令")
+    mcp_parser = subparsers.add_parser("mcp", help="MCP server commands")
+    mcp_subparsers = mcp_parser.add_subparsers(dest="mcp_command", help="MCP commands")
 
-    # 运行命令
-    run_parser = mcp_subparsers.add_parser("run", help="启动MCP服务器")
+    # Run command
+    run_parser = mcp_subparsers.add_parser("run", help="Start MCP server")
     run_parser.add_argument(
         "--host",
         default="127.0.0.1",
-        help="主机地址 (默认: 127.0.0.1)",
+        help="Host address (default: 127.0.0.1)",
     )
     run_parser.add_argument(
         "--port",
         type=int,
         default=8000,
-        help="端口号 (默认: 8000)",
+        help="Port number (default: 8000)",
     )
     run_parser.add_argument(
         "--debug",
         action="store_true",
-        help="启用调试模式",
+        help="Enable debug mode",
     )
 
-    # 开发模式命令
-    dev_parser = mcp_subparsers.add_parser("dev", help="以开发模式启动MCP")
+    # Development mode command
+    dev_parser = mcp_subparsers.add_parser("dev", help="Start MCP in development mode")
     dev_parser.add_argument(
         "--debug",
         action="store_true",
-        help="启用调试模式",
+        help="Enable debug mode",
     )
 
-    # 安装命令
-    install_parser = mcp_subparsers.add_parser("install", help="安装MCP到Claude Desktop")
+    # Install command
+    install_parser = mcp_subparsers.add_parser(
+        "install", help="Install MCP to Claude Desktop"
+    )
 
     parser.add_argument(
         "--target",
@@ -142,13 +144,13 @@ def enhanced_cli_main() -> int:
             from lanalyzer.mcp.mcp_cmd import create_mcp_server, mcp_server
             import sys
 
-            print(f"启动 Lanalyzer MCP 服务器，使用 FastMCP")
+            print(f"Starting Lanalyzer MCP server using FastMCP")
 
             debug = False
             host = "127.0.0.1"
             port = 8000
 
-            # 获取参数
+            # Get parameters
             if hasattr(args, "debug") and args.debug:
                 debug = True
             if hasattr(args, "host") and args.host:
@@ -156,83 +158,87 @@ def enhanced_cli_main() -> int:
             if hasattr(args, "port") and args.port:
                 port = args.port
 
-            # 创建并启动服务器
+            # Create and start the server
             if hasattr(args, "mcp_command") and args.mcp_command == "dev":
-                print(f"以开发模式启动服务器: {host}:{port}")
-                # 使用FastMCP命令行工具的dev模式
+                print(f"Starting server in development mode: {host}:{port}")
+                # Use FastMCP command line tool in dev mode
                 import subprocess
                 import os
 
-                # 获取mcp_cmd.py的绝对路径
+                # Get absolute path to mcp_cmd.py
                 from pathlib import Path
 
                 mcp_module_path = Path(__file__).parent.parent / "mcp" / "mcp_cmd.py"
 
-                # 使用绝对路径调用FastMCP
+                # Use absolute path to call FastMCP
                 cmd = ["fastmcp", "dev", f"{mcp_module_path}:server"]
                 if debug:
                     cmd.append("--with-debug")
 
-                print(f"执行命令: {' '.join(cmd)}")
+                print(f"Executing command: {' '.join(cmd)}")
                 try:
                     subprocess.run(cmd, check=True)
                 except subprocess.CalledProcessError as e:
-                    print(f"命令执行失败: {e}")
+                    print(f"Command execution failed: {e}")
                     if debug:
                         import traceback
 
                         traceback.print_exc()
                     return 1
                 except FileNotFoundError:
-                    print("错误: fastmcp 命令未找到。请确保已安装 FastMCP：pip install fastmcp")
+                    print(
+                        "Error: fastmcp command not found. Please ensure FastMCP is installed: pip install fastmcp"
+                    )
                     return 1
             elif hasattr(args, "mcp_command") and args.mcp_command == "install":
-                print(f"安装MCP服务器到Claude Desktop")
-                # 使用FastMCP命令行工具的install模式
+                print(f"Installing MCP server to Claude Desktop")
+                # Use FastMCP command line tool in install mode
                 import subprocess
                 import os
 
-                # 获取mcp_cmd.py的绝对路径
+                # Get absolute path to mcp_cmd.py
                 from pathlib import Path
 
                 mcp_module_path = Path(__file__).parent.parent / "mcp" / "mcp_cmd.py"
 
-                # 使用绝对路径调用FastMCP
+                # Use absolute path to call FastMCP
                 cmd = ["fastmcp", "install", f"{mcp_module_path}:server"]
-                print(f"执行命令: {' '.join(cmd)}")
+                print(f"Executing command: {' '.join(cmd)}")
                 try:
                     subprocess.run(cmd, check=True)
                 except subprocess.CalledProcessError as e:
-                    print(f"命令执行失败: {e}")
+                    print(f"Command execution failed: {e}")
                     if debug:
                         import traceback
 
                         traceback.print_exc()
                     return 1
                 except FileNotFoundError:
-                    print("错误: fastmcp 命令未找到。请确保已安装 FastMCP：pip install fastmcp")
+                    print(
+                        "Error: fastmcp command not found. Please ensure FastMCP is installed: pip install fastmcp"
+                    )
                     return 1
             else:
-                # 标准运行模式
-                print(f"启动服务器: {host}:{port}")
+                # Standard run mode
+                print(f"Starting server: {host}:{port}")
                 if debug:
-                    print("调试模式: 已启用")
+                    print("Debug mode: Enabled")
 
                 server = create_mcp_server(debug=debug)
                 server.run(transport="sse", host=host, port=port)
 
             return 0
         except ImportError as e:
-            print("错误: MCP 服务器依赖未安装。")
-            print("请使用以下命令安装: pip install lanalyzer[mcp]")
+            print("Error: MCP server dependencies not installed.")
+            print("Please install with: pip install lanalyzer[mcp]")
             if hasattr(args, "debug") and args.debug:
-                print(f"详细错误: {str(e)}")
+                print(f"Detailed error: {str(e)}")
                 import traceback
 
                 traceback.print_exc()
             return 1
         except Exception as e:
-            print(f"错误: 启动MCP服务器失败: {str(e)}")
+            print(f"Error: Failed to start MCP server: {str(e)}")
             if hasattr(args, "debug") and args.debug:
                 import traceback
 
@@ -251,110 +257,88 @@ def enhanced_cli_main() -> int:
 
 def run_analysis(args) -> int:
     """
-    Run the analysis based on command line arguments.
+    Run the analysis with the provided arguments.
 
     Args:
-        args: Command line arguments
+        args: The parsed command-line arguments
 
     Returns:
         Exit code
     """
-    setup_application_logging(
-        debug=getattr(args, "debug", False), log_file=getattr(args, "log_file", None)
-    )
-    log_file = None
-    original_stdout = sys.stdout
-    original_stderr = sys.stderr
+    debug = args.debug
+    verbose = args.verbose
+    target_path = args.target
+    config_path = args.config
+    output_path = args.output
+    pretty = args.pretty
+    list_files = args.list_files
+    log_file = args.log_file
 
-    if args.log_file:
-        try:
-            log_file = open(args.log_file, "w", encoding="utf-8")
-            sys.stdout = LogTee(sys.stdout, log_file)
-            sys.stderr = LogTee(sys.stderr, log_file)
-            print(f"[Log] Started logging to file: {args.log_file}")
-            print(f"[Log] Time: {get_timestamp()}")
-        except Exception as e:
-            print(f"[Error] Failed to open log file {args.log_file}: {e}")
-            sys.stdout = original_stdout
-            sys.stderr = original_stderr
-
-    try:
-        print("[Start] Lanalyzer enhanced mode starting")
-        print(f"[Args] Target: {args.target}")
-        print(f"[Args] Config: {args.config}")
-        print(f"[Args] Output: {args.output}")
-        print(f"[Args] Debug Mode: {args.debug}")
-        print(f"[Args] Log File: {args.log_file}")
-
-        if args.list_files:
-            list_target_files(args.target)
-            return 0
-
-        config = load_configuration(args.config, args.debug)
-
-        target_files = gather_target_files(args.target)
-        if args.debug:
-            print(
-                f"[File List] The following {len(target_files)} files will be analyzed:"
-            )
-            for idx, file_path in enumerate(target_files, 1):
-                print(f"  {idx}. {file_path}")
-
-        tracker = EnhancedTaintTracker(config, debug=args.debug)
-
-        vulnerabilities = analyze_files_with_logging(
-            tracker, target_files, debug=args.debug
-        )
-
-        if args.output:
-            save_output(vulnerabilities, args.output, args.pretty, args.debug)
-
-        summary = tracker.get_summary()
-        detailed_summary = tracker.get_detailed_summary(vulnerabilities)
-
-        print_summary(summary, vulnerabilities)
-
-        print_detailed_summary(detailed_summary)
-
-        if vulnerabilities and args.verbose:
-            print("\n" + "=" * 60)
-            print("DETAILED VULNERABILITY INFORMATION")
-            print("-" * 60)
-            for i, vuln in enumerate(vulnerabilities, 1):
-                print(f"\nVulnerability #{i}:")
-                tracker.print_detailed_vulnerability(vuln)
-
+    if list_files:
+        list_target_files(target_path)
         return 0
 
+    if log_file:
+        loggers = setup_application_logging(log_file, debug)
+        sys.stdout = LogTee(sys.stdout, loggers)
+        sys.stderr = LogTee(sys.stderr, loggers)
+
+    target_files = gather_target_files(target_path)
+    if not target_files:
+        print(
+            "Error: No Python files found for analysis. Please check the target path."
+        )
+        return 1
+
+    if verbose:
+        print(f"Target files to analyze ({len(target_files)}):")
+        for i, file_path in enumerate(target_files, 1):
+            print(f"{i}. {file_path}")
+
+    try:
+        config = load_configuration(config_path, debug)
+        tracker = EnhancedTaintTracker.from_config(config, debug)
+        vulnerabilities = analyze_files_with_logging(tracker, target_files, debug)
+
+        if output_path:
+            save_output(vulnerabilities, output_path, pretty, debug)
+
+        # Print a comprehensive summary
+        summary = tracker.get_summary()
+        print_summary(summary, vulnerabilities)
+
     except Exception as e:
-        if args.debug:
+        print(f"Error running analysis: {e}")
+        if debug:
             import traceback
 
             traceback.print_exc()
-        else:
-            print(f"Error during analysis: {e}")
         return 1
 
-    finally:
-        if log_file:
-            print(f"[Log] End time: {get_timestamp()}")
-            print("[Log] Logging complete")
-            sys.stdout = original_stdout
-            sys.stderr = original_stderr
-            log_file.close()
+    return 0
 
 
 def main(args: Optional[List[str]] = None) -> int:
     """
-    Main entry point for the CLI.
+    Main entry point for the Lanalyzer CLI.
 
     Args:
-        args: Command-line arguments
+        args: The command-line arguments
 
     Returns:
         Exit code
     """
-    return enhanced_cli_main()
+    if args:
+        sys.argv = [sys.argv[0]] + args
+
+    try:
+        return enhanced_cli_main()
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        import traceback
+
+        traceback.print_exc()
+        return 1
 
 
 if __name__ == "__main__":

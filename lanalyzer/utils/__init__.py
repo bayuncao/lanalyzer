@@ -1,10 +1,10 @@
 """
-工具函数包，提供 LanaLyzer 所需的通用工具函数。
+Utility function package, providing general utility functions required by LanaLyzer.
 
-此包中包含各种实用函数，用于支持 LanaLyzer 工具的核心功能。
+This package contains various utility functions to support the core functionalities of the LanaLyzer tool.
 """
 
-# 文件实用工具
+# File utilities
 from lanalyzer.utils.fs_utils import (
     ensure_directory_exists,
     get_absolute_path,
@@ -13,7 +13,7 @@ from lanalyzer.utils.fs_utils import (
     is_python_file,
 )
 
-# AST 分析实用工具
+# AST analysis utilities
 from lanalyzer.utils.ast_utils import (
     parse_file,
     contains_sink_patterns,
@@ -22,13 +22,13 @@ from lanalyzer.utils.ast_utils import (
 )
 
 __all__ = [
-    # 文件实用工具
+    # File utilities
     "is_python_file",
     "get_python_files_in_directory",
     "ensure_directory_exists",
     "get_relative_path",
     "get_absolute_path",
-    # AST 分析实用工具
+    # AST analysis utilities
     "parse_file",
     "extract_call_targets",
     "extract_function_calls",

@@ -1,7 +1,7 @@
 """
-LanaLyzer 日志模块
+LanaLyzer Logging Module
 
-此模块提供整个应用程序的日志记录工具。
+This module provides logging tools for the entire application.
 """
 
 from lanalyzer.logger.core import (
@@ -31,7 +31,7 @@ from lanalyzer.logger.config import (
 )
 
 __all__ = [
-    # 核心日志函数
+    # Core logging functions
     "configure_logger",
     "get_logger",
     "debug",
@@ -39,17 +39,17 @@ __all__ = [
     "warning",
     "error",
     "critical",
-    # 日志装饰器
+    # Logging decorators
     "log_function",
     "log_analysis_file",
     "log_result",
     "conditional_log",
     "log_vulnerabilities",
-    # 配置工具
+    # Configuration utilities
     "setup_file_logging",
     "setup_console_logging",
     "setup_application_logging",
-    # 输出重定向工具
+    # Output redirection tools
     "LogTee",
     "get_timestamp",
 ]
