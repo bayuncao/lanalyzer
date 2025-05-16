@@ -418,8 +418,6 @@ class EnhancedTaintTracker:
                 "Re-evaluating vulnerabilities with cross-function taint information..."
             )
 
-        current_vulnerabilities_count = len(all_vulnerabilities)
-
         # A more robust re-evaluation would involve re-triggering parts of the analysis.
         # For now, let's simulate by re-finding vulnerabilities with the now globally aware CallChainBuilder.
         # This is tricky because the visitors are per-file. We need a global view.

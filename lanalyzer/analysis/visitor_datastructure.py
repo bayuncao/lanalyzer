@@ -156,12 +156,10 @@ class DataStructureVisitorMixin:
                             and value.id in self.variable_taint
                         ):
                             tainted_dict = True
-                            key_repr = "unknown"
+                            # key_repr = "unknown"
                             if isinstance(key, ast.Constant):
-                                key_repr = repr(key.value)
                                 tainted_keys.add(key.value)
                             elif isinstance(key, ast.Name):
-                                key_repr = key.id
                                 tainted_keys.add(key.id)
                     if tainted_dict:
                         self.data_structures[dict_name] = DataStructureNode(
