@@ -22,19 +22,20 @@ class ChainUtils:
         self, call_chain: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """
-        根据数据流依赖关系重新排序调用链。
-        确保调用链能够准确反映数据如何从源流向汇聚点，即使有步骤出现在不同的函数中。
+        Reorder call chain based on data flow dependencies.
+        Ensures the call chain accurately reflects how data flows from source to sink,
+        even if steps occur in different functions.
 
         Args:
-            call_chain: 原始调用链
+            call_chain: Original call chain
 
         Returns:
-            重新排序的调用链
+            Reordered call chain
         """
         if not call_chain:
             return []
 
-        # 按类型分类节点
+        # Categorize nodes by type
         sources = []
         data_flows = []
         function_calls = []
@@ -57,39 +58,39 @@ class ChainUtils:
             else:
                 others.append(node)
 
-        # 按行号排序源节点和流节点
+        # Sort source nodes and flow nodes by line number
         sources.sort(key=lambda x: x.get("line", 0))
         data_flows.sort(key=lambda x: x.get("line", 0))
         function_calls.sort(key=lambda x: x.get("line", 0))
 
-        # 构造新的调用链
+        # Construct new call chain
         reordered_chain = []
 
-        # 1. 添加源节点
+        # 1. Add source nodes
         for node in sources:
             reordered_chain.append(node)
 
-        # 2. 添加数据流节点
+        # 2. Add data flow nodes
         for node in data_flows:
             reordered_chain.append(node)
 
-        # 3. 添加函数调用点节点 - 按调用顺序排列
+        # 3. Add function call point nodes - arranged in call order
         for node in function_calls:
             reordered_chain.append(node)
 
-        # 4. 如果有其他节点，保持它们的相对顺序
+        # 4. If there are other nodes, maintain their relative order
         for node in others:
             reordered_chain.append(node)
 
-        # 5. 添加包含sink的容器节点
+        # 5. Add container nodes containing sinks
         for node in sink_containers:
             reordered_chain.append(node)
 
-        # 6. 最后添加sink节点
+        # 6. Finally add sink nodes
         for node in sinks:
             reordered_chain.append(node)
 
-        # 确保每个节点的唯一性（防止重复）
+        # Ensure uniqueness of each node (prevent duplicates)
         seen = set()
         final_chain = []
         for node in reordered_chain:
@@ -137,13 +138,13 @@ class ChainUtils:
 
     def get_patterns_from_config(self, pattern_type: str) -> List[str]:
         """
-        从配置文件获取对应类型的模式
+        Get patterns of the specified type from the configuration file
 
         Args:
-            pattern_type: 'sources', 'sinks', 或 'sanitizers'
+            pattern_type: 'sources', 'sinks', or 'sanitizers'
 
         Returns:
-            模式列表
+            List of patterns
         """
         patterns = []
         if not hasattr(self.tracker, "config"):
@@ -174,18 +175,18 @@ class ChainUtils:
 
     def extract_sink_parameters(self, sink_code: str) -> List[str]:
         """
-        根据配置的sink模式提取参数表达式
+        Extract parameter expressions based on configured sink patterns
 
         Args:
-            sink_code: 汇聚点代码行
+            sink_code: Sink code line
 
         Returns:
-            参数表达式列表
+            List of parameter expressions
         """
         sink_patterns = self.get_patterns_from_config("sinks")
         sink_arg_expressions = []
 
-        # 如果没有从配置中获取到模式，使用默认的模式
+        # If no patterns are obtained from configuration, use default pattern
         if not sink_patterns:
             default_pattern = r"(?:pickle|cloudpickle|yaml|json)\.loads\((.*?)\)"
             matches = re.search(default_pattern, sink_code)
@@ -194,16 +195,16 @@ class ChainUtils:
             return sink_arg_expressions
 
         for pattern in sink_patterns:
-            # 转换通配符模式为正则表达式
+            # Convert wildcard patterns to regular expressions
             if "*" in pattern:
                 regex_pattern = pattern.replace(".", "\\.").replace("*", ".*?")
-                # 构建正则提取参数的表达式
+                # Construct regex to extract parameters
                 full_pattern = f"({regex_pattern})\\s*\\((.*?)\\)"
                 matches = re.search(full_pattern, sink_code)
                 if matches:
                     sink_arg_expressions.append(matches.group(2).strip())
             else:
-                # 处理精确匹配模式
+                # Handle exact match patterns
                 full_pattern = f"({re.escape(pattern)})\\s*\\((.*?)\\)"
                 matches = re.search(full_pattern, sink_code)
                 if matches:
@@ -217,14 +218,14 @@ class ChainUtils:
         control_flow_chain: List[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
         """
-        合并数据流和控制流调用链
+        Merge data flow and control flow call chains
 
         Args:
-            data_flow_chain: 数据流调用链
-            control_flow_chain: 控制流调用链
+            data_flow_chain: Data flow call chain
+            control_flow_chain: Control flow call chain
 
         Returns:
-            合并后的调用链
+            Merged call chain
         """
         if not control_flow_chain:
             return data_flow_chain
@@ -232,7 +233,7 @@ class ChainUtils:
         if not data_flow_chain:
             return control_flow_chain
 
-        # 对节点进行分类
+        # Categorize nodes
         entry_points = []
         control_flows = []
         sources = []
@@ -240,7 +241,7 @@ class ChainUtils:
         sink_containers = []
         sinks = []
 
-        # 从控制流链中提取节点
+        # Extract nodes from control flow chain
         for node in control_flow_chain:
             node_type = node.get("type", "")
             if node_type == "entry_point":
@@ -248,11 +249,11 @@ class ChainUtils:
             elif node_type == "control_flow":
                 control_flows.append(node)
             elif node_type == "sink_container":
-                # 检查是否已经在数据流中
+                # Check if already exists in data flow chain
                 if not any(n.get("type") == "sink_container" for n in data_flow_chain):
                     sink_containers.append(node)
 
-        # 从数据流链中提取节点
+        # Extract nodes from data flow chain
         for node in data_flow_chain:
             node_type = node.get("type", "")
             if node_type == "source":
@@ -264,14 +265,14 @@ class ChainUtils:
             elif node_type == "sink":
                 sinks.append(node)
 
-        # 去重并按逻辑顺序合并
+        # Remove duplicates and merge in logical order
         merged_chain = []
 
-        # 1. 添加入口点
+        # 1. Add entry points
         for node in entry_points:
             merged_chain.append(node)
 
-        # 2. 添加控制流节点
+        # 2. Add control flow nodes
         for node in control_flows:
             if not any(
                 n.get("line") == node.get("line")
@@ -280,7 +281,7 @@ class ChainUtils:
             ):
                 merged_chain.append(node)
 
-        # 3. 添加源节点
+        # 3. Add source nodes
         for node in sources:
             if not any(
                 n.get("line") == node.get("line")
@@ -289,7 +290,7 @@ class ChainUtils:
             ):
                 merged_chain.append(node)
 
-        # 4. 添加数据流节点
+        # 4. Add data flow nodes
         for node in data_flows:
             if not any(
                 n.get("line") == node.get("line")
@@ -298,7 +299,7 @@ class ChainUtils:
             ):
                 merged_chain.append(node)
 
-        # 5. 添加sink容器节点（确保只添加一次）
+        # 5. Add sink container nodes (ensure only added once)
         for node in sink_containers:
             if not any(
                 n.get("type") == "sink_container"
@@ -307,7 +308,7 @@ class ChainUtils:
             ):
                 merged_chain.append(node)
 
-        # 6. 添加sink节点
+        # 6. Add sink nodes
         for node in sinks:
             if not any(
                 n.get("line") == node.get("line") and n.get("type") == "sink"
@@ -315,7 +316,7 @@ class ChainUtils:
             ):
                 merged_chain.append(node)
 
-        # 按照行号排序，确保调用链顺序合理
+        # Sort by line number to ensure call chain order is reasonable
         merged_chain.sort(key=lambda x: x.get("line", 0))
 
         if self.debug:

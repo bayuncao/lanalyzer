@@ -7,38 +7,62 @@ Provides a consistent logging interface for the entire application.
 import logging
 import sys
 import datetime
-from typing import Optional, TextIO
+from typing import Optional, TextIO, Union, Any
 
-# 配置默认日志器
+# Configure default logger
 logger = logging.getLogger("lanalyzer")
 logger.setLevel(logging.INFO)
 
-# 默认格式
+# Default format
 DEFAULT_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 formatter = logging.Formatter(DEFAULT_FORMAT)
 
-# 控制台处理器
+# Console handler
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 
 class LogTee:
-    """Send output to two file objects simultaneously"""
+    """Send output to two destinations simultaneously.
 
-    def __init__(self, file1: TextIO, file2: TextIO):
+    Supports both file-like objects and logger instances.
+    """
+
+    def __init__(
+        self, file1: TextIO, file2: Union[TextIO, logging.Logger], prefix: str = ""
+    ):
         self.file1 = file1
         self.file2 = file2
+        self.prefix = prefix
+        self.is_logger = isinstance(file2, logging.Logger)
 
     def write(self, data: str) -> None:
+        # Add prefix if specified and data is not just whitespace
+        if self.prefix and data.strip():
+            data = f"{self.prefix} {data}"
+
         self.file1.write(data)
-        self.file2.write(data)
+
+        if self.is_logger:
+            # For logger objects, log non-empty lines
+            if data.strip():
+                self.file2.info(data.strip())
+        else:
+            # For file-like objects, write directly
+            self.file2.write(data)
+            self.file2.flush()
+
         self.file1.flush()  # Ensure real-time output
-        self.file2.flush()
 
     def flush(self) -> None:
         self.file1.flush()
-        self.file2.flush()
+        if not self.is_logger:
+            self.file2.flush()
+
+    def __getattr__(self, name: str) -> Any:
+        """Forward any other attributes to file1"""
+        return getattr(self.file1, name)
 
 
 def get_timestamp() -> str:
@@ -76,21 +100,21 @@ def configure_logger(
         verbose: Enable verbose logging (set level to INFO)
         debug: Enable debug logging (set level to DEBUG)
     """
-    # 根据调试/详细标志设置日志级别
+    # Set log level based on debug/verbose flags
     if debug:
         level = logging.DEBUG
     elif verbose and level > logging.INFO:
         level = logging.INFO
 
-    # 设置日志器级别
+    # Set logger level
     logger.setLevel(level)
 
-    # 更新控制台处理器格式化器
+    # Update console handler formatter
     formatter = logging.Formatter(log_format)
     for handler in logger.handlers:
         handler.setFormatter(formatter)
 
-    # 如果指定了日志文件，添加文件处理器
+    # Add file handler if log file is specified
     if log_file:
         file_handler = logging.FileHandler(log_file)
         file_handler.setFormatter(formatter)

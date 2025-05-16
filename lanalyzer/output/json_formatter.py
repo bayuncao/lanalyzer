@@ -39,30 +39,29 @@ class JSONFormatter(OutputFormatter):
         filtered_vulnerabilities = []
         for vuln in vulnerabilities:
             vuln_copy = vuln.copy()
+            # Potentially, future filtering or modification of vuln_copy could happen here
             filtered_vulnerabilities.append(vuln_copy)
 
-        result = {"vulnerabilities": filtered_vulnerabilities}
+        result: Dict[str, Any] = {"vulnerabilities": filtered_vulnerabilities}
 
         if include_timestamp:
-            result["timestamp"] = datetime.datetime.now().isoformat()
+            result["timestamp"] = datetime.datetime.now(
+                datetime.timezone.utc
+            ).isoformat()
 
         if include_summary:
-            summary = {"total": len(vulnerabilities), "by_rule": {}}
+            summary: Dict[str, Any] = {"total": len(vulnerabilities), "by_rule": {}}
 
             for vuln in vulnerabilities:
                 rule = vuln.get("rule", "Unknown")
-                if rule in summary["by_rule"]:
-                    summary["by_rule"][rule] += 1
-                else:
-                    summary["by_rule"][rule] = 1
+                summary["by_rule"].setdefault(rule, 0)
+                summary["by_rule"][rule] += 1
 
             summary["by_file"] = {}
             for vuln in vulnerabilities:
                 file = vuln.get("file", "Unknown")
-                if file in summary["by_file"]:
-                    summary["by_file"][file] += 1
-                else:
-                    summary["by_file"][file] = 1
+                summary["by_file"].setdefault(file, 0)
+                summary["by_file"][file] += 1
 
             result["summary"] = summary
 
@@ -90,7 +89,7 @@ class JSONFormatter(OutputFormatter):
             output.write(formatted_results)
 
             if output_file:
-                output.write("\n")
+                output.write("\n")  # Ensure newline at end of file
                 debug(f"Wrote JSON output to {output_file}")
 
 

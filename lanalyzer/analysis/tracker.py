@@ -6,7 +6,7 @@ import ast
 import json
 import os
 import traceback
-from typing import Any, Dict, List, Tuple, Set
+from typing import Any, Dict, List, Tuple, Set, Type, TypeVar, ClassVar
 
 from lanalyzer.analysis.ast_parser import ParentNodeVisitor
 from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
@@ -24,6 +24,9 @@ from lanalyzer.logger import (
     error,
     critical,
 )
+
+# Type variable for better type hinting
+T = TypeVar("T", bound="EnhancedTaintTracker")
 
 
 class EnhancedTaintTracker:
@@ -73,6 +76,20 @@ class EnhancedTaintTracker:
         self.call_chain_builder = CallChainBuilder(self)
         self.vulnerability_finder = VulnerabilityFinder(self)
         self.utils = TaintAnalysisUtils(self)
+
+    @classmethod
+    def from_config(cls: Type[T], config: Dict[str, Any], debug: bool = False) -> T:
+        """
+        Create an enhanced taint tracker instance from a configuration dictionary.
+
+        Args:
+            config: Configuration dictionary
+            debug: Whether to enable debug output
+
+        Returns:
+            Initialized EnhancedTaintTracker instance
+        """
+        return cls(config, debug)
 
     def analyze_file(self, file_path: str) -> List[Dict[str, Any]]:
         """

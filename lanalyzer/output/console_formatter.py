@@ -35,8 +35,8 @@ class ConsoleFormatter(OutputFormatter):
         super().__init__()
         self.use_color = use_color
 
-        # Define colors for different severities
-        self.colors = {
+        # Define colors for different severities and styles
+        self.colors: Dict[str, str] = {
             "high": Fore.RED,
             "medium": Fore.YELLOW,
             "low": Fore.BLUE,
@@ -47,29 +47,29 @@ class ConsoleFormatter(OutputFormatter):
             "bold": Style.BRIGHT,
         }
 
-        # Disable colors if requested or if not in a terminal
+        # Disable colors if requested or if not in a TTY (e.g., when piping to a file)
         if not use_color or not sys.stdout.isatty():
             for key in self.colors:
                 self.colors[key] = ""
 
     def format_results(
-        self, vulnerabilities: List[Union[Vulnerability, Dict[str, Any]]], **kwargs
+        self, vulnerabilities: List[Union[Vulnerability, Dict[str, Any]]], **kwargs: Any
     ) -> str:
         """
         Format analysis results for console output.
 
         Args:
-            vulnerabilities: List of vulnerability objects or dictionaries
+            vulnerabilities: List of vulnerability objects or dictionaries.
             **kwargs: Additional arguments:
-                - show_summary: Whether to include summary statistics (default: True)
-                - show_details: Whether to include detailed vulnerability information (default: True)
-                - show_source_sink: Whether to include source and sink details (default: True)
-                - show_remediation: Whether to include remediation suggestions (default: True)
-                - target: The target of the analysis (default: "Unknown")
-                - stats: Additional statistics about the analysis (default: {})
+                - show_summary: Whether to include summary statistics (default: True).
+                - show_details: Whether to include detailed vulnerability information (default: True).
+                - show_source_sink: Whether to include source and sink details (default: True).
+                - show_remediation: Whether to include remediation suggestions (default: True).
+                - target: The target of the analysis (default: "Unknown").
+                - stats: Additional statistics about the analysis (default: {}).
 
         Returns:
-            Formatted string with analysis results
+            Formatted string with analysis results.
         """
         show_summary = kwargs.get("show_summary", True)
         show_details = kwargs.get("show_details", True)
@@ -78,200 +78,225 @@ class ConsoleFormatter(OutputFormatter):
         target = kwargs.get("target", "Unknown")
         stats = kwargs.get("stats", {})
 
-        output = []
+        output_lines = []
 
-        # Header
-        output.append(self._color("=" * 80, "header"))
-        output.append(self._color(" LANALYZER VULNERABILITY REPORT", "header", True))
-        output.append(
+        # Report Header
+        output_lines.append(self._color("=" * 80, "header"))
+        output_lines.append(
+            self._color(" LANALYZER VULNERABILITY REPORT", "header", bold=True)
+        )
+        output_lines.append(
             self._color(
-                f' Generated: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}',
+                f' Generated: {datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")}',
                 "header",
             )
         )
-        output.append(self._color(f" Target: {target}", "header"))
-        output.append(self._color("=" * 80, "header"))
-        output.append("")
+        output_lines.append(self._color(f" Target: {target}", "header"))
+        output_lines.append(self._color("=" * 80, "header"))
+        output_lines.append("")
 
-        # Summary section if requested
+        # Summary Section
         if show_summary:
-            output.append(self._color("SUMMARY", "header", True))
-            output.append("-" * 80)
+            output_lines.append(self._color("SUMMARY", "header", bold=True))
+            output_lines.append("-" * 80)
 
             # Count vulnerabilities by severity
-            severity_counts = {
+            severity_counts: Dict[str, int] = {
                 "high": 0,
                 "medium": 0,
                 "low": 0,
                 "info": 0,
                 "unknown": 0,
             }
-
-            for vuln in vulnerabilities:
-                if isinstance(vuln, dict):
-                    severity = vuln.get("severity", "unknown").lower()
-                else:
-                    severity = getattr(vuln, "severity", "unknown").lower()
+            for vuln_item in vulnerabilities:
+                severity = ""
+                if isinstance(vuln_item, dict):
+                    severity = vuln_item.get("severity", "unknown").lower()
+                elif hasattr(vuln_item, "severity"):
+                    severity = getattr(vuln_item, "severity", "unknown").lower()
 
                 if severity in severity_counts:
                     severity_counts[severity] += 1
                 else:
                     severity_counts["unknown"] += 1
 
-            total = sum(severity_counts.values())
-            output.append(f"Total vulnerabilities: {total}")
-            output.append("")
+            total_vulnerabilities = sum(severity_counts.values())
+            output_lines.append(f"Total vulnerabilities: {total_vulnerabilities}")
+            output_lines.append("")
 
             # Display vulnerability counts by severity
-            output.append("By Severity:")
-            for severity, count in severity_counts.items():
+            output_lines.append("By Severity:")
+            for severity_level, count in severity_counts.items():
                 if count > 0:
-                    output.append(
-                        f'  {self._color(severity.upper() + ":", severity, True)} {count}'
+                    output_lines.append(
+                        f'  {self._color(severity_level.upper() + ":", severity_level, bold=True)} {count}'
                     )
 
-            # Display additional stats if provided
+            # Display additional analysis statistics
             if stats:
-                output.append("")
-                output.append("Analysis Stats:")
+                output_lines.append("")
+                output_lines.append("Analysis Stats:")
                 for key, value in stats.items():
-                    if key != "vulnerability_count":  # Already displayed above
-                        output.append(f"  {key}: {value}")
+                    if (
+                        key != "vulnerability_count"
+                    ):  # Already covered by total_vulnerabilities
+                        output_lines.append(f"  {key}: {value}")
+            output_lines.append("")
 
-            output.append("")
-
-        # Detailed vulnerability information if requested
+        # Detailed Vulnerability Information
         if show_details and vulnerabilities:
-            output.append(self._color("VULNERABILITIES", "header", True))
-            output.append("-" * 80)
+            output_lines.append(self._color("VULNERABILITIES", "header", bold=True))
+            output_lines.append("-" * 80)
 
-            # Process each vulnerability
-            for i, vuln in enumerate(vulnerabilities):
-                # Convert to dict if it's an object
-                if not isinstance(vuln, dict):
-                    if hasattr(vuln, "to_dict"):
-                        vuln_dict = vuln.to_dict()
-                    else:
-                        vuln_dict = vars(vuln)
-                else:
-                    vuln_dict = vuln
+            for i, vuln_item in enumerate(vulnerabilities):
+                # Ensure vulnerability data is in dictionary format
+                vuln_dict: Dict[str, Any]
+                if isinstance(vuln_item, Vulnerability) and hasattr(
+                    vuln_item, "to_dict"
+                ):
+                    vuln_dict = vuln_item.to_dict()
+                elif isinstance(vuln_item, dict):
+                    vuln_dict = vuln_item
+                else:  # Fallback for other object types
+                    vuln_dict = vars(vuln_item)
 
-                # Extract basic info
+                # Extract basic vulnerability info
                 rule = vuln_dict.get("rule", "Unknown Vulnerability")
                 severity = vuln_dict.get("severity", "unknown").lower()
-                file_path = vuln_dict.get("file", "Unknown")
-                message = vuln_dict.get("message", "No details available")
+                file_path = vuln_dict.get("file", "N/A")
+                message = vuln_dict.get("message", "No details available.")
 
-                # Format vulnerability header with color based on severity
-                output.append("")
-                output.append(f"[{i+1}] {self._color(rule, severity, True)}")
-                output.append(
-                    f"  Severity: {self._color(severity.upper(), severity, True)}"
+                # Format vulnerability header
+                output_lines.append("")
+                output_lines.append(f"[{i+1}] {self._color(rule, severity, bold=True)}")
+                output_lines.append(
+                    f"  Severity: {self._color(severity.upper(), severity, bold=True)}"
                 )
-                output.append(f"  File: {file_path}")
-                output.append(f"  Message: {message}")
+                output_lines.append(f"  File: {file_path}")
+                if "line" in vuln_dict and vuln_dict["line"]:
+                    output_lines.append(f"  Line: {vuln_dict['line']}")
+                output_lines.append(f"  Message: {message}")
 
-                # Show source and sink details if requested
+                # Display source and sink details
                 if show_source_sink:
-                    source = vuln_dict.get("source", {})
-                    sink = vuln_dict.get("sink", {})
+                    source_info = vuln_dict.get("source", {})
+                    sink_info = vuln_dict.get("sink", {})
 
-                    if source:
-                        source_line = source.get("location", {}).get(
-                            "line", source.get("line", "Unknown")
-                        )
-                        source_name = source.get("name", "Unknown")
-                        source_function = source.get("function_name", "Unknown")
-                        output.append(
-                            f"  Source: {source_name} in {source_function} at line {source_line}"
-                        )
-
-                    if sink:
-                        sink_line = sink.get("location", {}).get(
-                            "line", sink.get("line", "Unknown")
-                        )
-                        sink_name = sink.get("name", "Unknown")
-                        sink_function = sink.get("function_name", "Unknown")
-                        output.append(
-                            f"  Sink: {sink_name} in {sink_function} at line {sink_line}"
+                    if isinstance(source_info, dict) and source_info:
+                        loc = source_info.get("location", {})
+                        line = loc.get("line", source_info.get("line", "N/A"))
+                        name = source_info.get("name", "N/A")
+                        func = source_info.get("function_name", "N/A")
+                        output_lines.append(
+                            f"  Source: {name} in {func} at line {line}"
                         )
 
-                # Show tainted variable if available
-                if "tainted_variable" in vuln_dict and vuln_dict["tainted_variable"]:
-                    output.append(
+                    if isinstance(sink_info, dict) and sink_info:
+                        loc = sink_info.get("location", {})
+                        line = loc.get("line", sink_info.get("line", "N/A"))
+                        name = sink_info.get("name", "N/A")
+                        func = sink_info.get("function_name", "N/A")
+                        output_lines.append(f"  Sink: {name} in {func} at line {line}")
+
+                # Display tainted variable
+                if vuln_dict.get("tainted_variable"):
+                    output_lines.append(
                         f'  Tainted Variable: {vuln_dict["tainted_variable"]}'
                     )
 
-                # Show remediation if requested
-                if (
-                    show_remediation
-                    and "remediation" in vuln_dict
-                    and vuln_dict["remediation"]
-                ):
-                    output.append("")
-                    output.append(f'  Remediation: {vuln_dict["remediation"]}')
+                # Display remediation advice
+                if show_remediation and vuln_dict.get("remediation"):
+                    output_lines.append("")
+                    output_lines.append(f'  Remediation: {vuln_dict["remediation"]}')
 
-                # Show CWE if available
-                if "cwe" in vuln_dict and vuln_dict["cwe"]:
-                    output.append(f'  CWE: {vuln_dict["cwe"]}')
+                # Display CWE identifier
+                if vuln_dict.get("cwe"):
+                    output_lines.append(f'  CWE: {vuln_dict["cwe"]}')
 
-                output.append("-" * 80)
+                output_lines.append("-" * 80)
 
-        # Footer
-        output.append("")
+        # Report Footer
+        output_lines.append("")
         if vulnerabilities:
-            output.append(
-                f"End of report. {len(vulnerabilities)} vulnerabilities found."
+            output_lines.append(
+                f"End of report. {len(vulnerabilities)} "
+                f"vulnerabilit{'y' if len(vulnerabilities) == 1 else 'ies'} found."
             )
         else:
-            output.append("No vulnerabilities found.")
+            output_lines.append("No vulnerabilities found.")
 
-        return "\n".join(output)
+        return "\n".join(output_lines)
 
     def _color(self, text: str, color_key: str, bold: bool = False) -> str:
         """
-        Apply color to text if colors are enabled.
+        Apply color and style to text if colors are enabled.
 
         Args:
-            text: Text to colorize
-            color_key: Key for the color to use
-            bold: Whether to make the text bold
+            text: Text to colorize.
+            color_key: Key for the color to use from self.colors.
+            bold: Whether to make the text bold.
 
         Returns:
-            Colorized text string
+            Colorized text string.
         """
-        if not self.use_color:
+        if not self.use_color:  # Also handles cases where self.colors are emptied
             return text
 
-        color = self.colors.get(color_key, "")
+        color_code = self.colors.get(color_key, "")
         bold_style = self.colors.get("bold", "") if bold else ""
-        reset = self.colors.get("reset", "")
+        reset_code = self.colors.get("reset", "")
 
-        return f"{color}{bold_style}{text}{reset}"
+        return f"{color_code}{bold_style}{text}{reset_code}"
+
+    def write_results(
+        self,
+        vulnerabilities: List[Union[Vulnerability, Dict[str, Any]]],
+        output_file: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
+        """
+        Write formatted results to a file or stdout.
+        Overrides the base class method to use self.use_color for the formatter.
+
+        Args:
+            vulnerabilities: List of vulnerability objects or dictionaries.
+            output_file: Path to output file (None for stdout).
+            **kwargs: Additional formatter-specific options.
+        """
+        # When writing to a file, typically colors are not desired unless explicitly forced.
+        # However, self.use_color is initialized considering TTY, so we respect it.
+        # If output_file is specified, self.use_color might have already been set to False
+        # if the original intent was `use_color=True` but stdout wasn't a TTY.
+        # This logic is handled in __init__.
+
+        # For file output, we might want to force no colors,
+        # but current implementation relies on initial `use_color` and TTY check.
+        # Let's assume the `use_color` flag passed to `__init__` is the final authority.
+        formatted_text = self.format_results(vulnerabilities, **kwargs)
+
+        if output_file:
+            with open(output_file, "w", encoding="utf-8") as f:
+                f.write(formatted_text)
+                f.write("\n")  # Ensure newline at end of file
+        else:
+            sys.stdout.write(formatted_text + "\n")
 
 
 def format_for_console(
     vulnerabilities: List[Union[Vulnerability, Dict[str, Any]]],
-    output_file: Optional[str] = None,
     use_color: bool = True,
-    **kwargs,
+    **kwargs: Any,
 ) -> str:
     """
     Convenience function to format analysis results for console output.
 
     Args:
-        vulnerabilities: List of vulnerability objects or dictionaries
-        output_file: Path to output file (if None, prints to stdout)
-        use_color: Whether to use colored output
-        **kwargs: Additional arguments to pass to the formatter
+        vulnerabilities: List of vulnerability objects or dictionaries.
+        use_color: Whether to use colored output.
+        **kwargs: Additional arguments to pass to the ConsoleFormatter.format_results.
 
     Returns:
-        Formatted string with the results
+        Formatted string with the results.
     """
     formatter = ConsoleFormatter(use_color=use_color)
-    formatted = formatter.format_results(vulnerabilities, **kwargs)
-
-    if output_file:
-        formatter.write_results(formatted, output_file)
-
-    return formatted
+    return formatter.format_results(vulnerabilities, **kwargs)

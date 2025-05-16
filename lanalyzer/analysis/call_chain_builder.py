@@ -5,7 +5,7 @@ This module provides functionality for building function call chains.
 
 from logging import debug
 import re
-from typing import Any, Dict, List, Set, Optional, Tuple
+from typing import Any, Dict, List
 
 from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
 from lanalyzer.analysis.data_flow_analyzer import DataFlowAnalyzer
@@ -39,7 +39,7 @@ class CallChainBuilder:
     ) -> List[Dict[str, Any]]:
         """
         Get the detailed function call chain from source to sink.
-        优化：递归查找 callee 路径，优先 is_self_method_call，利用 self_method_call_map，所有传播规则基于配置。
+        Optimization: Recursively find callee paths, prioritizing self method calls.
         """
         call_chain = []
         source_line = source_info.get("line", 0)
@@ -90,7 +90,7 @@ class CallChainBuilder:
             visitor, sink_line, context_lines=1
         )
 
-        # 先创建source和sink语句节点
+        # Create source and sink statement nodes first
         source_operation = self.tracker.utils.extract_operation_at_line(
             visitor, source_line
         )
@@ -110,7 +110,7 @@ class CallChainBuilder:
             visitor, sink_line
         )
         if sink_operation:
-            # 提取可能的sink参数表达式
+            # Extract possible sink parameter expressions
             sink_arg_expressions = []
             if (
                 hasattr(visitor, "source_lines")
@@ -119,11 +119,11 @@ class CallChainBuilder:
                 and sink_line <= len(visitor.source_lines)
             ):
                 sink_code = visitor.source_lines[sink_line - 1].strip()
-                # 使用基于配置的提取方法
+                # Use configuration-based extraction method
                 sink_arg_expressions = self.utils.extract_sink_parameters(sink_code)
 
             sink_desc = f"Unsafe {sink_name} operation, potentially leading to {sink.get('vulnerability_type', 'vulnerability')}"
-            # 如果提取到参数表达式，增加到描述中
+            # If parameter expressions are extracted, add them to the description
             if sink_arg_expressions:
                 sink_desc += (
                     f". Processing data from: {', '.join(sink_arg_expressions)}"
@@ -140,7 +140,7 @@ class CallChainBuilder:
             }
             call_chain.append(sink_stmt)
 
-        # 处理源和汇聚点在同一函数的情况
+        # Handle the case where source and sink are in the same function
         if source_func and sink_func and source_func.name == sink_func.name:
             func_info = {
                 "function": source_func.name,
@@ -154,7 +154,7 @@ class CallChainBuilder:
             call_chain.append(func_info)
             return self.utils.reorder_call_chain_by_data_flow(call_chain)
 
-        # 递归查找 source_func 到 sink_func 的所有路径，优先 is_self_method_call，传播规则基于配置
+        # Recursively find all paths from source_func to sink_func
         def dfs(current_func, target_func, path, depth):
             if self.debug:
                 print(
@@ -179,13 +179,13 @@ class CallChainBuilder:
             found_paths = dfs(source_func, sink_func, [], 0)
             if self.debug:
                 print(
-                    f"[DEBUG] Found {len(found_paths)} path(s) from {source_func.name} to {sink_func.name}"
+                    f"[DEBUG] Found {len(found_paths) if found_paths else 0} path(s) from {source_func.name} to {sink_func.name}"
                 )
 
-        # 如果 visitor 有 self_method_call_map，尝试补全链路
+        # If visitor has self_method_call_map, try to complete the chain
         if not found_paths and hasattr(visitor, "self_method_call_map"):
             if self.debug:
-                print("[DEBUG] 尝试用 self_method_call_map 补全链路")
+                print("[DEBUG] Trying to complete chain using self_method_call_map")
             for key, lines in visitor.self_method_call_map.items():
                 if (
                     source_func
@@ -193,13 +193,13 @@ class CallChainBuilder:
                     and source_func.name in key
                     and sink_func.name in key
                 ):
-                    # 构造一条简单链路
+                    # Construct a simple chain
                     found_paths = [[source_func, sink_func]]
                     break
 
-        # 生成调用链节点
+        # Generate call chain nodes
         if found_paths:
-            # 只取最短路径
+            # Take only the shortest path
             path = min(found_paths, key=len)
             for i, func in enumerate(path):
                 node_type = "intermediate"
@@ -231,13 +231,13 @@ class CallChainBuilder:
                 }
                 call_chain.append(func_info)
             if self.debug:
-                print(f"[DEBUG] 最终调用链节点数: {len(call_chain)}")
+                print(f"[DEBUG] Final call chain node count: {len(call_chain)}")
             return self.utils.reorder_call_chain_by_data_flow(call_chain)
 
-        # 如果找不到路径，尝试共同调用者
+        # If no path is found, try common callers
         if self.debug:
             print("[DEBUG] No direct path found, trying to find common callers...")
-        # 复用原有共同调用者逻辑
+        # Reuse existing common callers logic
         return self._build_common_callers_path(
             visitor,
             source_func,
@@ -314,7 +314,7 @@ class CallChainBuilder:
                 source_call_line = 0
                 sink_call_line = 0
 
-                # 查找更详细的调用信息
+                # Find more detailed call information
                 for callee in common_caller_node.callees:
                     if callee.name == source_func.name and hasattr(callee, "call_line"):
                         source_call_line = callee.call_line
@@ -327,7 +327,7 @@ class CallChainBuilder:
                             visitor, callee.call_line
                         )["statement"]
 
-                # 提取可能的sink参数表达式，以增强描述
+                # Extract possible sink parameter expressions to enhance description
                 sink_arg_expressions = []
                 if (
                     hasattr(visitor, "source_lines")
@@ -336,10 +336,10 @@ class CallChainBuilder:
                     and sink_line <= len(visitor.source_lines)
                 ):
                     sink_code = visitor.source_lines[sink_line - 1].strip()
-                    # 使用基于配置的提取方法
+                    # Use configuration-based extraction method
                     sink_arg_expressions = self.utils.extract_sink_parameters(sink_code)
 
-                    # 尝试提取索引访问信息
+                    # Try to extract index access information
                     if "[" in sink_code and "]" in sink_code:
                         array_var_match = re.match(
                             r"([a-zA-Z_][a-zA-Z0-9_]*)\s*\[", sink_code
@@ -350,7 +350,7 @@ class CallChainBuilder:
                                 sink_code, array_var
                             )
 
-                # 构建包含共同调用者的调用链
+                # Build call chain including common caller
                 sink_desc = f"Contains sink {sink_name} at line {sink_line}"
                 if sink_arg_expressions:
                     sink_desc += (
@@ -359,9 +359,9 @@ class CallChainBuilder:
 
                 source_desc = f"Contains source {source_name} at line {source_line}"
 
-                # 按数据流顺序构建调用链：源 -> 源函数 -> 公共调用者 -> 目标函数 -> 目标
+                # Build call chain in data flow order: source -> source func -> common caller -> sink func -> sink
                 call_chain = [
-                    # 1. 源节点
+                    # 1. Source node
                     {
                         "function": source_func.name,
                         "file": source_func.file_path,
@@ -374,7 +374,7 @@ class CallChainBuilder:
                         "type": "source",
                         "description": source_desc,
                     },
-                    # 2. 公共调用者节点
+                    # 2. Common caller node
                     {
                         "function": common_caller_node.name,
                         "file": common_caller_node.file_path,
@@ -399,7 +399,7 @@ class CallChainBuilder:
                             },
                         ],
                     },
-                    # 3. 汇聚点节点
+                    # 3. Sink node
                     {
                         "function": sink_func.name,
                         "file": sink_func.file_path,
@@ -411,7 +411,7 @@ class CallChainBuilder:
                     },
                 ]
 
-                # 使用数据流排序方法确保调用链顺序正确
+                # Use data flow sorting method to ensure correct call chain order
                 return self.utils.reorder_call_chain_by_data_flow(call_chain)
 
         return []
@@ -537,8 +537,8 @@ class CallChainBuilder:
                 "description": f"Function containing sink {sink_name}, at line {sink_line}",
             }
 
-            # 查找从入口点函数到sink函数的调用链
-            # 从配置中读取入口点函数模式
+            # Find call chain from entry point function to sink function
+            # Read entry point function patterns from configuration
             entry_point_patterns = []
             config = self.tracker.config
             if isinstance(config, dict) and "control_flow" in config:
@@ -552,16 +552,16 @@ class CallChainBuilder:
                         ):
                             entry_point_patterns.extend(entry_config["patterns"])
 
-            # 如果配置中没有指定，使用默认入口点模式
+            # If not specified in configuration, use default entry point patterns
             if not entry_point_patterns:
                 entry_point_patterns = ["main", "run", "__main__"]
 
             if self.debug:
                 print(f"[DEBUG] Using entry point patterns: {entry_point_patterns}")
 
-            # 查找匹配配置的入口点函数
+            # Find entry point functions matching configuration
             for func_name, func_node in visitor.functions.items():
-                # 检查函数名是否匹配任何入口点模式
+                # Check if function name matches any entry point pattern
                 is_entry_point = False
                 for pattern in entry_point_patterns:
                     if pattern == func_name or (
@@ -572,7 +572,7 @@ class CallChainBuilder:
                         break
 
                 if is_entry_point:
-                    # 查找从入口点到sink函数的调用路径
+                    # Find call path from entry point to sink function
                     func_calls = self._find_function_calls_between(
                         visitor, func_node, sink_function_node
                     )
@@ -584,17 +584,17 @@ class CallChainBuilder:
                                     f"[DEBUG] Added call from entry point {func_name} to sink function"
                                 )
 
-        # 获取sink中的变量，包括索引访问中的基础变量
-        # 例如，对于expression message[1]，要识别出message是被污点的基础变量
+        # Get variables in sink, including base variables in index access
+        # For example, for expression message[1], identify message as the tainted base variable
         tainted_vars_in_sink = self.tracker.utils.find_tainted_vars_in_sink(
             visitor, sink_line
         )
 
-        # 增加对数组索引访问的识别
+        # Enhance identification of array index access
         if sink_arg_expressions:
             for expr in sink_arg_expressions:
-                # 提取数组索引访问中的基础变量
-                # 如message[1]中的message
+                # Extract base variables in array index access
+                # Like message in message[1]
                 array_var_match = re.match(r"([a-zA-Z_][a-zA-Z0-9_]*)\s*\[", expr)
                 if array_var_match:
                     array_var = array_var_match.group(1)
@@ -609,7 +609,7 @@ class CallChainBuilder:
         other_sources = []
         parser_sources = []
 
-        # 查找可能的数据流路径
+        # Find possible data flow paths
         data_flow_path = []
 
         if (
@@ -633,10 +633,10 @@ class CallChainBuilder:
                                 )
                             )
 
-                            # 改进source描述中的变量信息
+                            # Improve variable information in source description
                             var_desc = f"variable {var_name}"
                             if sink_arg_expressions:
-                                # 如果在sink参数中发现索引访问，补充说明
+                                # If index access is found in sink parameters, add explanation
                                 for expr in sink_arg_expressions:
                                     if var_name in expr and "[" in expr:
                                         var_desc = f"expression {expr} (base variable: {var_name})"
@@ -670,8 +670,8 @@ class CallChainBuilder:
                                     f"[DEBUG] Added source statement for var {var_name} at line {source_line}"
                                 )
 
-                            # 查找源变量和sink之间的数据流
-                            # 检查变量赋值和变量转换操作
+                            # Find data flow between source variable and sink
+                            # Check variable assignments and variable transformation operations
                             if hasattr(visitor, "var_assignments"):
                                 self.data_flow.find_data_flow_steps(
                                     visitor,
@@ -699,50 +699,73 @@ class CallChainBuilder:
             added_sources,
         )
 
-        # 整合最终调用链
+        # Integrate the final call chain
         final_call_chain = []
 
-        # 1. 首先添加同一函数中找到的污点源（按照与sink的距离排序）
+        # 1. First add taint sources found in the same function (sorted by distance to sink)
         for entry in same_function_sources:
             final_call_chain.append(entry)
 
-        # 2. 如果有数据流路径，添加到调用链中
+        # 2. If there are data flow paths, add them to the call chain
         for entry in data_flow_path:
             source_key = f"{entry['line']}:{entry['statement']}"
             if source_key not in added_sources:
                 added_sources.add(source_key)
                 final_call_chain.append(entry)
 
-        # 3. 添加解析器类型的污点源
+        # 3. Add parser-type taint sources
         for entry in parser_sources:
             final_call_chain.append(entry)
 
-        # 4. 如果同一函数中没有找到污点源，添加其他函数中的污点源
+        # 4. If no taint sources are found in the same function, add sources from other functions
         if not same_function_sources:
             for entry in other_sources:
                 final_call_chain.append(entry)
 
-        # 5. 添加包含sink的函数
+        # 5. Add the function containing the sink
         if sink_container_entry:
             final_call_chain.append(sink_container_entry)
 
-        # 6. 添加sink
+        # 6. Add the sink
         if sink_entry:
             final_call_chain.append(sink_entry)
 
-        # 如果同一函数中有多个污点源，按照与sink的距离对它们排序
+        # If there are multiple taint sources in the same function, sort them by distance to the sink
         if len(same_function_sources) > 1:
             same_function_sources_sorted = sorted(
                 same_function_sources, key=lambda x: abs(x["line"] - sink_line)
             )
             final_call_chain = [
                 e for e in final_call_chain if e not in same_function_sources
-            ]
-            for entry in reversed(same_function_sources_sorted):
-                final_call_chain.insert(0, entry)
+            ] + same_function_sources_sorted
 
-        # 根据数据流依赖关系重新排序调用链
-        final_call_chain = self.utils.reorder_call_chain_by_data_flow(final_call_chain)
+        # 7. Add any additional entry points and call paths
+        for entry in call_chain:
+            if entry not in final_call_chain:
+                final_call_chain.append(entry)
+
+        # Sort the final call chain by the line number, but keep sources before sinks
+        def sort_key(entry):
+            # Assign priorities to different entry types
+            type_priority = {
+                "source": 0,
+                "intermediate": 1,
+                "sink_container": 2,
+                "sink": 3,
+            }
+            entry_type = entry.get("type", "intermediate")
+            priority = type_priority.get(entry_type, 1)
+            return (priority, entry.get("line", 0))
+
+        # Filter out duplicate entries
+        unique_entries = {}
+        for entry in final_call_chain:
+            key = f"{entry.get('function', '')}:{entry.get('line', 0)}:{entry.get('type', '')}"
+            if key not in unique_entries:
+                unique_entries[key] = entry
+
+        final_call_chain = list(unique_entries.values())
+        final_call_chain.sort(key=sort_key)
 
         if self.debug:
             print(f"[DEBUG] Built call chain with {len(final_call_chain)} nodes")
@@ -888,37 +911,22 @@ class CallChainBuilder:
 
                     line = visitor.source_lines[line_num - 1].strip()
 
-                    # 从配置中获取方法调用模式
-                    method_call_patterns = []
-                    if isinstance(config, dict) and "control_flow" in config:
-                        control_flow_config = config["control_flow"]
-                        if (
-                            "method_call_patterns" in control_flow_config
-                            and isinstance(
-                                control_flow_config["method_call_patterns"], list
-                            )
-                        ):
-                            method_call_patterns = control_flow_config[
-                                "method_call_patterns"
-                            ]
+                    # Use default method call patterns
+                    method_call_patterns = [
+                        r"self\.([a-zA-Z_][a-zA-Z0-9_]*)\(",
+                        r"([a-zA-Z_][a-zA-Z0-9_]*)\(",
+                    ]
 
-                    # 如果配置中没有指定，使用默认模式
-                    if not method_call_patterns:
-                        method_call_patterns = [
-                            r"self\.([a-zA-Z_][a-zA-Z0-9_]*)\(",
-                            r"([a-zA-Z_][a-zA-Z0-9_]*)\(",
-                        ]
-
-                    # 对每个模式进行检查
+                    # Check each pattern
                     for pattern in method_call_patterns:
                         matches = re.findall(pattern, line)
 
                         for match in matches:
                             method_name = match
                             if isinstance(match, tuple):
-                                method_name = match[0]  # 处理正则表达式捕获组
+                                method_name = match[0]  # Handle regex capture groups
 
-                            # 检查是否是sink_func的方法名
+                            # Check if it's the sink_func's method name
                             sink_method_name = sink_func.name
                             if "." in sink_method_name:
                                 sink_method_name = sink_method_name.split(".")[-1]
@@ -942,7 +950,7 @@ class CallChainBuilder:
         return call_points
 
     def _get_function_call_info(self, visitor, caller_func, callee_func):
-        """获取函数调用的详细信息"""
+        """Get detailed information about function call"""
         if hasattr(visitor, "source_lines") and visitor.source_lines:
             start_line = caller_func.line_no
             end_line = caller_func.end_line_no
@@ -953,9 +961,9 @@ class CallChainBuilder:
 
                 line = visitor.source_lines[line_num - 1].strip()
 
-                # 检查对被调用函数的引用
+                # Check for references to the called function
                 if callee_func.name in line and "(" in line:
-                    # 确保这是一个函数调用而不仅仅是名称的出现
+                    # Make sure this is a function call and not just an occurrence of the name
                     call_pattern = r"(self\.)?" + re.escape(callee_func.name) + r"\s*\("
                     if re.search(call_pattern, line):
                         return {"line": line_num, "statement": line}
@@ -963,65 +971,48 @@ class CallChainBuilder:
         return None
 
     def _extract_var_name_from_stmt(self, stmt):
-        """从赋值语句中提取变量名"""
+        """Extract variable name from assignment statement"""
         if "=" in stmt:
             return stmt.split("=")[0].strip()
         return "unknown"
 
     def _find_function_calls_between(self, visitor, start_func, end_func):
-        """找到从start_func到end_func的调用路径，基于AST分析和配置文件"""
+        """Find call path from start_func to end_func, based on AST analysis"""
         call_points = []
 
-        # 如果有源代码可用
+        # If source code is available
         if hasattr(visitor, "source_lines") and visitor.source_lines:
             start_line = start_func.line_no
             end_line = start_func.end_line_no
 
-            # 从配置中获取方法调用模式
-            method_call_patterns = []
-            config = self.tracker.config
-            if isinstance(config, dict) and "control_flow" in config:
-                control_flow_config = config["control_flow"]
-                if "method_call_patterns" in control_flow_config and isinstance(
-                    control_flow_config["method_call_patterns"], list
-                ):
-                    method_call_patterns = control_flow_config["method_call_patterns"]
+            # Default patterns including self.method() and direct function calls
+            method_call_patterns = [
+                r"self\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(",
+                r"([a-zA-Z_][a-zA-Z0-9_]*)\s*\(",
+            ]
 
-            # 如果配置中没有指定，使用默认模式
-            if not method_call_patterns:
-                # 提取目标函数名称
-                target_method_name = end_func.name
-                if "." in target_method_name:
-                    target_method_name = target_method_name.split(".")[-1]
-
-                # 默认模式包括self.method()和直接函数调用
-                method_call_patterns = [
-                    r"self\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(",
-                    r"([a-zA-Z_][a-zA-Z0-9_]*)\s*\(",
-                ]
-
-            # 在源函数体内查找对目标函数的调用
+            # Search for calls to the target function within the source function body
             for line_num in range(start_line, end_line + 1):
                 if line_num > len(visitor.source_lines):
                     break
 
                 line = visitor.source_lines[line_num - 1].strip()
 
-                # 提取目标函数名称
+                # Extract target function name
                 target_method_name = end_func.name
                 if "." in target_method_name:
                     target_method_name = target_method_name.split(".")[-1]
 
-                # 检查行中是否包含目标函数名和函数调用标记
+                # Check if the line contains the target function name and function call marker
                 if target_method_name in line and "(" in line:
-                    # 使用不同的模式检查
+                    # Check with different patterns
                     for pattern in method_call_patterns:
                         matches = re.findall(pattern, line)
 
                         for match in matches:
                             method_name = match
                             if isinstance(match, tuple):
-                                method_name = match[0]  # 处理正则表达式捕获组
+                                method_name = match[0]  # Handle regex capture groups
 
                             if method_name == target_method_name:
                                 call_point = {
@@ -1036,7 +1027,7 @@ class CallChainBuilder:
                                 call_points.append(call_point)
                                 break
 
-            # 检查通过AST分析收集的调用点信息
+            # Check call points information collected through AST analysis
             if hasattr(end_func, "call_points") and end_func.call_points:
                 for call_point in end_func.call_points:
                     if call_point.get("caller") == start_func.name:
@@ -1054,262 +1045,4 @@ class CallChainBuilder:
                         }
                         call_points.append(cp)
 
-        # 1. 首先检查配置文件中的类方法映射关系
-        config = self.tracker.config
-        if isinstance(config, dict) and "control_flow" in config:
-            control_flow_config = config["control_flow"]
-            if "class_method_mapping" in control_flow_config:
-                class_method_mapping = control_flow_config["class_method_mapping"]
-
-                # 提取类名和方法名
-                start_class_name = None
-                start_method_name = start_func.name
-                end_class_name = None
-                end_method_name = end_func.name
-
-                # 如果函数名包含类名，提取出来
-                if hasattr(start_func, "class_name"):
-                    start_class_name = start_func.class_name
-                if hasattr(end_func, "class_name"):
-                    end_class_name = end_func.class_name
-
-                # 检查配置文件中是否定义了这些类的方法调用关系
-                for class_name, methods in class_method_mapping.items():
-                    # 如果起始函数属于当前类
-                    matched_start = (start_class_name == class_name) or (
-                        start_method_name == class_name + ".run"
-                    )
-                    # 如果目标函数属于当前类或者是类名限定的方法
-                    matched_end = (end_class_name == class_name) or (
-                        end_method_name == class_name + ".wait_for_files"
-                    )
-
-                    # 提取纯方法名
-                    pure_start_method = start_method_name
-                    if "." in pure_start_method:
-                        pure_start_method = pure_start_method.split(".")[-1]
-
-                    pure_end_method = end_method_name
-                    if "." in pure_end_method:
-                        pure_end_method = pure_end_method.split(".")[-1]
-
-                    # 检查类方法调用关系
-                    if matched_start and matched_end and pure_start_method in methods:
-                        if pure_end_method in methods[pure_start_method]:
-                            debug(
-                                f"[FORCE] 根据配置文件找到类方法调用关系: {class_name}.{pure_start_method} -> {class_name}.{pure_end_method}"
-                            )
-
-                            # 找到起始方法的行号范围
-                            method_line_range = self._find_method_line_range(
-                                visitor, pure_start_method, class_name
-                            )
-                            if method_line_range:
-                                start_line, end_line = method_line_range
-
-                                # 在方法体中查找对目标方法的调用
-                                for line_num in range(start_line, end_line + 1):
-                                    if line_num > len(visitor.source_lines):
-                                        break
-
-                                    line = visitor.source_lines[line_num - 1].strip()
-                                    if (
-                                        f"self.{pure_end_method}" in line
-                                        and "(" in line
-                                    ):
-                                        call_point = {
-                                            "function": f"{pure_start_method}",
-                                            "file": visitor.file_path,
-                                            "line": line_num,
-                                            "statement": line,
-                                            "context_lines": [
-                                                line_num - 1,
-                                                line_num + 1,
-                                            ],
-                                            "type": "class_method_call",
-                                            "description": f"Class method {class_name}.{pure_start_method} calls {class_name}.{pure_end_method} at line {line_num}",
-                                        }
-                                        call_points.append(call_point)
-                                        debug(
-                                            f"[FORCE] 添加配置文件中的类方法调用: {class_name}.{pure_start_method} -> {class_name}.{pure_end_method} at line {line_num}"
-                                        )
-
-                                # 如果没有找到精确的调用行，添加一个基于方法起始行的估计
-                                if not any(
-                                    cp.get("type") == "class_method_call"
-                                    for cp in call_points
-                                ):
-                                    call_point = {
-                                        "function": f"{pure_start_method}",
-                                        "file": visitor.file_path,
-                                        "line": start_line,
-                                        "statement": f"self.{pure_end_method}() // 根据配置推断的调用",
-                                        "context_lines": [
-                                            start_line - 1,
-                                            start_line + 1,
-                                        ],
-                                        "type": "class_method_call",
-                                        "description": f"Class method {class_name}.{pure_start_method} calls {class_name}.{pure_end_method} (from config)",
-                                    }
-                                    call_points.append(call_point)
-                                    debug(
-                                        f"[FORCE] 添加配置文件中的类方法调用(估计位置): {class_name}.{pure_start_method} -> {class_name}.{pure_end_method}"
-                                    )
-
-        # 2. 然后检查通过AST分析收集的类方法调用关系
-        if hasattr(visitor, "class_methods"):
-            for class_name, class_info in visitor.class_methods.items():
-                # 检查开始函数和结束函数是否属于同一个类
-                if (
-                    hasattr(start_func, "class_name")
-                    and hasattr(end_func, "class_name")
-                    and start_func.class_name == class_name
-                    and end_func.class_name == class_name
-                ):
-                    # 检查类内方法调用关系
-                    if (
-                        start_func.name in class_info["calls"]
-                        and end_func.name in class_info["calls"][start_func.name]
-                    ):
-                        # 直接调用关系
-                        call_lines = class_info["calls"][start_func.name][end_func.name]
-                        for line in call_lines:
-                            call_info = {
-                                "function": start_func.name,
-                                "calls": end_func.name,
-                                "line": line,
-                                "file": visitor.file_path,
-                                "type": "class_method_call",
-                                "statement": self._get_statement_at_line(visitor, line),
-                                "description": f"Method {class_name}.{start_func.name} calls {class_name}.{end_func.name}",
-                            }
-                            call_points.append(call_info)
-                            debug(
-                                f"[FORCE] 添加AST分析的类内方法调用: {class_name}.{start_func.name} -> {class_name}.{end_func.name}"
-                            )
-
-                    # 间接调用关系 - 需要DFS搜索
-                    else:
-                        # 实现DFS查找从start_func到end_func的路径
-                        path = self._find_class_method_path_dfs(
-                            class_info, start_func.name, end_func.name, [], set()
-                        )
-                        if path:
-                            debug(
-                                f"[FORCE] 找到类内方法间接调用路径: {' -> '.join([f'{class_name}.{m}' for m in path])}"
-                            )
-                            # 添加路径中的每一步到结果
-                            for i in range(len(path) - 1):
-                                caller = path[i]
-                                callee = path[i + 1]
-                                call_lines = (
-                                    class_info["calls"].get(caller, {}).get(callee, [0])
-                                )
-                                for line in call_lines:
-                                    call_info = {
-                                        "function": caller,
-                                        "calls": callee,
-                                        "line": line,
-                                        "file": visitor.file_path,
-                                        "type": "class_method_call",
-                                        "statement": self._get_statement_at_line(
-                                            visitor, line
-                                        ),
-                                        "description": f"Method {class_name}.{caller} indirectly calls {class_name}.{callee}",
-                                    }
-                                    call_points.append(call_info)
-
         return call_points
-
-    def _find_method_line_range(self, visitor, method_name, class_name=None):
-        """查找方法在源代码中的行号范围"""
-        if not hasattr(visitor, "source_lines") or not visitor.source_lines:
-            return None
-
-        # 查找方法定义
-        method_pattern = r"def\s+" + re.escape(method_name) + r"\s*\("
-        class_method_pattern = r"def\s+" + re.escape(method_name) + r"\s*\(\s*self"
-
-        in_class = False
-        class_indent = 0
-        method_start = -1
-        method_end = -1
-        current_indent = 0
-
-        for i, line in enumerate(visitor.source_lines):
-            # 如果指定了类名，先找到类定义
-            if class_name and not in_class:
-                class_match = re.search(
-                    r"class\s+" + re.escape(class_name) + r"\s*[(:)]", line
-                )
-                if class_match:
-                    in_class = True
-                    # 计算类的缩进级别
-                    class_indent = len(line) - len(line.lstrip())
-                continue
-
-            # 如果已经在类中或者不需要在类中查找
-            if not class_name or in_class:
-                # 检查当前行的缩进
-                if line.strip():
-                    current_indent = len(line) - len(line.lstrip())
-
-                    # 如果在类中，但缩进小于类的缩进，说明已经离开了类
-                    if in_class and current_indent <= class_indent:
-                        in_class = False
-                        continue
-
-                    # 检查是否是方法定义
-                    method_match = None
-                    if in_class:
-                        method_match = re.search(class_method_pattern, line)
-                    else:
-                        method_match = re.search(method_pattern, line)
-
-                    if method_match:
-                        method_start = i + 1  # 行号从1开始
-                        method_indent = current_indent
-                        method_end = method_start  # 默认方法结束行就是开始行
-
-                        # 继续向下查找方法结束的位置
-                        for j in range(i + 1, len(visitor.source_lines)):
-                            next_line = visitor.source_lines[j]
-                            if next_line.strip():
-                                next_indent = len(next_line) - len(next_line.lstrip())
-                                # 如果缩进小于等于方法的缩进，说明方法结束了
-                                if next_indent <= method_indent:
-                                    break
-                            method_end = j + 1  # 更新方法结束行
-
-                        return (method_start, method_end)
-
-    def _find_class_method_path_dfs(self, class_info, start, target, path, visited):
-        """使用DFS寻找类内方法调用路径"""
-        if start in visited:
-            return None
-
-        visited.add(start)
-        path.append(start)
-
-        if start == target:
-            return path.copy()
-
-        for callee in class_info["calls"].get(start, {}):
-            result = self._find_class_method_path_dfs(
-                class_info, callee, target, path, visited
-            )
-            if result:
-                return result
-
-        path.pop()
-        return None
-
-    def _get_statement_at_line(self, visitor, line):
-        """获取指定行的代码语句"""
-        if (
-            hasattr(visitor, "source_lines")
-            and visitor.source_lines
-            and 0 < line <= len(visitor.source_lines)
-        ):
-            return visitor.source_lines[line - 1].strip()
-        return ""

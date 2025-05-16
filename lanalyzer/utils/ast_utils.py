@@ -215,7 +215,7 @@ def get_assignment_targets(tree: ast.Module) -> Dict[str, List[ast.Assign]]:
         elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
             if node.target.id not in assignments:
                 assignments[node.target.id] = []
-            assignments[node.target.id].append(node)
+            assignments[node.target.id].append(node)  # type: ignore
 
     return assignments
 
@@ -282,12 +282,15 @@ def get_function_calls_with_args(
                 # Get keyword args
                 kwargs = {}
                 for kwarg in node.keywords:
+                    key = kwarg.arg
+                    if key is None:  # For **kwargs
+                        continue
                     if isinstance(kwarg.value, ast.Constant):
-                        kwargs[kwarg.arg] = kwarg.value.value
+                        kwargs[key] = kwarg.value.value
                     elif isinstance(kwarg.value, ast.Name):
-                        kwargs[kwarg.arg] = kwarg.value.id
+                        kwargs[key] = kwarg.value.id
                     else:
-                        kwargs[kwarg.arg] = "complex_expression"
+                        kwargs[key] = "complex_expression"
 
                 calls.append((func_name, args, kwargs))
 
@@ -335,13 +338,13 @@ def get_node_source_code(node: ast.AST, source_code: str) -> str:
 
     # AST line numbers are 1-indexed, but list indices are 0-indexed
     start_line = node.lineno - 1
-    end_line = getattr(node, "end_lineno", node.lineno) - 1
+    end_line = getattr(node, "end_lineno", node.lineno) - 1  # type: ignore
 
     if start_line >= len(source_lines) or end_line >= len(source_lines):
-        return ""
+        return ""  # Should not happen with valid AST nodes from parsed code
 
     start_col = getattr(node, "col_offset", 0)
-    end_col = getattr(node, "end_col_offset", len(source_lines[end_line]))
+    end_col = getattr(node, "end_col_offset", len(source_lines[end_line]))  # type: ignore
 
     if start_line == end_line:
         return source_lines[start_line][start_col:end_col]
@@ -380,17 +383,16 @@ def extract_call_targets(node: ast.Call) -> List[str]:
         if isinstance(current, ast.Name):
             attr_chain.append(current.id)
 
-        # Return full chain and shortened versions
         results = []
-        current_chain = ""
+        current_chain_str = ""
 
         # Build up from right to left
         for part in reversed(attr_chain):
-            if current_chain:
-                current_chain = part + "." + current_chain
+            if current_chain_str:
+                current_chain_str = part + "." + current_chain_str
             else:
-                current_chain = part
-            results.append(current_chain)
+                current_chain_str = part
+            results.append(current_chain_str)
 
         return results
 
@@ -410,9 +412,9 @@ def extract_function_calls(ast_node: ast.AST) -> Set[str]:
 
     class CallVisitor(ast.NodeVisitor):
         def __init__(self):
-            self.calls = set()
+            self.calls: Set[str] = set()
 
-        def visit_Call(self, node):
+        def visit_Call(self, node: ast.Call):
             targets = extract_call_targets(node)
             self.calls.update(targets)
             self.generic_visit(node)

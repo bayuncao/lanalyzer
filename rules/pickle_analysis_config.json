@@ -63,36 +63,6 @@
           "patterns": ["JobQueueWorker.run", "Worker.run", "Server.start", "Job.run", "run"]
         }
       ],
-      "method_call_patterns": [
-        "self\\.([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
-        "self\\.([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(.*\\)",
-        "([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
-        "([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
-        "envdir = self\\.([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
-        "([a-zA-Z_][a-zA-Z0-9_]*) = self\\.([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\("
-      ],
-      "key_method_names": {
-        "entry_methods": ["run", "main", "__main__", "start", "execute", "Job.run"],
-        "important_methods": [
-          "wait_for_files", "process_job", "handle_request", "prepare_data", "recv_rpc_message", "recv",
-          "start_job", "main_loop", "dispatch_job", "Job.wait_for_files", "Job.run", "wait_for_connection",
-          "single_task", "recv_multipart"
-        ]
-      },
-      "class_method_mapping": {
-        "Job": {
-          "run": ["wait_for_files", "wait_for_connection", "single_task"],
-          "wait_for_files": []
-        }
-      },
-      "direct_function_calls": [
-        {"caller": "run", "callee": "wait_for_files", "class": "Job"},
-        {"caller": "run", "callee": "wait_for_connection", "class": "Job"},
-        {"caller": "run", "callee": "single_task", "class": "Job"}
-      ],
-      "line_specific_calls": [
-        {"file": "job.py", "caller_line": 355, "caller": "run", "callee": "wait_for_files", "class": "Job"}
-      ],
       "max_call_depth": 10,
       "follow_imports": true
     },

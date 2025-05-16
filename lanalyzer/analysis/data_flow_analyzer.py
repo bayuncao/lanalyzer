@@ -28,37 +28,37 @@ class DataFlowAnalyzer:
         added_sources: Set[str],
     ) -> None:
         """
-        查找从源变量到sink参数之间的数据流路径，包括变量赋值和转换操作。
+        Find data flow paths from source variable to sink parameters, including variable assignments and transformations.
 
         Args:
-            visitor: 访问器实例
-            var_name: 源变量名
-            source_line: 源所在行
-            sink_line: 汇聚点所在行
-            sink_arg_expressions: sink中的参数表达式
-            data_flow_path: 收集数据流路径的列表
-            added_sources: 已添加源的集合
+            visitor: Visitor instance
+            var_name: Source variable name
+            source_line: Line number of source
+            sink_line: Line number of sink
+            sink_arg_expressions: Parameter expressions in sink
+            data_flow_path: List to collect data flow paths
+            added_sources: Set of already added sources
         """
         if not hasattr(visitor, "source_lines") or not visitor.source_lines:
             return
 
-        # 构建变量使用映射
+        # Build variable usage mapping
         var_usage_map = {}
 
-        # 查找变量的所有使用点
-        # 首先收集所有相关的赋值语句
+        # Find all usage points of the variable
+        # First collect all relevant assignment statements
         assignments = []
         for line_num in range(source_line + 1, sink_line):
             if line_num > len(visitor.source_lines):
                 break
 
             line = visitor.source_lines[line_num - 1].strip()
-            # 检查变量是否出现在这行中
+            # Check if variable appears in this line
             if var_name in line:
-                # 如果是赋值语句且变量在赋值右侧
+                # If it's an assignment statement and variable is on the right side
                 if "=" in line and var_name in line.split("=", 1)[1]:
                     left_side = line.split("=", 1)[0].strip()
-                    # 避免处理类似 var_name1 = var_name2 的情况
+                    # Avoid handling cases like var_name1 = var_name2
                     if var_name != left_side and left_side.isidentifier():
                         var_usage_map[left_side] = {
                             "line": line_num,
@@ -74,17 +74,17 @@ class DataFlowAnalyzer:
                             }
                         )
 
-                # 检查数组索引访问
-                # 例如 var2 = var_name[1]
+                # Check array index access
+                # For example, var2 = var_name[1]
                 elif "[" in line and "]" in line and "=" in line:
                     left_side = line.split("=", 1)[0].strip()
                     right_side = line.split("=", 1)[1].strip()
-                    # 检查var_name是否是数组索引访问的基础
+                    # Check if var_name is the base of array index access
                     array_access_pattern = r"{}(?:\s*\[[^\]]+\])".format(
                         re.escape(var_name)
                     )
                     if re.search(array_access_pattern, right_side):
-                        # 提取索引访问的详细信息
+                        # Extract detailed information about index access
                         index_info = self.extract_index_access_info(
                             right_side, var_name
                         )
@@ -107,35 +107,35 @@ class DataFlowAnalyzer:
                             }
                         )
 
-        # 对赋值语句按行号排序
+        # Sort assignment statements by line number
         assignments.sort(key=lambda x: x["line"])
 
-        # 只添加到最终sink的数据流路径
+        # Only add data flow paths that lead to the final sink
         relevant_assignments = []
 
-        # 检查sink参数中使用的变量是否在我们跟踪的数据流中
+        # Check if variables used in sink parameters are in our tracked data flow
         for expr in sink_arg_expressions:
-            # 检查是否包含索引访问
+            # Check if it contains index access
             if "[" in expr and "]" in expr:
                 array_var_match = re.match(r"([a-zA-Z_][a-zA-Z0-9_]*)\s*\[", expr)
                 if array_var_match:
                     array_var = array_var_match.group(1)
 
-                    # 提取更多索引访问的细节信息
+                    # Extract more details about index access
                     index_info = self.extract_index_access_info(expr, array_var)
 
-                    # 构建数据流图并找出从源变量到sink中使用变量的路径
+                    # Build data flow graph and find path from source variable to variable used in sink
                     visited = set([var_name])
                     path = self.find_var_path(
                         var_name, array_var, var_usage_map, visited
                     )
 
                     if path:
-                        # 转换路径为数据流步骤
-                        for step_var in path[1:]:  # 跳过源变量自身
+                        # Convert path to data flow steps
+                        for step_var in path[1:]:  # Skip the source variable itself
                             step_info = var_usage_map[step_var]
 
-                            # 增强数据流描述
+                            # Enhance data flow description
                             step_desc = (
                                 f"Data flow: {step_info['from_var']} → {step_var}"
                             )
@@ -148,7 +148,7 @@ class DataFlowAnalyzer:
                                 else:
                                     step_desc += " (array element access)"
 
-                            # 如果这是直接流向sink的变量，添加更多上下文
+                            # If this is the variable flowing directly to sink, add more context
                             if step_var == array_var:
                                 if index_info.get("is_index_access"):
                                     index_value = index_info.get("index")
@@ -176,11 +176,11 @@ class DataFlowAnalyzer:
                             if source_key not in added_sources:
                                 relevant_assignments.append(flow_step)
                     elif var_name == array_var:
-                        # 直接从源变量到sink的情况
+                        # Case of direct flow from source variable to sink
                         index_value = index_info.get("index", "?")
                         step_desc = f"Data flow: {var_name}[{index_value}] used directly in sink"
 
-                        # 找到最近的源变量语句作为上下文
+                        # Find the nearest source variable statement for context
                         source_stmt = ""
                         for line_num in range(source_line, sink_line):
                             if line_num > len(visitor.source_lines):
@@ -209,7 +209,7 @@ class DataFlowAnalyzer:
                             if source_key not in added_sources:
                                 relevant_assignments.append(flow_step)
 
-        # 按行号排序并添加到数据流路径
+        # Sort by line number and add to data flow path
         relevant_assignments.sort(key=lambda x: x["line"])
         for assignment in relevant_assignments:
             data_flow_path.append(assignment)
@@ -222,16 +222,16 @@ class DataFlowAnalyzer:
         visited: Set[str],
     ) -> List[str]:
         """
-        使用广度优先搜索找出从起始变量到目标变量的路径
+        Use breadth-first search to find a path from start variable to target variable
 
         Args:
-            start_var: 起始变量名
-            target_var: 目标变量名
-            var_map: 变量映射关系
-            visited: 已访问的变量集合
+            start_var: Starting variable name
+            target_var: Target variable name
+            var_map: Variable mapping relationships
+            visited: Set of visited variables
 
         Returns:
-            变量名列表，表示从start_var到target_var的路径，如果没有路径则返回空列表
+            List of variable names representing path from start_var to target_var, or empty list if no path exists
         """
         if start_var == target_var:
             return [start_var]
@@ -241,7 +241,7 @@ class DataFlowAnalyzer:
         while queue:
             current_var, path = queue.pop(0)
 
-            # 找出所有从current_var派生的变量
+            # Find all variables derived from current_var
             for var_name, info in var_map.items():
                 if info.get("from_var") == current_var and var_name not in visited:
                     new_path = path + [var_name]
@@ -252,19 +252,19 @@ class DataFlowAnalyzer:
                     visited.add(var_name)
                     queue.append((var_name, new_path))
 
-        return []  # 没找到路径
+        return []  # No path found
 
     def extract_index_access_info(self, expr: str, var_name: str) -> Dict[str, Any]:
         """
-        从表达式中提取索引访问信息。
-        例如，从 "message[1]" 中提取索引值 "1"，基础变量 "message"。
+        Extract index access information from expression.
+        For example, extract index value "1" from "message[1]", and base variable "message".
 
         Args:
-            expr: 包含索引访问的表达式
-            var_name: 基础变量名
+            expr: Expression containing index access
+            var_name: Base variable name
 
         Returns:
-            包含索引访问信息的字典
+            Dictionary containing index access information
         """
         result = {
             "base_var": var_name,
@@ -273,13 +273,13 @@ class DataFlowAnalyzer:
             "is_index_access": False,
         }
 
-        # 匹配索引访问模式
+        # Match index access pattern
         index_match = re.search(r"{}\s*\[(.*?)\]".format(re.escape(var_name)), expr)
         if index_match:
             result["is_index_access"] = True
             result["index"] = index_match.group(1).strip()
 
-            # 尝试确定索引的类型（如数字、字符串等）
+            # Try to determine index type (e.g., number, string, etc.)
             index_val = result["index"]
             if index_val.isdigit() or (
                 index_val.startswith("-") and index_val[1:].isdigit()

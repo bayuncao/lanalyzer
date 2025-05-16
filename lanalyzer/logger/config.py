@@ -20,7 +20,7 @@ def setup_file_logging(log_file: str, level: int = logging.INFO) -> None:
         log_file: Log file path
         level: Log level (default: INFO)
     """
-    # 确保日志目录存在
+    # Ensure log directory exists
     log_dir = os.path.dirname(log_file)
     if log_dir and not os.path.exists(log_dir):
         os.makedirs(log_dir)
@@ -46,44 +46,52 @@ def setup_console_logging(level: int = logging.INFO, detailed: bool = False) -> 
 
 
 def setup_application_logging(
-    app_name: str = "lanalyzer",
-    level: int = logging.INFO,
     log_file: Optional[str] = None,
-    verbose: bool = False,
     debug: bool = False,
-    console: bool = True,
-) -> None:
+) -> logging.Logger:
     """
     Configure application logging.
 
     Args:
-        app_name: Application name (default: "lanalyzer")
-        level: Log level (default: INFO)
         log_file: Log file path (default: None)
-        verbose: Enable verbose logging (default: False)
         debug: Enable debug logging (default: False)
-        console: Output to console (default: True)
-    """
-    # 确定日志级别
-    if debug:
-        level = logging.DEBUG
-    elif verbose and level > logging.INFO:
-        level = logging.INFO
 
-    # 配置日志格式
+    Returns:
+        The logger instance
+    """
+    # Determine log level
+    level = logging.DEBUG if debug else logging.INFO
+
+    # Configure log format
     log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-    # 应用配置
-    configure_logger(
-        level=level,
-        log_format=log_format,
-        log_file=log_file,
-        verbose=verbose,
-        debug=debug,
-    )
+    # Create and configure logger
+    logger = logging.getLogger("lanalyzer")
+    logger.setLevel(level)
 
-    # 输出初始日志消息
-    logger = logging.getLogger(app_name)
-    logger.info(f"{app_name} logging configured - Level: {logging.getLevelName(level)}")
+    # Clear existing handlers
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(logging.Formatter(log_format))
+    logger.addHandler(console_handler)
+
+    # File handler if log file is specified
+    if log_file:
+        # Ensure log directory exists
+        log_dir = os.path.dirname(log_file)
+        if log_dir and not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(logging.Formatter(log_format))
+        logger.addHandler(file_handler)
+
+    # Output initial log message
+    logger.info(f"Logging configured - Level: {logging.getLevelName(level)}")
     if log_file:
         logger.info(f"Log file: {log_file}")
+
+    return logger
