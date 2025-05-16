@@ -114,30 +114,39 @@ class TaintAnalysisUtils:
         operation = re.sub(r"#.*$", "", operation)
         operation = operation.strip()
 
-        # Common dangerous function name patterns
-        dangerous_patterns = {
-            "PickleDeserialization": [
-                "pickle.loads",
-                "pickle.load",
-                "cPickle.loads",
-                "cPickle.load",
-            ],
-            "CommandExecution": [
-                "os.system",
-                "subprocess.run",
-                "subprocess.Popen",
-                "exec(",
-                "eval(",
-            ],
-            "SQLInjection": [
-                "execute(",
-                "executemany(",
-                "cursor.execute",
-                "raw_connection",
-            ],
-            "PathTraversal": ["open(", "os.path.join", "os.makedirs", "os.listdir"],
-            "XSS": ["render_template", "render", "html"],
-        }
+        # Get dangerous patterns from config or use defaults
+        dangerous_patterns = {}
+
+        # Try to get from the tracker's config
+        if hasattr(self.tracker, "config") and isinstance(self.tracker.config, dict):
+            if "dangerous_patterns" in self.tracker.config:
+                dangerous_patterns = self.tracker.config["dangerous_patterns"]
+
+        # If not found in configuration, use built-in defaults
+        if not dangerous_patterns:
+            dangerous_patterns = {
+                "PickleDeserialization": [
+                    "pickle.loads",
+                    "pickle.load",
+                    "cPickle.loads",
+                    "cPickle.load",
+                ],
+                "CommandExecution": [
+                    "os.system",
+                    "subprocess.run",
+                    "subprocess.Popen",
+                    "exec(",
+                    "eval(",
+                ],
+                "SQLInjection": [
+                    "execute(",
+                    "executemany(",
+                    "cursor.execute",
+                    "raw_connection",
+                ],
+                "PathTraversal": ["open(", "os.path.join", "os.makedirs", "os.listdir"],
+                "XSS": ["render_template", "render", "html"],
+            }
 
         # Attempt to find matching dangerous patterns
         sink_type = None

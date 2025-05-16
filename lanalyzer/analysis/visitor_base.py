@@ -77,41 +77,75 @@ class EnhancedTaintVisitor(TaintVisitor):
     def _initialize_operation_taint_rules(self) -> Dict[str, Callable]:
         """Initialize rules for how taint propagates through different operations."""
         rules = {}
-        string_propagating_methods = [
-            "strip",
-            "lstrip",
-            "rstrip",
-            "upper",
-            "lower",
-            "title",
-            "capitalize",
-            "swapcase",
-            "replace",
-            "format",
-            "join",
-            "split",
-            "rsplit",
-            "splitlines",
-            "partition",
-            "rpartition",
-        ]
+
+        # Try to get configuration from attached config
+        config = getattr(self, "config", {})
+        taint_rules = {}
+
+        # Load from config if available
+        if hasattr(self, "config") and isinstance(self.config, dict):
+            # Try to get from a global config object
+            if "operation_taint_rules" in self.config:
+                taint_rules = self.config["operation_taint_rules"]
+
+        # Get string methods from config or use defaults
+        string_propagating_methods = taint_rules.get(
+            "string_methods",
+            [
+                "strip",
+                "lstrip",
+                "rstrip",
+                "upper",
+                "lower",
+                "title",
+                "capitalize",
+                "swapcase",
+                "replace",
+                "format",
+                "join",
+                "split",
+                "rsplit",
+                "splitlines",
+                "partition",
+                "rpartition",
+            ],
+        )
+
         for method in string_propagating_methods:
             rules[f"str.{method}"] = lambda node, source_info: source_info
-        container_propagating_methods = ["copy", "items", "keys", "values"]
-        for method in container_propagating_methods:
+
+        # Get container methods from config or use defaults
+        container_methods = taint_rules.get("container_methods", {})
+        dict_methods = container_methods.get(
+            "dict", ["copy", "items", "keys", "values"]
+        )
+        list_methods = container_methods.get(
+            "list", ["copy", "items", "keys", "values"]
+        )
+
+        for method in dict_methods:
             rules[f"dict.{method}"] = lambda node, source_info: source_info
+
+        for method in list_methods:
             rules[f"list.{method}"] = lambda node, source_info: source_info
-        data_propagating_methods = [
-            "numpy",
-            "tobytes",
-            "tensor",
-            "array",
-            "astype",
-            "decode",
-            "encode",
-        ]
+
+        # Get data methods from config or use defaults
+        data_propagating_methods = taint_rules.get(
+            "data_methods",
+            [
+                "numpy",
+                "tobytes",
+                "tensor",
+                "array",
+                "astype",
+                "decode",
+                "encode",
+            ],
+        )
+
         for method in data_propagating_methods:
             rules[method] = lambda node, source_info: source_info
+
         return rules
 
     def visit_Module(self, node: ast.Module) -> None:
