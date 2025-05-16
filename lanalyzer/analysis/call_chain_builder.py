@@ -32,16 +32,16 @@ class CallChainBuilder:
 
     def get_detailed_call_chain(
         self,
-        sink: Dict[str, Any],
         visitor: EnhancedTaintAnalysisVisitor,
+        sink: Dict[str, Any],
         source_info: Dict[str, Any],
     ) -> List[Dict[str, Any]]:
         """
         Get the detailed function call chain from source to sink.
 
         Args:
-            sink: Sink dictionary
             visitor: EnhancedTaintAnalysisVisitor instance
+            sink: Sink dictionary
             source_info: Source information dictionary
 
         Returns:
