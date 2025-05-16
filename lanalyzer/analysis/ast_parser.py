@@ -4,7 +4,6 @@ import os
 from typing import Any, Dict, Optional, Tuple
 from lanalyzer.logger import get_logger
 
-# 获取logger实例
 logger = get_logger("lanalyzer.analysis.ast_parser")
 
 

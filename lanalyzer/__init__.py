@@ -1,12 +1,12 @@
 """
-LanaLyzer - 适用于 Python 项目的静态污点分析工具
+LanaLyzer - Static Taint Analysis Tool for Python Projects
 
-为 Python 代码提供静态污点分析，帮助检测安全漏洞。
+Provides static taint analysis for Python code to help detect security vulnerabilities.
 """
 
 from lanalyzer.__version__ import __version__
 
-# 设置版本信息
+# Set package information
 __title__ = "lanalyzer"
 __description__ = "Python taint analysis tool for security vulnerability detection"
 __url__ = "https://github.com/mxcrafts/lanalyzer"
@@ -14,12 +14,12 @@ __author__ = "mxcrafts"
 __author_email__ = "mx@crafts.com"
 __license__ = "MIT"
 
-# 导出主要接口
+# Export main interface
 from lanalyzer.analysis import analyze_file, BaseAnalyzer, EnhancedTaintTracker
 
-# 导出日志工具
+# Export logging tools
 from lanalyzer.logger import (
-    # 核心日志函数
+    # Core logging functions
     configure_logger,
     get_logger,
     debug,
@@ -27,13 +27,13 @@ from lanalyzer.logger import (
     warning,
     error,
     critical,
-    # 日志装饰器
+    # Logging decorators
     log_function,
     log_analysis_file,
     log_result,
     conditional_log,
     log_vulnerabilities,
-    # 配置工具
+    # Configuration utilities
     setup_file_logging,
     setup_console_logging,
     setup_application_logging,
@@ -44,7 +44,7 @@ __all__ = [
     "BaseAnalyzer",
     "EnhancedTaintTracker",
     "__version__",
-    # 日志导出
+    # Logging exports
     "configure_logger",
     "get_logger",
     "debug",
