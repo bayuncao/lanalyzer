@@ -105,6 +105,34 @@ class FunctionVisitorMixin:
                 callee_node = self.functions[func_name]
                 self.current_function.add_callee(callee_node)
                 callee_node.add_caller(self.current_function)
+
+                # 记录调用行号,用于构建更完整的调用链
+                call_line = getattr(node, "lineno", 0)
+                callee_node.call_line = call_line
+
+                # 获取调用语句
+                call_statement = self._get_call_source_code(call_line)
+
+                # 添加详细的调用点信息
+                callee_node.add_call_point(
+                    call_line, call_statement, self.current_function.name
+                )
+
+                # 检查是否是self.method()调用
+                is_self_method_call = False
+                if isinstance(node.func, ast.Attribute) and isinstance(
+                    node.func.value, ast.Name
+                ):
+                    if node.func.value.id == "self":
+                        is_self_method_call = True
+                        # 记录这是一个self方法调用
+                        callee_node.is_self_method_call = True
+                        callee_node.self_method_name = node.func.attr
+                        if self.debug:
+                            print(
+                                f"  -> Recorded self.{node.func.attr}() call at line {call_line} in {self.current_function.name}"
+                            )
+
                 self._track_parameter_taint_propagation(node, func_name)
             else:
                 if self.debug:
@@ -230,3 +258,14 @@ class FunctionVisitorMixin:
                                 f"Marked file handle '{file_var}' as tainted (from with statement)"
                             )
         self.generic_visit(node)
+
+    # 添加新的辅助方法来提取特定调用位置的源代码
+    def _get_call_source_code(self: "EnhancedTaintVisitor", line_no: int) -> str:
+        """获取特定行号的源代码"""
+        if (
+            hasattr(self, "source_lines")
+            and self.source_lines
+            and 0 < line_no <= len(self.source_lines)
+        ):
+            return self.source_lines[line_no - 1].strip()
+        return ""

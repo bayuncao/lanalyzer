@@ -1,5 +1,11 @@
 """
 Control flow analysis for taint analysis call chains.
+
+This module analyzes control flow from entry points to taint sinks by:
+1. Using AST to build function call graphs
+2. Identifying self.method() style method calls
+3. Tracing paths from entry points to sink functions
+4. Constructing detailed call chains with source code context
 """
 
 import re
@@ -16,6 +22,43 @@ class ControlFlowAnalyzer:
         self.builder = builder
         self.tracker = builder.tracker
         self.debug = builder.debug
+        # 加载配置的重要方法名称
+        self.key_method_names = self._load_key_method_names()
+
+    def _load_key_method_names(self):
+        """从配置文件加载关键方法名称"""
+        # 初始化为空配置，不使用任何默认值
+        key_methods = {"entry_methods": [], "important_methods": []}
+
+        # 从配置中加载
+        config = self.tracker.config
+        if isinstance(config, dict) and "control_flow" in config:
+            control_flow_config = config["control_flow"]
+
+            # 加载入口方法
+            if "key_method_names" in control_flow_config and isinstance(
+                control_flow_config["key_method_names"], dict
+            ):
+                key_method_config = control_flow_config["key_method_names"]
+
+                # 读取入口方法名
+                if "entry_methods" in key_method_config and isinstance(
+                    key_method_config["entry_methods"], list
+                ):
+                    key_methods["entry_methods"] = key_method_config["entry_methods"]
+
+                # 读取重要方法名
+                if "important_methods" in key_method_config and isinstance(
+                    key_method_config["important_methods"], list
+                ):
+                    key_methods["important_methods"] = key_method_config[
+                        "important_methods"
+                    ]
+
+        if self.debug:
+            print(f"[DEBUG] Loaded key method names from config: {key_methods}")
+
+        return key_methods
 
     def build_control_flow_chain(
         self, visitor: EnhancedTaintAnalysisVisitor, sink_info: Dict[str, Any]
@@ -92,6 +135,7 @@ class ControlFlowAnalyzer:
         config = self.tracker.config
         if isinstance(config, dict) and "control_flow" in config:
             control_flow_config = config["control_flow"]
+            # 从entry_points配置获取模式
             if "entry_points" in control_flow_config and isinstance(
                 control_flow_config["entry_points"], list
             ):
@@ -100,6 +144,17 @@ class ControlFlowAnalyzer:
                         entry_config["patterns"], list
                     ):
                         entry_point_patterns.extend(entry_config["patterns"])
+
+            # 也从key_method_names.entry_methods获取入口方法
+            if "key_method_names" in control_flow_config and isinstance(
+                control_flow_config["key_method_names"], dict
+            ):
+                key_method_config = control_flow_config["key_method_names"]
+                if "entry_methods" in key_method_config and isinstance(
+                    key_method_config["entry_methods"], list
+                ):
+                    # 将entry_methods作为精确匹配模式添加到入口点模式中
+                    entry_point_patterns.extend(key_method_config["entry_methods"])
 
         if self.debug:
             print(
@@ -110,11 +165,21 @@ class ControlFlowAnalyzer:
         config_defined_entry_points = []
         if entry_point_patterns:
             for func_name, func_node in visitor.functions.items():
+                func_method_name = (
+                    func_name.split(".")[-1] if "." in func_name else func_name
+                )
                 for pattern in entry_point_patterns:
-                    # 支持两种匹配模式：精确匹配函数名或部分匹配
-                    if pattern == func_name or (
-                        "*" in pattern
-                        and re.search(pattern.replace("*", ".*"), func_name)
+                    # 三种匹配方式：
+                    # 1. 精确匹配函数名
+                    # 2. 精确匹配方法名部分
+                    # 3. 正则匹配（对于包含*的模式）
+                    if (
+                        pattern == func_name
+                        or pattern == func_method_name
+                        or (
+                            "*" in pattern
+                            and re.search(pattern.replace("*", ".*"), func_name)
+                        )
                     ):
                         config_defined_entry_points.append(func_node)
                         if self.debug:
@@ -256,7 +321,7 @@ class ControlFlowAnalyzer:
         sink_line = sink_info.get("line", 0)
         sink_name = sink_info.get("name", "Unknown Sink")
 
-        # 全面扫描源文件找出所有的类方法调用关系，特别是对wait_for_files的调用
+        # 全面扫描源文件找出所有的类方法调用关系
         all_method_calls = {}  # 存储方法到其调用者的映射
 
         if hasattr(visitor, "source_lines") and visitor.source_lines:
@@ -279,10 +344,8 @@ class ControlFlowAnalyzer:
                             )
 
             # 2. 然后扫描整个源文件查找self.method()调用
-            # 获取配置文件中的方法调用模式
-            method_call_patterns = [r"self\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\("]  # 默认模式
-
-            # 从配置文件获取额外的方法调用模式
+            # 从配置文件获取方法调用模式
+            method_call_patterns = []
             config = self.tracker.config
             if isinstance(config, dict) and "control_flow" in config:
                 control_flow_config = config["control_flow"]
@@ -294,6 +357,10 @@ class ControlFlowAnalyzer:
                         print(
                             f"[DEBUG] Using {len(method_call_patterns)} method call patterns from config"
                         )
+
+            # 如果没有配置方法调用模式，记录日志但不设置默认值
+            if not method_call_patterns and self.debug:
+                print("[DEBUG] No method call patterns defined in config")
 
             # 找出所有方法调用
             for line_num, line in enumerate(visitor.source_lines, 1):
@@ -379,42 +446,50 @@ class ControlFlowAnalyzer:
                                                 f"[DEBUG] Found instance method call: {caller_method} -> {callee_method} at line {line_num}"
                                             )
 
-                # 特别处理第355行的调用，无论它在哪个函数中
-                if line_num == 355 and "wait_for_files" in line and "self" in line:
-                    if self.debug:
-                        print(
-                            f"[DEBUG] Found specific line 355 with wait_for_files call: {line.strip()}"
-                        )
-                    # 找出这一行所属的类和函数
-                    if containing_func:
-                        containing_class = None
-                        if "." in containing_func.name:
-                            containing_class = containing_func.name.split(".")[0]
-
-                        # 无论如何，记录这一特殊调用
-                        special_caller = containing_func.name
-                        for class_name, methods in class_methods.items():
-                            if "wait_for_files" in methods:
-                                special_callee = f"{class_name}.wait_for_files"
-
-                                if special_callee not in all_method_calls:
-                                    all_method_calls[special_callee] = []
-
-                                call_info = {
-                                    "caller": special_caller,
-                                    "caller_line": line_num,
-                                    "statement": line.strip(),
-                                    "line": line_num,
-                                    "is_special_line_355": True,  # 标记这是特殊的355行调用
-                                }
-
-                                all_method_calls[special_callee].append(call_info)
-                                if self.debug:
-                                    print(
-                                        f"[DEBUG] Recorded special line 355 call: {special_caller} -> {special_callee}"
+                # 通用地识别self方法调用
+                if "self." in line and "(" in line and method_call_patterns:
+                    # 使用配置中的方法调用模式而非硬编码
+                    for pattern in method_call_patterns:
+                        if "self" in pattern:
+                            matches = re.findall(pattern, line)
+                            if matches:
+                                for match in matches:
+                                    # 如果匹配结果是元组，取第一个元素
+                                    method_name = (
+                                        match[0] if isinstance(match, tuple) else match
                                     )
 
-        # 特别关注对wait_for_files的调用
+                                    # 对于每个找到的方法调用，检查它是否是类方法
+                                    for class_name, methods in class_methods.items():
+                                        if method_name in methods:
+                                            # 构建完整的方法调用名
+                                            callee_method = (
+                                                f"{class_name}.{method_name}"
+                                            )
+
+                                            if callee_method not in all_method_calls:
+                                                all_method_calls[callee_method] = []
+
+                                            # 记录调用信息
+                                            call_info = {
+                                                "caller": containing_func.name
+                                                if containing_func
+                                                else "unknown",
+                                                "caller_line": line_num,
+                                                "statement": line.strip(),
+                                                "line": line_num,
+                                                "is_self_method_call": True,
+                                            }
+
+                                            all_method_calls[callee_method].append(
+                                                call_info
+                                            )
+                                            if self.debug:
+                                                print(
+                                                    f"[DEBUG] Recorded self method call: {containing_func.name if containing_func else 'unknown'} -> {callee_method} at line {line_num}"
+                                                )
+
+        # 通用地分析任何方法调用
         # 查找sink所在的函数是否被其他方法调用
         if sink_func:
             sink_func_name = sink_func.name
@@ -450,36 +525,69 @@ class ControlFlowAnalyzer:
             }
             call_chain.append(entry_node)
 
-        # 添加直接调用关系节点（特别是run到wait_for_files这类）
+        # 添加直接调用关系节点
         # 这是一种自顶向下的方法，从调用链的顶部开始追踪
         prev_func_name = ""
         for i, func in enumerate(call_stack):
             current_func_name = func.name
 
-            # 如果是第一个函数，查看它是否调用了其他方法
-            if i == 0 and current_func_name.split(".")[-1] == "run":
-                # 这是一个run方法，查找它调用的所有其他方法
+            # 获取当前函数的方法名部分
+            method_name = (
+                current_func_name.split(".")[-1]
+                if "." in current_func_name
+                else current_func_name
+            )
+
+            # 如果是第一个函数，且它是入口方法，查看它调用的所有方法
+            if i == 0 and method_name in self.key_method_names["entry_methods"]:
+                if self.debug:
+                    print(f"[DEBUG] Processing entry method: {current_func_name}")
+
+                # 查找该入口方法调用的所有其他方法
                 for callee, caller_infos in all_method_calls.items():
                     for caller_info in caller_infos:
                         if caller_info["caller"] == current_func_name:
-                            # 特别关注对wait_for_files的调用
-                            if "wait_for_files" in callee:
-                                method_call_node = {
-                                    "function": f"{current_func_name} -> {callee}",
-                                    "file": visitor.file_path,
-                                    "line": caller_info["line"],
-                                    "statement": caller_info["statement"],
-                                    "context_lines": [
-                                        caller_info["line"] - 1,
-                                        caller_info["line"] + 1,
-                                    ],
-                                    "type": "class_method_call",
-                                    "description": f"Class method call from {current_func_name} to {callee}",
-                                }
+                            # 确定被调用方法名
+                            callee_method_name = (
+                                callee.split(".")[-1] if "." in callee else callee
+                            )
+
+                            # 判断是否是重要方法，如果是，添加标记
+                            is_important = (
+                                callee_method_name
+                                in self.key_method_names["important_methods"]
+                            )
+                            importance_flag = " [IMPORTANT]" if is_important else ""
+
+                            # 记录所有方法调用
+                            method_call_node = {
+                                "function": f"{current_func_name} -> {callee}",
+                                "file": visitor.file_path,
+                                "line": caller_info["line"],
+                                "statement": caller_info["statement"],
+                                "context_lines": [
+                                    caller_info["line"] - 1,
+                                    caller_info["line"] + 1,
+                                ],
+                                "type": "class_method_call",
+                                "is_important_method": is_important,
+                                "description": f"Class method call from {current_func_name} to {callee}{importance_flag}",
+                            }
+
+                            # 如果是重要方法，优先添加到调用链顶部
+                            if is_important:
+                                call_chain.insert(
+                                    0 if len(call_chain) == 0 else 1, method_call_node
+                                )
+                                if self.debug:
+                                    print(
+                                        f"[DEBUG] Added IMPORTANT method call: {current_func_name} -> {callee}"
+                                    )
+                            else:
                                 call_chain.append(method_call_node)
                                 if self.debug:
                                     print(
-                                        f"[DEBUG] Added call from run to wait_for_files: {current_func_name} -> {callee}"
+                                        f"[DEBUG] Added method call: {current_func_name} -> {callee}"
                                     )
 
             prev_func_name = current_func_name
@@ -491,12 +599,34 @@ class ControlFlowAnalyzer:
             # 添加对sink函数的直接调用
             if sink_func_name in all_method_calls:
                 for caller_info in all_method_calls[sink_func_name]:
-                    # 只添加来自run方法的调用
-                    if "run" in caller_info["caller"]:
+                    # 获取调用者的方法名部分
+                    caller_method_name = (
+                        caller_info["caller"].split(".")[-1]
+                        if "." in caller_info["caller"]
+                        else caller_info["caller"]
+                    )
+
+                    # 判断调用者是否是入口方法或重要方法
+                    is_entry_method = (
+                        caller_method_name in self.key_method_names["entry_methods"]
+                    )
+                    is_important_method = (
+                        caller_method_name in self.key_method_names["important_methods"]
+                    )
+
+                    # 如果是入口方法或重要方法，添加到调用链
+                    if is_entry_method or is_important_method:
                         caller_line = caller_info["line"]
                         call_stmt = caller_info["statement"]
 
-                        # 添加从run到sink函数的调用关系
+                        # 添加重要标记
+                        importance_flag = ""
+                        if is_entry_method:
+                            importance_flag = " [ENTRY]"
+                        if is_important_method:
+                            importance_flag = " [IMPORTANT]"
+
+                        # 添加从入口方法或重要方法到sink函数的调用关系
                         method_call_node = {
                             "function": f"{caller_info['caller']} -> {sink_func_name}",
                             "file": visitor.file_path,
@@ -504,7 +634,9 @@ class ControlFlowAnalyzer:
                             "statement": call_stmt,
                             "context_lines": [caller_line - 1, caller_line + 1],
                             "type": "class_method_call",
-                            "description": f"Class method call from {caller_info['caller']} to {sink_func_name}",
+                            "is_entry_method": is_entry_method,
+                            "is_important_method": is_important_method,
+                            "description": f"Class method call from {caller_info['caller']} to {sink_func_name}{importance_flag}",
                         }
 
                         # 检查是否已有类似节点
@@ -519,10 +651,17 @@ class ControlFlowAnalyzer:
                                 break
 
                         if not has_similar_node:
-                            call_chain.append(method_call_node)
+                            # 如果是重要方法调用，优先添加到调用链前部
+                            if is_important_method:
+                                call_chain.insert(
+                                    0 if len(call_chain) == 0 else 1, method_call_node
+                                )
+                            else:
+                                call_chain.append(method_call_node)
+
                             if self.debug:
                                 print(
-                                    f"[DEBUG] Added direct call to sink function: {caller_info['caller']} -> {sink_func_name}"
+                                    f"[DEBUG] Added direct call to sink function: {caller_info['caller']} -> {sink_func_name}{importance_flag}"
                                 )
 
         # 添加中间函数调用
