@@ -24,7 +24,7 @@ from lanalyzer.__version__ import __version__
 from lanalyzer.mcp.handlers import LanalyzerMCPHandler
 from lanalyzer.mcp.models import (
     AnalysisRequest,
-    FileAnalysisRequest,
+    FileAnalysisRequest,  # Assuming this model will be used by the handler
     ExplainVulnerabilityRequest,
     ConfigurationRequest,
 )
@@ -32,33 +32,33 @@ from lanalyzer.mcp.models import (
 
 def create_mcp_server(debug: bool = False) -> FastMCP:
     """
-    创建FastMCP服务器实例。
+    Create FastMCP server instance.
 
-    这是MCP模块的核心工厂函数，用于创建和配置FastMCP服务器实例。
+    This is the core factory function for the MCP module, used to create and configure FastMCP server instances.
 
     Args:
-        debug: 是否启用调试模式。
+        debug: Whether to enable debug mode.
 
     Returns:
-        FastMCP: 服务器实例。
+        FastMCP: Server instance.
     """
-    # 配置日志级别
+    # Configure logging level
     log_level = logging.DEBUG if debug else logging.INFO
     logging.basicConfig(
         level=log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
-    # 检查FastMCP版本
+    # Check FastMCP version
     try:
         fastmcp_version = __import__("fastmcp").__version__
-        logging.info(f"FastMCP版本: {fastmcp_version}")
+        logging.info(f"FastMCP version: {fastmcp_version}")
     except (ImportError, AttributeError):
-        logging.warning("无法确定FastMCP版本")
+        logging.warning("Could not determine FastMCP version")
         fastmcp_version = "unknown"
 
-    # 创建FastMCP实例 - 参数为兼容版本2.2.8移除了一些选项
-    mcp = FastMCP(
+    # Create FastMCP instance - some options removed for compatibility with version 2.2.8
+    mcp_instance = FastMCP(  # Renamed to avoid conflict with mcp subcommand
         "Lanalyzer",
         title="Lanalyzer - Python Taint Analysis Tool",
         description="MCP server for Lanalyzer, providing taint analysis for Python code to detect security vulnerabilities.",
@@ -66,292 +66,307 @@ def create_mcp_server(debug: bool = False) -> FastMCP:
         debug=debug,
     )
 
-    # 创建处理器实例
+    # Create handler instance
     handler = LanalyzerMCPHandler(debug=debug)
 
-    # 在调试模式下启用请求日志记录
+    # Enable request logging in debug mode
     if debug:
         try:
 
-            @mcp.middleware
+            @mcp_instance.middleware  # Use the renamed mcp_instance
             async def log_requests(request, call_next):
-                """记录请求和响应的中间件"""
-                logging.debug(f"收到请求: {request.method} {request.url}")
+                """Middleware to log requests and responses"""
+                logging.debug(f"Received request: {request.method} {request.url}")
                 try:
                     if request.method == "POST":
                         body = await request.json()
-                        logging.debug(f"请求体: {body}")
+                        logging.debug(f"Request body: {body}")
                 except Exception as e:
-                    logging.debug(f"无法解析请求体: {e}")
+                    logging.debug(f"Could not parse request body: {e}")
 
                 response = await call_next(request)
                 return response
 
         except AttributeError:
-            # 如果FastMCP不支持middleware，记录一条警告日志
-            logging.warning("当前FastMCP版本不支持middleware功能，日志记录功能将被禁用")
+            # If FastMCP does not support middleware, log a warning
+            logging.warning(
+                "Current FastMCP version does not support middleware, request logging will be disabled"
+            )
 
-    @mcp.tool()
+    @mcp_instance.tool()
     async def analyze_code(
-        code: str, file_path: str, config_path: str, ctx: Context = None
+        code: str,
+        file_path: str,
+        config_path: str,
+        ctx: Optional[Context] = None,  # Added Optional
     ) -> Dict[str, Any]:
         """
-        分析提供的Python代码以检测安全漏洞。
+        Analyze provided Python code to detect security vulnerabilities.
 
         Args:
-            code: 要分析的Python代码。
-            file_path: 代码的文件路径（用于报告）。
-            config_path: 配置文件路径（必需）。
-            ctx: MCP上下文。
+            code: Python code to analyze.
+            file_path: File path of the code (for reporting).
+            config_path: Configuration file path (required).
+            ctx: MCP context.
 
         Returns:
-            分析结果，包括检测到的漏洞信息。
+            Analysis results, including detected vulnerability information.
         """
-        # 记录原始参数以帮助调试
+        # Log original parameters to aid debugging
         logging.debug(
-            f"analyze_code原始参数: code=<已省略>, file_path={file_path}, config_path={config_path}"
+            f"analyze_code original parameters: code=<omitted>, file_path={file_path}, config_path={config_path}"
         )
 
-        # 处理可能的嵌套参数结构
+        # Handle possible nested parameter structure
         actual_file_path = file_path
         actual_config_path = config_path
         actual_code = code
 
-        # 嵌套参数处理
-        if isinstance(config_path, dict) and not isinstance(code, str):
-            logging.warning(f"检测到嵌套参数结构: {config_path}")
+        # Nested parameter handling
+        if isinstance(config_path, dict) and not isinstance(
+            code, str
+        ):  # If config_path is a dict, assume it contains all params
+            logging.warning(
+                f"Detected nested parameter structure (config_path is dict): {config_path}"
+            )
+            actual_code = config_path.get("code", actual_code)
+            actual_file_path = config_path.get("file_path", actual_file_path)
+            actual_config_path = config_path.get(
+                "config_path", actual_config_path
+            )  # This will re-assign if "config_path" is a key
 
-            # 尝试从嵌套结构中提取参数
-            if "file_path" in config_path and isinstance(config_path["file_path"], str):
-                actual_file_path = config_path["file_path"]
-                logging.warning(f"从嵌套结构中提取file_path: {actual_file_path}")
-
-            if "config_path" in config_path and isinstance(
-                config_path["config_path"], str
-            ):
-                actual_config_path = config_path["config_path"]
-                logging.warning(f"从嵌套结构中提取config_path: {actual_config_path}")
-
-            if "code" in config_path and isinstance(config_path["code"], str):
-                actual_code = config_path["code"]
-                logging.warning("从嵌套结构中提取code")
-
-            # 如果找不到有效的代码
-            if not isinstance(actual_code, str):
-                error_msg = "无法从请求中提取有效的code参数"
-                if ctx:
-                    await ctx.error(error_msg)
-                return {"success": False, "errors": [error_msg]}
+        # If actual_code is still not a string after potential extraction, it's an error.
+        if not isinstance(actual_code, str):
+            error_msg = "Cannot extract a valid code parameter from the request"
+            if ctx:
+                await ctx.error(error_msg)
+            return {"success": False, "errors": [error_msg]}
+        if not isinstance(actual_file_path, str):
+            error_msg = "Cannot extract a valid file_path parameter from the request (must be string)"
+            if ctx:
+                await ctx.error(error_msg)
+            return {"success": False, "errors": [error_msg]}
+        if not isinstance(actual_config_path, str):
+            error_msg = "Cannot extract a valid config_path parameter from the request (must be string)"
+            if ctx:
+                await ctx.error(error_msg)
+            return {"success": False, "errors": [error_msg]}
 
         if ctx:
-            await ctx.info(f"开始代码分析, 文件路径: {actual_file_path}")
-            await ctx.info(f"使用配置文件: {actual_config_path}")
+            await ctx.info(f"Starting code analysis, file path: {actual_file_path}")
+            await ctx.info(f"Using configuration file: {actual_config_path}")
 
-        # 参数验证
-        if not isinstance(actual_config_path, str):
-            error_msg = f"配置路径必须是字符串，收到: {type(actual_config_path)}"
-            if ctx:
-                await ctx.error(error_msg)
-            return {"success": False, "errors": [error_msg]}
-
-        if not isinstance(actual_file_path, str):
-            error_msg = f"文件路径必须是字符串，收到: {type(actual_file_path)}"
-            if ctx:
-                await ctx.error(error_msg)
-            return {"success": False, "errors": [error_msg]}
-
-        request = AnalysisRequest(
-            code=actual_code, file_path=actual_file_path, config_path=actual_config_path
+        request_obj = (
+            AnalysisRequest(  # Renamed to avoid conflict with middleware 'request'
+                code=actual_code,
+                file_path=actual_file_path,
+                config_path=actual_config_path,
+            )
         )
-        result = await handler.handle_analysis_request(request)
+        result = await handler.handle_analysis_request(request_obj)
 
         if ctx and result.vulnerabilities:
-            await ctx.warning(f"检测到{len(result.vulnerabilities)}个潜在漏洞")
+            await ctx.warning(
+                f"Detected {len(result.vulnerabilities)} potential vulnerabilities"
+            )
 
         return result.model_dump()
 
-    @mcp.tool()
+    @mcp_instance.tool()
     async def analyze_file(
-        file_path: str, config_path: str, ctx: Context = None
+        file_path: str,
+        config_path: str,
+        ctx: Optional[Context] = None,  # Added Optional
     ) -> Dict[str, Any]:
         """
-        分析指定文件路径的Python代码。
+        Analyze Python code at the specified file path.
 
         Args:
-            file_path: 要分析的Python文件的路径。
-            config_path: 配置文件路径（必需）。
-            ctx: MCP上下文。
+            file_path: Path of the Python file to analyze.
+            config_path: Configuration file path (required).
+            ctx: MCP context.
 
         Returns:
-            分析结果，包括检测到的漏洞信息。
+            Analysis results, including detected vulnerability information.
         """
-        # 记录原始参数以帮助调试
+        # Log original parameters to aid debugging
         logging.debug(
-            f"analyze_file原始参数: file_path={file_path}, config_path={config_path}"
+            f"analyze_file original parameters: file_path={file_path}, config_path={config_path}"
         )
 
-        # 处理嵌套参数情况
-        # 在客户端错误地发送嵌套参数结构时纠正
         actual_file_path = file_path
         actual_config_path = config_path
-        is_nested_params = False
 
-        if isinstance(config_path, dict):
-            logging.warning(f"嵌套参数情况 (config_path是字典): {config_path}")
-            is_nested_params = True
+        # Handle nested parameter situations where arguments might be passed as a single dictionary
+        # Scenario 1: file_path is a dict containing all arguments
+        if isinstance(file_path, dict):
+            logging.warning(
+                f"Nested parameter situation (file_path is dict): {file_path}"
+            )
+            actual_file_path = file_path.get("file_path", actual_file_path)
+            actual_config_path = file_path.get("config_path", actual_config_path)
+        # Scenario 2: config_path is a dict (less common if file_path is also a direct arg, but possible)
+        elif isinstance(config_path, dict):
+            logging.warning(
+                f"Nested parameter situation (config_path is dict): {config_path}"
+            )
+            # file_path would be from direct arg, actual_file_path already set
+            actual_config_path = config_path.get("config_path", actual_config_path)
+            # Potentially, file_path might also be in this dict, overriding the direct arg
+            if "file_path" in config_path:
+                actual_file_path = config_path.get("file_path")
 
-            # 尝试从嵌套结构中提取参数
-            if "file_path" in config_path and isinstance(config_path["file_path"], str):
-                actual_file_path = config_path["file_path"]
-                logging.warning(f"从嵌套结构中提取file_path: {actual_file_path}")
+        # Parameter validation after attempting to de-nest
+        if not isinstance(actual_file_path, str):
+            error_msg = (
+                f"File path must be a string, received: {type(actual_file_path)}"
+            )
+            if ctx:
+                await ctx.error(error_msg)
+            return {"success": False, "errors": [error_msg]}
 
-            if "config_path" in config_path and isinstance(
-                config_path["config_path"], str
-            ):
-                actual_config_path = config_path["config_path"]
-                logging.warning(f"从嵌套结构中提取config_path: {actual_config_path}")
-
-        # 如果file_path也是一个字典
-        if isinstance(file_path, dict) and not is_nested_params:
-            logging.warning(f"嵌套参数情况 (file_path是字典): {file_path}")
-
-            # 尝试从嵌套结构中提取参数
-            if "file_path" in file_path and isinstance(file_path["file_path"], str):
-                actual_file_path = file_path["file_path"]
-                logging.warning(f"从嵌套结构中提取file_path: {actual_file_path}")
-
-            if "config_path" in file_path and isinstance(file_path["config_path"], str):
-                actual_config_path = file_path["config_path"]
-                logging.warning(f"从嵌套结构中提取config_path: {actual_config_path}")
+        if not isinstance(actual_config_path, str):
+            error_msg = f"Configuration path must be a string, received: {type(actual_config_path)}"
+            if ctx:
+                await ctx.error(error_msg)
+            return {"success": False, "errors": [error_msg]}
 
         if ctx:
-            await ctx.info(f"开始文件分析: {actual_file_path}")
-            await ctx.info(f"使用配置文件: {actual_config_path}")
+            await ctx.info(f"Starting file analysis: {actual_file_path}")
+            await ctx.info(f"Using configuration file: {actual_config_path}")
 
-        # 参数验证
-        if not isinstance(actual_config_path, str):
-            error_msg = f"配置路径必须是字符串，收到: {type(actual_config_path)}"
-            if ctx:
-                await ctx.error(error_msg)
-            return {"success": False, "errors": [error_msg]}
-
-        if not isinstance(actual_file_path, str):
-            error_msg = f"文件路径必须是字符串，收到: {type(actual_file_path)}"
-            if ctx:
-                await ctx.error(error_msg)
-            return {"success": False, "errors": [error_msg]}
-
-        # 创建请求对象并处理
-        request = FileAnalysisRequest(
-            file_path=actual_file_path, config_path=actual_config_path
+        # Create request object and process
+        # Assuming FileAnalysisRequest takes file_path and config_path directly
+        # The handler for FileAnalysisRequest needs to be implemented or use a generic one.
+        # For now, we'll assume it's similar to analyze_code but reads code from file.
+        # This might require the handler to change or this tool to directly use handle_analysis_request
+        # by reading the file content first.
+        # Using the provided FileAnalysisRequest model for the call to handler:
+        request_obj = FileAnalysisRequest(
+            target_path=actual_file_path, config_path=actual_config_path
         )
-        result = await handler.handle_file_analysis_request(request)
+        # The handler method might be handle_file_path_analysis if that's what FileAnalysisRequest is for.
+        result = await handler.handle_file_path_analysis(request_obj)
 
         if ctx and result.vulnerabilities:
-            await ctx.warning(f"检测到{len(result.vulnerabilities)}个潜在漏洞")
+            await ctx.warning(
+                f"Detected {len(result.vulnerabilities)} potential vulnerabilities"
+            )
 
         return result.model_dump()
 
-    @mcp.tool()
+    @mcp_instance.tool()
     async def get_config(
-        config_path: Optional[str] = None, ctx: Context = None
+        config_path: Optional[str] = None,
+        ctx: Optional[Context] = None,  # Added Optional
     ) -> Dict[str, Any]:
         """
-        获取配置内容。
+        Get configuration content.
 
         Args:
-            config_path: 配置文件的路径。
-            ctx: MCP上下文。
+            config_path: Path to the configuration file.
+            ctx: MCP context.
 
         Returns:
-            配置数据。
+            Configuration data.
         """
         if ctx:
-            config_desc = config_path if config_path else "默认配置"
-            await ctx.info(f"获取配置: {config_desc}")
+            config_desc = config_path if config_path else "default configuration"
+            await ctx.info(f"Getting configuration: {config_desc}")
 
-        request = ConfigurationRequest(operation="get", config_path=config_path)
-        result = await handler.handle_configuration_request(request)
+        request_obj = ConfigurationRequest(operation="get", config_path=config_path)
+        result = await handler.handle_configuration_request(request_obj)
         return result.model_dump()
 
-    @mcp.tool()
+    @mcp_instance.tool()
     async def validate_config(
-        config_data: Dict[str, Any] = None,
+        config_data: Optional[Dict[str, Any]] = None,  # Made Optional
         config_path: Optional[str] = None,
-        ctx: Context = None,
+        ctx: Optional[Context] = None,  # Added Optional
     ) -> Dict[str, Any]:
         """
-        验证配置内容。
+        Validate configuration content.
 
         Args:
-            config_data: 要验证的配置数据。
-            config_path: 可选的配置文件路径（如果提供，将从文件中读取）。
-            ctx: MCP上下文。
+            config_data: Configuration data to validate.
+            config_path: Optional configuration file path (if provided, will read from file).
+            ctx: MCP context.
 
         Returns:
-            验证结果。
+            Validation result.
         """
         if ctx:
-            await ctx.info("验证配置...")
+            await ctx.info("Validating configuration...")
 
-        request = ConfigurationRequest(
+        request_obj = ConfigurationRequest(
             operation="validate", config_path=config_path, config_data=config_data
         )
-        result = await handler.handle_configuration_request(request)
+        result = await handler.handle_configuration_request(request_obj)
 
         if ctx:
             if result.success:
-                await ctx.info("配置验证成功")
+                await ctx.info("Configuration validation successful")
             else:
-                await ctx.error("配置验证失败")
+                await ctx.error(f"Configuration validation failed: {result.errors}")
 
         return result.model_dump()
 
-    @mcp.tool()
+    @mcp_instance.tool()
     async def create_config(
         config_data: Dict[str, Any],
         config_path: Optional[str] = None,
-        ctx: Context = None,
+        ctx: Optional[Context] = None,  # Added Optional
     ) -> Dict[str, Any]:
         """
-        创建新的配置文件。
+        Create a new configuration file.
 
         Args:
-            config_data: 配置数据。
-            config_path: 可选的输出文件路径。
-            ctx: MCP上下文。
+            config_data: Configuration data.
+            config_path: Optional output file path.
+            ctx: MCP context.
 
         Returns:
-            创建操作的结果。
+            Result of the create operation.
         """
         if ctx:
-            path_info = f", 保存至: {config_path}" if config_path else ""
-            await ctx.info(f"创建配置{path_info}")
+            path_info = f", saving to: {config_path}" if config_path else ""
+            await ctx.info(f"Creating configuration{path_info}")
 
-        request = ConfigurationRequest(
+        request_obj = ConfigurationRequest(
             operation="create", config_path=config_path, config_data=config_data
         )
-        result = await handler.handle_configuration_request(request)
+        result = await handler.handle_configuration_request(request_obj)
 
         if ctx and result.success:
-            await ctx.info("配置创建成功")
+            await ctx.info("Configuration creation successful")
+        elif ctx and not result.success:
+            await ctx.error(f"Configuration creation failed: {result.errors}")
 
         return result.model_dump()
 
-    return mcp
+    return mcp_instance
 
 
-# 调试工具函数装饰器，在调试模式下使用
+# Provide temporary server variable for FastMCP command line compatibility
+# This instance is created with default debug=False.
+# The 'run' command will create its own instance with its specific debug flag.
+# The 'mcpcmd' (fastmcp dev/run) will refer to this 'server' instance.
+server = create_mcp_server()
+
+
+# Debug tool function decorator, used in debug mode
 def debug_tool_args(func):
-    """记录工具函数参数用于调试"""
+    """Log tool function parameters for debugging"""
 
     async def wrapper(*args, **kwargs):
-        logging.debug(f"调用工具 {func.__name__} 参数: {args}, 关键字参数: {kwargs}")
+        logging.debug(
+            f"Calling tool {func.__name__} with args: {args}, kwargs: {kwargs}"
+        )
         try:
             result = await func(*args, **kwargs)
             return result
         except Exception as e:
-            logging.error(f"工具 {func.__name__} 调用失败: {e}")
+            logging.error(f"Tool {func.__name__} call failed: {e}")
             import traceback
 
             logging.error(traceback.format_exc())
@@ -362,85 +377,94 @@ def debug_tool_args(func):
 
 @click.group()
 def cli():
-    """Lanalyzer MCP命令行工具"""
+    """Lanalyzer MCP command-line tool"""
     pass
 
 
 @cli.command()
-@click.option("--debug", is_flag=True, help="启用调试模式")
-@click.option("--host", default="127.0.0.1", help="主机地址")
-@click.option("--port", default=8000, type=int, help="端口号")
+@click.option("--debug", is_flag=True, help="Enable debug mode.")
+@click.option("--host", default="127.0.0.1", help="Host address.")
+@click.option("--port", default=8000, type=int, help="Port number.")
 def run(debug, host, port):
-    """启动MCP服务器"""
-    # 配置日志
+    """Start the MCP server."""
+    # Configure logging (again, specific for this command's context)
     log_level = logging.DEBUG if debug else logging.INFO
     logging.basicConfig(
         level=log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        force=True,  # Ensure reconfiguration if already configured
     )
 
-    click.echo(f"启动Lanalyzer MCP服务器 - 使用FastMCP v{__import__('fastmcp').__version__}")
-    click.echo(f"服务器名称: Lanalyzer")
-    click.echo(f"服务器版本: {__version__}")
-    click.echo(f"服务器地址: {host}:{port}")
+    click.echo(
+        f"Starting Lanalyzer MCP server - Using FastMCP v{__import__('fastmcp').__version__}"
+    )
+    click.echo(f"Server Name: Lanalyzer")
+    click.echo(f"Server Version: {__version__}")
+    click.echo(f"Server Address: http://{host}:{port}")  # Added http:// for clarity
 
-    # 创建FastMCP服务器实例
-    server = create_mcp_server(debug=debug)
+    # Create FastMCP server instance specifically for this run command
+    # This ensures the 'debug' flag from CLI is correctly applied to this server instance
+    current_run_server = create_mcp_server(debug=debug)
 
-    # 以兼容版本2.2.8的方式启动服务器
-    click.echo(f"使用SSE传输启动FastMCP服务器")
+    # Start server in a way compatible with version 2.2.8
+    click.echo(f"Starting FastMCP server using SSE transport")
 
-    # 根据帮助文档，FastMCP 2.2.8只支持'stdio'和'sse'传输方法
-    server.run(
-        transport="sse",  # 明确指定使用sse传输
+    # According to the help documentation, FastMCP 2.2.8 only supports 'stdio' and 'sse' transport methods
+    current_run_server.run(
+        transport="sse",  # Explicitly specify using sse transport
         host=host,
         port=port,
     )
 
 
-@cli.command(name="mcp")
+@cli.command(
+    name="mcp"
+)  # Explicitly name the command to avoid conflict with variable 'mcp' if any
 @click.argument("command_args", nargs=-1)
-@click.option("--debug", is_flag=True, help="启用调试模式")
+@click.option(
+    "--debug", is_flag=True, help="Enable debug mode for the FastMCP subprocess."
+)
 def mcpcmd(command_args, debug):
-    """使用FastMCP命令行工具运行服务器(dev/run/install)"""
+    """Run the server using FastMCP command-line tool (e.g., dev, run, install)."""
     import subprocess
 
-    # 获取此文件的绝对路径
+    # Get the absolute path of this file
     script_path = os.path.abspath(__file__)
 
-    # 构建FastMCP命令
+    # Build FastMCP command
     cmd = ["fastmcp"] + list(command_args)
     if not command_args or command_args[0] not in ["dev", "run", "install"]:
-        # 如果没有提供有效的子命令，默认为dev
+        # If no valid subcommand is provided, default to dev
         cmd = ["fastmcp", "dev"]
 
-    # 添加模块路径 - 我们将创建一个临时服务器实例
-    temp_var_name = "server"
-    cmd.append(f"{script_path}:{temp_var_name}")
+    # Add module path - FastMCP will look for the 'server' variable in the script.
+    cmd.append(f"{script_path}:server")
 
-    # 明确指定传输为sse以避免默认http
-    # 注意：FastMCP 2.2.8只支持stdio和sse传输
+    # Explicitly specify transport as sse to avoid default http for dev/run
+    # Note: FastMCP 2.2.8 only supports stdio and sse transport for these commands
     if command_args and command_args[0] in ["dev", "run"]:
-        cmd.append("--transport=sse")
+        if "--transport" not in command_args:  # Add only if not specified by user
+            cmd.append("--transport=sse")
 
     if debug:
-        cmd.append("--with-debug")
+        if "--with-debug" not in command_args:  # Add only if not specified by user
+            cmd.append("--with-debug")
 
-    click.echo(f"执行命令: {' '.join(cmd)}")
+    click.echo(f"Executing command: {' '.join(cmd)}")
 
-    # 执行命令并将输出传递到当前终端
+    # Execute command and pass output to the current terminal
     try:
-        subprocess.run(cmd, check=True)
+        # The 'server' instance at the bottom of the file will be used by fastmcp
+        process = subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as e:
-        click.echo(f"命令执行失败: {e}")
+        click.echo(f"Command execution failed: {e}", err=True)
         sys.exit(1)
     except FileNotFoundError:
-        click.echo("错误: 找不到fastmcp命令。请确保已安装FastMCP: pip install fastmcp")
+        click.echo(
+            "Error: fastmcp command not found. Please ensure FastMCP is installed: pip install fastmcp",
+            err=True,
+        )
         sys.exit(1)
-
-
-# 为FastMCP命令行提供临时服务器变量
-server = create_mcp_server()
 
 
 if __name__ == "__main__":
