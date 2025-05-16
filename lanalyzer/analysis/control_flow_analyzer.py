@@ -12,6 +12,7 @@ import re
 from typing import Any, Dict, List, Set, Optional
 
 from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
+from lanalyzer.logger import debug
 
 
 class ControlFlowAnalyzer:
@@ -56,7 +57,7 @@ class ControlFlowAnalyzer:
                     ]
 
         if self.debug:
-            print(f"[DEBUG] Loaded key method names from config: {key_methods}")
+            debug(f"[DEBUG] Loaded key method names from config: {key_methods}")
 
         return key_methods
 
@@ -77,7 +78,7 @@ class ControlFlowAnalyzer:
         sink_name = sink_info.get("name", "Unknown Sink")
 
         if self.debug:
-            print(
+            debug(
                 f"[DEBUG] Building control flow chain for sink {sink_name} at line {sink_line}"
             )
 
@@ -85,7 +86,7 @@ class ControlFlowAnalyzer:
         sink_func = self.tracker.utils.find_function_containing_line(visitor, sink_line)
         if not sink_func:
             if self.debug:
-                print(
+                debug(
                     f"[DEBUG] Could not find function containing sink at line {sink_line}"
                 )
             return []
@@ -157,7 +158,7 @@ class ControlFlowAnalyzer:
                     entry_point_patterns.extend(key_method_config["entry_methods"])
 
         if self.debug:
-            print(
+            debug(
                 f"[DEBUG] Got {len(entry_point_patterns)} entry point patterns from config"
             )
 
@@ -183,7 +184,7 @@ class ControlFlowAnalyzer:
                     ):
                         config_defined_entry_points.append(func_node)
                         if self.debug:
-                            print(
+                            debug(
                                 f"[DEBUG] Found config-defined entry point: {func_name} matched pattern {pattern}"
                             )
                         break
@@ -197,7 +198,7 @@ class ControlFlowAnalyzer:
                 )
                 if path:
                     if self.debug:
-                        print(
+                        debug(
                             f"[DEBUG] Found path from config-defined entry point {entry_point.name} to sink function {sink_func.name}"
                         )
                     return path
@@ -212,7 +213,7 @@ class ControlFlowAnalyzer:
                     default_entry_points.append(func_node)
 
         if self.debug:
-            print(
+            debug(
                 f"[DEBUG] Found {len(default_entry_points)} default entry points: {[ep.name for ep in default_entry_points]}"
             )
 
@@ -221,14 +222,14 @@ class ControlFlowAnalyzer:
             path = self.find_path_to_function(entry_point, sink_func, visitor.functions)
             if path:
                 if self.debug:
-                    print(
+                    debug(
                         f"[DEBUG] Found path from default entry point {entry_point.name} to sink function {sink_func.name}"
                     )
                 return path
 
         # 如果没有找到完整路径，至少返回汇聚点函数
         if self.debug:
-            print(f"[DEBUG] No complete path found, returning just the sink function")
+            debug(f"[DEBUG] No complete path found, returning just the sink function")
         return [sink_func]
 
     def find_path_to_function(
@@ -259,12 +260,12 @@ class ControlFlowAnalyzer:
                     try:
                         max_depth = int(control_flow_config["max_call_depth"])
                         if self.debug:
-                            print(
+                            debug(
                                 f"[DEBUG] Using config-defined max call depth: {max_depth}"
                             )
                     except (ValueError, TypeError):
                         if self.debug:
-                            print(
+                            debug(
                                 f"[DEBUG] Invalid max_call_depth in config, using default: {max_depth}"
                             )
 
@@ -287,7 +288,7 @@ class ControlFlowAnalyzer:
                         queue.append((callee_node, path + [callee_node]))
 
         if self.debug and depth >= max_depth:
-            print(
+            debug(
                 f"[DEBUG] Reached max call depth ({max_depth}) when searching path from {start_func.name} to {target_func.name}"
             )
 
@@ -339,7 +340,7 @@ class ControlFlowAnalyzer:
                             class_methods[class_name] = []
                         class_methods[class_name].append(method_name)
                         if self.debug:
-                            print(
+                            debug(
                                 f"[DEBUG] Found class method: {class_name}.{method_name}"
                             )
 
@@ -354,13 +355,13 @@ class ControlFlowAnalyzer:
                 ):
                     method_call_patterns = control_flow_config["method_call_patterns"]
                     if self.debug:
-                        print(
+                        debug(
                             f"[DEBUG] Using {len(method_call_patterns)} method call patterns from config"
                         )
 
             # 如果没有配置方法调用模式，记录日志但不设置默认值
             if not method_call_patterns and self.debug:
-                print("[DEBUG] No method call patterns defined in config")
+                debug("[DEBUG] No method call patterns defined in config")
 
             # 找出所有方法调用
             for line_num, line in enumerate(visitor.source_lines, 1):
@@ -401,7 +402,7 @@ class ControlFlowAnalyzer:
                                             call_info
                                         )
                                         if self.debug:
-                                            print(
+                                            debug(
                                                 f"[DEBUG] Found method call: {caller_method} -> {callee_method} at line {line_num}"
                                             )
 
@@ -442,7 +443,7 @@ class ControlFlowAnalyzer:
                                             call_info
                                         )
                                         if self.debug:
-                                            print(
+                                            debug(
                                                 f"[DEBUG] Found instance method call: {caller_method} -> {callee_method} at line {line_num}"
                                             )
 
@@ -485,7 +486,7 @@ class ControlFlowAnalyzer:
                                                 call_info
                                             )
                                             if self.debug:
-                                                print(
+                                                debug(
                                                     f"[DEBUG] Recorded self method call: {containing_func.name if containing_func else 'unknown'} -> {callee_method} at line {line_num}"
                                                 )
 
@@ -496,7 +497,7 @@ class ControlFlowAnalyzer:
             if sink_func_name in all_method_calls:
                 caller_infos = all_method_calls[sink_func_name]
                 if self.debug:
-                    print(
+                    debug(
                         f"[DEBUG] Found {len(caller_infos)} callers for sink function {sink_func_name}"
                     )
 
@@ -541,7 +542,7 @@ class ControlFlowAnalyzer:
             # 如果是第一个函数，且它是入口方法，查看它调用的所有方法
             if i == 0 and method_name in self.key_method_names["entry_methods"]:
                 if self.debug:
-                    print(f"[DEBUG] Processing entry method: {current_func_name}")
+                    debug(f"[DEBUG] Processing entry method: {current_func_name}")
 
                 # 查找该入口方法调用的所有其他方法
                 for callee, caller_infos in all_method_calls.items():
@@ -580,13 +581,13 @@ class ControlFlowAnalyzer:
                                     0 if len(call_chain) == 0 else 1, method_call_node
                                 )
                                 if self.debug:
-                                    print(
+                                    debug(
                                         f"[DEBUG] Added IMPORTANT method call: {current_func_name} -> {callee}"
                                     )
                             else:
                                 call_chain.append(method_call_node)
                                 if self.debug:
-                                    print(
+                                    debug(
                                         f"[DEBUG] Added method call: {current_func_name} -> {callee}"
                                     )
 
@@ -660,7 +661,7 @@ class ControlFlowAnalyzer:
                                 call_chain.append(method_call_node)
 
                             if self.debug:
-                                print(
+                                debug(
                                     f"[DEBUG] Added direct call to sink function: {caller_info['caller']} -> {sink_func_name}{importance_flag}"
                                 )
 

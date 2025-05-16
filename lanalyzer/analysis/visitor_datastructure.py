@@ -7,6 +7,7 @@ import copy
 
 from .visitor_base import EnhancedTaintVisitor
 from .datastructures import DataStructureNode
+from lanalyzer.logger import debug
 
 
 class DataStructureVisitorMixin:
@@ -37,10 +38,9 @@ class DataStructureVisitorMixin:
                                     self.data_structures[
                                         obj_name
                                     ].source_info = self.variable_taint[obj_name]
-                                if self.debug:
-                                    print(
-                                        f"Propagated taint from dict {obj_name} to {target.id} via {attr_name}"
-                                    )
+                                debug(
+                                    f"Propagated taint from dict {obj_name} to {target.id} via {attr_name}"
+                                )
 
     def _track_container_methods(self: "EnhancedTaintVisitor", node: ast.Call) -> None:
         """Track taint propagation through container methods like list.append, dict.update, etc."""
@@ -60,10 +60,9 @@ class DataStructureVisitorMixin:
                                 self.variable_taint[arg.id],
                                 f"Dictionary updated with tainted data from '{arg.id}' at line {lineno}",
                             )
-                            if self.debug:
-                                print(
-                                    f"Dictionary {container_name} tainted by update() with {arg.id}"
-                                )
+                            debug(
+                                f"Dictionary {container_name} tainted by update() with {arg.id}"
+                            )
                     elif method_name == "setdefault" and len(node.args) >= 2:
                         key = node.args[0]
                         default = node.args[1]
@@ -82,10 +81,9 @@ class DataStructureVisitorMixin:
                                     self.variable_taint[default.id],
                                     f"Key set with tainted default value from '{default.id}' at line {lineno}",
                                 )
-                                if self.debug:
-                                    print(
-                                        f"Dictionary {container_name} key '{key_value}' tainted by setdefault()"
-                                    )
+                                debug(
+                                    f"Dictionary {container_name} key '{key_value}' tainted by setdefault()"
+                                )
                 elif container.node_type == "list":
                     if method_name == "append" and node.args:
                         arg = node.args[0]
@@ -100,10 +98,9 @@ class DataStructureVisitorMixin:
                                 self.variable_taint[arg.id],
                                 f"List appended with tainted data from '{arg.id}' at line {lineno}",
                             )
-                            if self.debug:
-                                print(
-                                    f"List {container_name} index {idx} tainted by append() with {arg.id}"
-                                )
+                            debug(
+                                f"List {container_name} index {idx} tainted by append() with {arg.id}"
+                            )
                     elif method_name == "extend" and node.args:
                         arg = node.args[0]
                         if isinstance(arg, ast.Name):
@@ -112,10 +109,9 @@ class DataStructureVisitorMixin:
                                     self.variable_taint[arg.id],
                                     f"List extended with tainted data from '{arg.id}' at line {lineno}",
                                 )
-                                if self.debug:
-                                    print(
-                                        f"List {container_name} tainted by extend() with {arg.id}"
-                                    )
+                                debug(
+                                    f"List {container_name} tainted by extend() with {arg.id}"
+                                )
                             elif arg.id in self.data_structures:
                                 other_container = self.data_structures[arg.id]
                                 if other_container.tainted:
@@ -125,10 +121,9 @@ class DataStructureVisitorMixin:
                                     )
                                     container.add_parent_structure(arg.id)
                                     other_container.add_child_structure(container_name)
-                                    if self.debug:
-                                        print(
-                                            f"List {container_name} tainted by extend() with tainted data structure {arg.id}"
-                                        )
+                                    debug(
+                                        f"List {container_name} tainted by extend() with tainted data structure {arg.id}"
+                                    )
                     elif method_name == "insert" and len(node.args) >= 2:
                         value = node.args[1]
                         if (
@@ -139,10 +134,9 @@ class DataStructureVisitorMixin:
                                 self.variable_taint[value.id],
                                 f"List inserted with tainted data from '{value.id}' at line {lineno}",
                             )
-                            if self.debug:
-                                print(
-                                    f"List {container_name} tainted by insert() with {value.id}"
-                                )
+                            debug(
+                                f"List {container_name} tainted by insert() with {value.id}"
+                            )
 
     def _track_complex_data_assignments(
         self: "EnhancedTaintVisitor", node: ast.Assign
@@ -186,10 +180,9 @@ class DataStructureVisitorMixin:
                             f"Dictionary created with tainted values at line {getattr(node, 'lineno', 0)}",
                         )
                         self.variable_taint[dict_name] = dict_taint_info
-                        if self.debug:
-                            print(
-                                f"Created tainted dictionary {dict_name} with tainted keys {tainted_keys}"
-                            )
+                        debug(
+                            f"Created tainted dictionary {dict_name} with tainted keys {tainted_keys}"
+                        )
         elif isinstance(node.value, ast.List):
             for target in node.targets:
                 if isinstance(target, ast.Name):
@@ -217,10 +210,9 @@ class DataStructureVisitorMixin:
                             f"List created with tainted values at line {getattr(node, 'lineno', 0)}",
                         )
                         self.variable_taint[list_name] = list_taint_info
-                        if self.debug:
-                            print(
-                                f"Created tainted list {list_name} with tainted indices {tainted_indices}"
-                            )
+                        debug(
+                            f"Created tainted list {list_name} with tainted indices {tainted_indices}"
+                        )
 
     def visit_Subscript(self: "EnhancedTaintVisitor", node: ast.Subscript) -> None:
         """Visit subscript operations on complex data structures."""
@@ -240,10 +232,9 @@ class DataStructureVisitorMixin:
                                     self.variable_taint[
                                         target.id
                                     ] = data_struct.source_info
-                                    if self.debug:
-                                        print(
-                                            f"Propagated taint from {var_name}[{node.slice.value}] to {target.id}"
-                                        )
+                                    debug(
+                                        f"Propagated taint from {var_name}[{node.slice.value}] to {target.id}"
+                                    )
                 elif data_struct.node_type == "list" and isinstance(
                     node.slice, ast.Constant
                 ):
@@ -256,10 +247,9 @@ class DataStructureVisitorMixin:
                                     self.variable_taint[
                                         target.id
                                     ] = data_struct.source_info
-                                    if self.debug:
-                                        print(
-                                            f"Propagated taint from {var_name}[{node.slice.value}] to {target.id}"
-                                        )
+                                    debug(
+                                        f"Propagated taint from {var_name}[{node.slice.value}] to {target.id}"
+                                    )
         self.generic_visit(node)
 
     def visit_Assign(self: "EnhancedTaintVisitor", node: ast.Assign) -> None:

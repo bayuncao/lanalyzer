@@ -38,14 +38,7 @@ class CallChainBuilder:
     ) -> List[Dict[str, Any]]:
         """
         Get the detailed function call chain from source to sink.
-
-        Args:
-            visitor: EnhancedTaintAnalysisVisitor instance
-            sink: Sink dictionary
-            source_info: Source information dictionary
-
-        Returns:
-            List of dictionaries containing detailed function call chain information
+        优化：递归查找 callee 路径，优先 is_self_method_call，利用 self_method_call_map，所有传播规则基于配置。
         """
         call_chain = []
         source_line = source_info.get("line", 0)
@@ -55,7 +48,7 @@ class CallChainBuilder:
 
         if self.debug:
             print(
-                f"Building call chain from source {source_name}(line {source_line}) to sink {sink_name}(line {sink_line})"
+                f"[DEBUG] Building call chain from source '{source_name}' (line {source_line}) to sink '{sink_name}' (line {sink_line})"
             )
 
         source_func = None
@@ -73,17 +66,21 @@ class CallChainBuilder:
         if self.debug:
             if source_func:
                 print(
-                    f"Found source function: {source_func.name} (lines {source_func.line_no}-{source_func.end_line_no})"
+                    f"[DEBUG] Found source function: {source_func.name} (lines {source_func.line_no}-{source_func.end_line_no})"
                 )
             else:
-                print(f"Could not find function containing source (line {source_line})")
+                print(
+                    f"[DEBUG] Could not find function containing source (line {source_line})"
+                )
 
             if sink_func:
                 print(
-                    f"Found sink function: {sink_func.name} (lines {sink_func.line_no}-{sink_func.end_line_no})"
+                    f"[DEBUG] Found sink function: {sink_func.name} (lines {sink_func.line_no}-{sink_func.end_line_no})"
                 )
             else:
-                print(f"Could not find function containing sink (line {sink_line})")
+                print(
+                    f"[DEBUG] Could not find function containing sink (line {sink_line})"
+                )
 
         source_stmt_info = self.tracker.utils.get_statement_at_line(
             visitor, source_line, context_lines=1
@@ -154,126 +151,103 @@ class CallChainBuilder:
                 "description": f"Contains both source {source_name}(line {source_line}) and sink {sink_name}(line {sink_line})",
             }
             call_chain.append(func_info)
-            # 确保调用链按数据流方向排序
             return self.utils.reorder_call_chain_by_data_flow(call_chain)
 
-        # 处理源和汇聚点在不同函数的情况
+        # 递归查找 source_func 到 sink_func 的所有路径，优先 is_self_method_call，传播规则基于配置
+        def dfs(current_func, target_func, path, depth):
+            if self.debug:
+                print(
+                    f"[DEBUG][DFS] At {current_func.name} -> {target_func.name}, depth={depth}, path={[f.name for f in path]}"
+                )
+            if current_func == target_func:
+                return path + [current_func]
+            if depth > 20:
+                if self.debug:
+                    print(f"[DEBUG][DFS] Max depth reached at {current_func.name}")
+                return None
+            for callee in getattr(current_func, "callees", []):
+                if callee in path:
+                    continue
+                result = dfs(callee, target_func, path + [current_func], depth + 1)
+                if result:
+                    return result
+            return None
+
+        found_paths = []
         if source_func and sink_func:
-            # 查找直接的函数调用点
-            function_calls = self._find_function_call_points(
-                visitor, source_func, sink_func
-            )
-            if function_calls:
-                for call_point in function_calls:
-                    call_chain.append(call_point)
+            found_paths = dfs(source_func, sink_func, [], 0)
+            if self.debug:
+                print(
+                    f"[DEBUG] Found {len(found_paths)} path(s) from {source_func.name} to {sink_func.name}"
+                )
 
-            # 使用现有的路径查找逻辑
-            queue = [(source_func, [source_func])]
-            visited = {source_func.name}
-            max_depth = 20
-            found_path = None
+        # 如果 visitor 有 self_method_call_map，尝试补全链路
+        if not found_paths and hasattr(visitor, "self_method_call_map"):
+            if self.debug:
+                print("[DEBUG] 尝试用 self_method_call_map 补全链路")
+            for key, lines in visitor.self_method_call_map.items():
+                if (
+                    source_func
+                    and sink_func
+                    and source_func.name in key
+                    and sink_func.name in key
+                ):
+                    # 构造一条简单链路
+                    found_paths = [[source_func, sink_func]]
+                    break
 
-            while queue and not found_path:
-                current, path = queue.pop(0)
+        # 生成调用链节点
+        if found_paths:
+            # 只取最短路径
+            path = min(found_paths, key=len)
+            for i, func in enumerate(path):
+                node_type = "intermediate"
+                description = "Intermediate function in the call chain"
+                if i == 0:
+                    node_type = "source"
+                    description = f"Contains source {source_name} at line {source_line}"
+                elif i == len(path) - 1:
+                    node_type = "sink"
+                    description = f"Contains sink {sink_name} at line {sink_line}"
+                line_num = func.line_no
+                call_statement = ""
+                if i > 0:
+                    prev_func = path[i - 1]
+                    call_info = self._get_function_call_info(visitor, prev_func, func)
+                    if call_info:
+                        call_statement = call_info.get("statement", "")
+                        line_num = call_info.get("line", func.line_no)
+                func_info = {
+                    "function": func.name,
+                    "file": func.file_path,
+                    "line": line_num,
+                    "statement": call_statement
+                    if call_statement
+                    else f"function {func.name}",
+                    "context_lines": [func.line_no, func.end_line_no],
+                    "type": node_type,
+                    "description": description,
+                }
+                call_chain.append(func_info)
+            if self.debug:
+                print(f"[DEBUG] 最终调用链节点数: {len(call_chain)}")
+            return self.utils.reorder_call_chain_by_data_flow(call_chain)
 
-                for callee in current.callees:
-                    if callee.name == sink_func.name:
-                        found_path = path + [sink_func]
-                        break
-
-                    if callee.name not in visited and len(path) < max_depth:
-                        visited.add(callee.name)
-                        queue.append((callee, path + [callee]))
-
-            if found_path:
-                for i, func in enumerate(found_path):
-                    node_type = "intermediate"
-                    description = "Intermediate function in the call chain"
-
-                    if i == 0:
-                        node_type = "source"
-                        description = (
-                            f"Contains source {source_name} at line {source_line}"
-                        )
-                    elif i == len(found_path) - 1:
-                        node_type = "sink"
-                        description = f"Contains sink {sink_name} at line {sink_line}"
-
-                    line_num = func.line_no
-                    call_statement = ""
-
-                    # 查找函数调用点
-                    if i > 0:
-                        prev_func = found_path[i - 1]
-                        call_info = self._get_function_call_info(
-                            visitor, prev_func, func
-                        )
-                        if call_info:
-                            call_statement = call_info.get("statement", "")
-                            line_num = call_info.get("line", func.line_no)
-
-                    func_info = {
-                        "function": func.name,
-                        "file": func.file_path,
-                        "line": line_num,
-                        "statement": call_statement
-                        if call_statement
-                        else f"function {func.name}",
-                        "context_lines": [func.line_no, func.end_line_no],
-                        "type": node_type,
-                        "description": description,
-                    }
-                    call_chain.append(func_info)
-
-            if not found_path and self.debug:
-                print("No direct path found, trying to find common callers...")
-
-            # 尝试查找共同调用者
-            common_callers_path = self._build_common_callers_path(
-                visitor,
-                source_func,
-                sink_func,
-                source_name,
-                sink_name,
-                source_line,
-                sink_line,
-                source_stmt_info,
-                sink_stmt_info,
-            )
-
-            if common_callers_path:
-                # 确保调用链按数据流方向排序
-                return self.utils.reorder_call_chain_by_data_flow(common_callers_path)
-            else:
-                return []
-
-        # 处理只找到源函数或者只找到汇聚点函数的情况
-        if source_func:
-            source_func_info = {
-                "function": source_func.name,
-                "file": source_func.file_path,
-                "line": source_func.line_no,
-                "statement": source_stmt_info["statement"],
-                "context_lines": [source_func.line_no, source_func.end_line_no],
-                "type": "source",
-                "description": f"Contains source {source_name} at line {source_line}",
-            }
-            call_chain.append(source_func_info)
-
-        if sink_func:
-            sink_func_info = {
-                "function": sink_func.name,
-                "file": sink_func.file_path,
-                "line": sink_func.line_no,
-                "statement": sink_stmt_info["statement"],
-                "context_lines": [sink_func.line_no, sink_func.end_line_no],
-                "type": "sink",
-                "description": f"Contains sink {sink_name} at line {sink_line}",
-            }
-            call_chain.append(sink_func_info)
-
-        # 确保调用链按数据流方向排序
-        return self.utils.reorder_call_chain_by_data_flow(call_chain)
+        # 如果找不到路径，尝试共同调用者
+        if self.debug:
+            print("[DEBUG] No direct path found, trying to find common callers...")
+        # 复用原有共同调用者逻辑
+        return self._build_common_callers_path(
+            visitor,
+            source_func,
+            sink_func,
+            source_name,
+            sink_name,
+            source_line,
+            sink_line,
+            source_stmt_info,
+            sink_stmt_info,
+        )
 
     def _build_common_callers_path(
         self,

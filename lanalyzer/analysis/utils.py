@@ -6,6 +6,7 @@ import re
 from typing import Any, Dict, List, Set, Tuple, Optional
 
 from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
+from lanalyzer.logger import debug
 
 
 class TaintAnalysisUtils:
@@ -84,7 +85,7 @@ class TaintAnalysisUtils:
         # Check if raw source code is available
         if not hasattr(visitor, "source_lines") or not visitor.source_lines:
             if self.debug:
-                print(
+                debug(
                     f"[Warning] Visitor lacks source_lines attribute or it is empty, cannot extract operation for line {line}"
                 )
             return None
@@ -92,7 +93,7 @@ class TaintAnalysisUtils:
         # Ensure line number is within valid range
         if line <= 0 or line > len(visitor.source_lines):
             if self.debug:
-                print(
+                debug(
                     f"[Warning] Line number {line} is out of range (1-{len(visitor.source_lines)})"
                 )
             return None
@@ -212,7 +213,7 @@ class TaintAnalysisUtils:
                 if re.search(pattern, sink_code):
                     tainted_vars.append(var_name)
                     if self.debug:
-                        print(
+                        debug(
                             f"[DEBUG] Found tainted variable {var_name} used in sink at line {sink_line}"
                         )
 
@@ -355,7 +356,7 @@ class TaintAnalysisUtils:
                                 same_function_sources.append(source_stmt)
                                 found_source_in_function = True
                                 if self.debug:
-                                    print(
+                                    debug(
                                         f"[DEBUG] Found source using pattern '{src['pattern']}' at line {src['line']}"
                                     )
 
@@ -497,7 +498,7 @@ class TaintAnalysisUtils:
                     other_sources.append(source_stmt)
 
                 if self.debug:
-                    print(
+                    debug(
                         f"[DEBUG] Found source using pattern '{src.get('pattern', 'unknown')}' at line {src['line']}"
                     )
 
@@ -527,7 +528,7 @@ class TaintAnalysisUtils:
                 if "related_patterns" in sink:
                     related_patterns.extend(sink.get("related_patterns", []))
                     if self.debug:
-                        print(
+                        debug(
                             f"Found related_patterns in config for {sink_name}: {related_patterns}"
                         )
 
@@ -555,7 +556,7 @@ class TaintAnalysisUtils:
                     related_patterns.append(word.lower())
 
             if self.debug:
-                print(
+                debug(
                     f"No patterns found in config for {sink_name}, using words: {related_patterns}"
                 )
 
@@ -566,7 +567,7 @@ class TaintAnalysisUtils:
                 # Check if function name contains pattern (case-insensitive)
                 if pattern.lower() in func_name.lower():
                     if self.debug:
-                        print(
+                        debug(
                             f"Found related function {func_name} matching pattern {pattern}"
                         )
                     related_functions.append(func_node)

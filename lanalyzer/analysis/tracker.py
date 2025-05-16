@@ -18,7 +18,7 @@ from lanalyzer.logger import (
     log_analysis_file,
     log_result,
     log_vulnerabilities,
-    debug,
+    debug as log_debug,
     info,
     warning,
     error,
@@ -48,11 +48,9 @@ class EnhancedTaintTracker:
             try:
                 with open(taint_rules_path, "r") as f:
                     taint_rules_config = json.load(f)
-                if debug:
-                    print(f"Loaded taint rules configuration from {taint_rules_path}")
+                log_debug(f"Loaded taint rules configuration from {taint_rules_path}")
             except Exception as e:
-                if debug:
-                    print(f"Error loading taint rules configuration: {e}")
+                log_debug(f"Error loading taint rules configuration: {e}")
 
         # Merge configurations
         self.config = config.copy()
@@ -87,20 +85,18 @@ class EnhancedTaintTracker:
             List of enhanced vulnerability dictionaries
         """
         if not os.path.exists(file_path):
-            if self.debug:
-                print(f"❌ Error: File not found: {file_path}")
+            log_debug(f"❌ Error: File not found: {file_path}")
             return []
 
         if not file_path.endswith(".py"):
-            if self.debug:
-                print(f"⚠️ Skipping non-Python file: {file_path}")
+            log_debug(f"⚠️ Skipping non-Python file: {file_path}")
             return []
 
         # Mark file as analyzed
         self.analyzed_files.add(file_path)
 
         if self.debug:
-            print(f"\n🔍 Starting analysis of file: {file_path}")
+            log_debug(f"\n🔍 Starting analysis of file: {file_path}")
 
         try:
             with open(file_path, "r", encoding="utf-8") as f:
@@ -113,7 +109,7 @@ class EnhancedTaintTracker:
                 tree = ast.parse(code, filename=file_path)
             except SyntaxError as e:
                 if self.debug:
-                    print(f"Syntax error in {file_path}: {e}")
+                    log_debug(f"Syntax error in {file_path}: {e}")
                 return []
 
             # Add parent references to nodes
@@ -154,14 +150,14 @@ class EnhancedTaintTracker:
             vulnerabilities.extend(additional_vulns)
 
             if self.debug:
-                print(f"Enhanced analysis complete for {file_path}")
-                print(
+                log_debug(f"Enhanced analysis complete for {file_path}")
+                log_debug(
                     f"Found {len(vulnerabilities)} vulnerabilities with enhanced tracking"
                 )
-                print(
+                log_debug(
                     f"Tracked {len(visitor.def_use_chains)} variables with def-use chains"
                 )
-                print(
+                log_debug(
                     f"Identified {len(visitor.data_structures)} complex data structures"
                 )
 
@@ -170,7 +166,7 @@ class EnhancedTaintTracker:
 
         except Exception as e:
             if self.debug:
-                print(f"Error in enhanced analysis for {file_path}: {e}")
+                log_debug(f"Error in enhanced analysis for {file_path}: {e}")
                 traceback.print_exc()
             return []
 
@@ -237,14 +233,14 @@ class EnhancedTaintTracker:
 
         if hasattr(visitor, "found_sinks") and visitor.found_sinks:
             if self.debug:
-                print(f"Found {len(visitor.found_sinks)} potential sinks")
+                log_debug(f"Found {len(visitor.found_sinks)} potential sinks")
                 # Check the source_lines attribute
                 if hasattr(visitor, "source_lines") and visitor.source_lines:
-                    print(
+                    log_debug(
                         f"✓ Visitor has source_lines attribute with {len(visitor.source_lines)} lines of source code"
                     )
                 else:
-                    print(
+                    log_debug(
                         "✗ Visitor does not have source_lines attribute or it is empty"
                     )
 
@@ -303,7 +299,7 @@ class EnhancedTaintTracker:
                 reported_sink_lines.add(sink_line)  # Mark as reported
 
                 if self.debug:
-                    print(
+                    log_debug(
                         f"Auto-detected potential vulnerability: {serializable_sink.get('name', 'Unknown')} at line {sink_line}"
                     )
 
@@ -324,20 +320,22 @@ class EnhancedTaintTracker:
         # First pass: analyze each file individually
         for file_path in file_paths:
             if self.debug:
-                print(f"Analyzing {file_path}")
+                log_debug(f"Analyzing {file_path}")
             vulnerabilities = self.analyze_file(file_path)
             all_vulnerabilities.extend(vulnerabilities)
 
         # Second pass: propagate taint across function calls
         if self.debug:
-            print("Propagating taint across function calls...")
+            log_debug("Propagating taint across function calls...")
         self._propagate_taint_across_functions()
 
         # Third pass: re-analyze files with updated taint information
         additional_vulnerabilities = []
         for file_path in file_paths:
             if self.debug:
-                print(f"Re-analyzing {file_path} with cross-function taint information")
+                log_debug(
+                    f"Re-analyzing {file_path} with cross-function taint information"
+                )
             vulnerabilities = self.analyze_file(file_path)
 
             # Only add new vulnerabilities not in the original set
@@ -348,7 +346,7 @@ class EnhancedTaintTracker:
         all_vulnerabilities.extend(additional_vulnerabilities)
 
         if self.debug:
-            print(f"Total vulnerabilities found: {len(all_vulnerabilities)}")
+            log_debug(f"Total vulnerabilities found: {len(all_vulnerabilities)}")
 
         return all_vulnerabilities
 
@@ -378,17 +376,17 @@ class EnhancedTaintTracker:
                             )
                             changed = True
                             if self.debug:
-                                print(
+                                log_debug(
                                     f"Propagated taint from {func_name} to caller {caller.name}"
                                 )
 
         if self.debug:
             if iterations == max_iterations:
-                print(
+                log_debug(
                     f"Warning: Reached maximum iterations ({max_iterations}) in taint propagation"
                 )
             else:
-                print(f"Taint propagation converged after {iterations} iterations")
+                log_debug(f"Taint propagation converged after {iterations} iterations")
 
     def check_sink_patterns(self, file_path: str) -> List[Tuple[str, int]]:
         """
@@ -419,12 +417,12 @@ class EnhancedTaintTracker:
                         if pattern in line:
                             found_patterns.append((pattern, i))
                             if self.debug:
-                                print(
+                                log_debug(
                                     f"Found sink pattern '{pattern}' in {file_path} at line {i}"
                                 )
         except Exception as e:
             if self.debug:
-                print(f"Error checking sink patterns in {file_path}: {e}")
+                log_debug(f"Error checking sink patterns in {file_path}: {e}")
 
         return found_patterns
 
