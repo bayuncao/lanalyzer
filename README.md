@@ -200,3 +200,51 @@ result = client.call({
 ```
 
 ## Getting Started
+
+# Lanalyzer MCP 使用说明
+
+Lanalyzer MCP 是一个安全分析工具，可与Claude Desktop或其他MCP兼容客户端一起使用。
+
+## 脚本说明
+
+本项目包含两个主要脚本：
+
+### install_lanalyzer_mcp.sh
+
+此脚本用于安装Lanalyzer MCP服务器到Claude Desktop或其他MCP兼容客户端中：
+
+- 检查并安装MCP CLI工具（如果尚未安装）
+- 安装Lanalyzer MCP所需的依赖
+- 使用MCP CLI将Lanalyzer注册为安全分析工具
+- 安装完成后，可以在Claude Desktop中使用Lanalyzer功能
+
+使用方法：
+```bash
+./install_lanalyzer_mcp.sh
+```
+
+### lanalyzer_mcp.sh
+
+此脚本用于直接启动Lanalyzer MCP服务器：
+
+- 检查并安装所需的MCP依赖（fastapi, uvicorn, pydantic）
+- 启动Lanalyzer MCP服务器，默认监听所有网络接口（0.0.0.0）和8000端口
+- 启用调试模式
+
+使用方法：
+```bash
+./lanalyzer_mcp.sh
+```
+
+## 其他使用方式
+
+除了使用上述脚本外，还可以通过命令行直接运行：
+```bash
+lanalyzer mcp
+```
+
+## 依赖要求
+
+- Python 3.x
+- pip 包管理器
+- MCP CLI 工具 (v1.7.1或更高版本)
