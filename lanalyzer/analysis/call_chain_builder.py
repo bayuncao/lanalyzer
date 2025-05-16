@@ -3,14 +3,13 @@ Call chain builder for taint analysis.
 This module provides functionality for building function call chains.
 """
 
-from logging import debug
 import re
 from typing import Any, Dict, List
 
-from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
 from lanalyzer.analysis.data_flow_analyzer import DataFlowAnalyzer
 from lanalyzer.analysis.control_flow_analyzer import ControlFlowAnalyzer
 from lanalyzer.analysis.chain_utils import ChainUtils
+from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
 
 
 class CallChainBuilder:
@@ -339,17 +338,6 @@ class CallChainBuilder:
                     # Use configuration-based extraction method
                     sink_arg_expressions = self.utils.extract_sink_parameters(sink_code)
 
-                    # Try to extract index access information
-                    if "[" in sink_code and "]" in sink_code:
-                        array_var_match = re.match(
-                            r"([a-zA-Z_][a-zA-Z0-9_]*)\s*\[", sink_code
-                        )
-                        if array_var_match:
-                            array_var = array_var_match.group(1)
-                            index_info = self.data_flow.extract_index_access_info(
-                                sink_code, array_var
-                            )
-
                 # Build call chain including common caller
                 sink_desc = f"Contains sink {sink_name} at line {sink_line}"
                 if sink_arg_expressions:
@@ -438,8 +426,6 @@ class CallChainBuilder:
         vulnerability_type = sink_info.get(
             "vulnerability_type", f"{sink_name} Vulnerability"
         )
-        # 获取可能存在的污点变量名
-        tainted_var = sink_info.get("tainted_variable", "Unknown")
 
         if self.debug:
             print(
@@ -455,7 +441,6 @@ class CallChainBuilder:
             visitor, sink_line, context_lines=2
         )
 
-        # 为了提取sink语句中的实际参数表达式，增加对sink语句分析
         sink_code = ""
         sink_arg_expressions = []
         if (
@@ -465,10 +450,8 @@ class CallChainBuilder:
             and sink_line <= len(visitor.source_lines)
         ):
             sink_code = visitor.source_lines[sink_line - 1].strip()
-            # 使用基于配置的提取方法
             sink_arg_expressions = self.utils.extract_sink_parameters(sink_code)
 
-            # 处理赋值情况下的参数提取
             if "=" in sink_code and sink_arg_expressions:
                 var_name = sink_code.split("=")[0].strip()
                 sink_info["tainted_variable"] = var_name
@@ -478,9 +461,7 @@ class CallChainBuilder:
         )
         sink_entry = None
         if sink_operation:
-            # 增强sink描述信息
             sink_desc = f"Unsafe {sink_name} operation, potentially leading to {vulnerability_type}"
-            # 如果提取到参数表达式，增加到描述中
             if sink_arg_expressions:
                 sink_desc += (
                     f". Processing data from: {', '.join(sink_arg_expressions)}"
@@ -790,15 +771,12 @@ class CallChainBuilder:
         Returns:
             List representing the call chain from entrypoint to sink
         """
-        # 首先，获取对汇聚点的控制流调用链
         control_flow_chain = self.control_flow.build_control_flow_chain(
             visitor, sink_info
         )
 
-        # 然后，获取数据流详情（即使没有明确的污点源）
         data_flow_chain = self.build_partial_call_chain_for_sink(visitor, sink_info)
 
-        # 合并两条链路，优先保留控制流链中的入口点信息
         entrypoints = [
             node for node in control_flow_chain if node.get("type") == "entrypoint"
         ]
@@ -806,14 +784,11 @@ class CallChainBuilder:
             node for node in control_flow_chain if node.get("type") != "entrypoint"
         ]
 
-        # 创建最终调用链，从入口点到汇聚点
         combined_chain = []
 
-        # 添加入口点（如果有）
         for entry in entrypoints:
             combined_chain.append(entry)
 
-        # 添加来自data_flow_chain的污点源（如果还没添加）
         source_nodes = [
             node for node in data_flow_chain if node.get("type") == "source"
         ]
@@ -828,14 +803,12 @@ class CallChainBuilder:
                 combined_chain.append(node)
                 source_lines.add(node.get("line"))
 
-        # 添加剩余的控制流节点（如果还没添加）
         added_lines = set(source_lines)
         for node in non_entrypoints:
             if node.get("line") and node.get("line") not in added_lines:
                 combined_chain.append(node)
                 added_lines.add(node.get("line"))
 
-        # 添加所有其他节点类型（intermediate, sink等）
         for node in data_flow_chain:
             if (
                 node.get("type") not in ["source", "entrypoint"]
@@ -845,8 +818,6 @@ class CallChainBuilder:
                 if node.get("line"):
                     added_lines.add(node.get("line"))
 
-        # 确保调用链按照合理的顺序排列：入口点 -> 源 -> 中间节点 -> 汇聚点
-        # 首先按类型排序
         type_order = {
             "entrypoint": 0,
             "source": 1,
@@ -858,21 +829,16 @@ class CallChainBuilder:
             key=lambda x: type_order.get(x.get("type", "intermediate"), 2)
         )
 
-        # 然后用数据流方法再次排序，确保链接的连贯性
         combined_chain = self.utils.reorder_call_chain_by_data_flow(combined_chain)
 
         return combined_chain
 
     def _find_function_call_points(self, visitor, source_func, sink_func):
-        """查找两个函数之间的直接调用点，基于AST和配置文件"""
         call_points = []
 
-        # 如果有源代码可用
         if hasattr(visitor, "source_lines") and visitor.source_lines:
-            # 添加源函数
             functions_to_check = [source_func]
 
-            # 从配置中读取入口点函数模式
             entry_point_patterns = []
             config = self.tracker.config
             if isinstance(config, dict) and "control_flow" in config:
@@ -886,11 +852,9 @@ class CallChainBuilder:
                         ):
                             entry_point_patterns.extend(entry_config["patterns"])
 
-            # 如果配置中没有指定，使用默认入口点模式
             if not entry_point_patterns:
                 entry_point_patterns = ["main", "run", "__main__"]
 
-            # 添加匹配配置的入口点函数
             for func_name, func_node in visitor.functions.items():
                 for pattern in entry_point_patterns:
                     if pattern == func_name or (

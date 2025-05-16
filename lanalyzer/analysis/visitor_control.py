@@ -4,7 +4,6 @@ Enhanced AST visitor for taint analysis - Control flow operations.
 
 import ast
 import copy
-from typing import Dict, Any, List
 
 from .visitor_base import EnhancedTaintVisitor
 

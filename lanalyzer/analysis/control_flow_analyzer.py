@@ -181,7 +181,7 @@ class ControlFlowAnalyzer:
 
         # If no complete path is found, at least return the sink function
         if self.debug:
-            debug(f"[DEBUG] No complete path found, returning just the sink function")
+            debug("[DEBUG] No complete path found, returning just the sink function")
         return [sink_func]
 
     def find_path_to_function(
@@ -243,7 +243,7 @@ class ControlFlowAnalyzer:
 
             if max_depth <= 0:
                 if self.debug:
-                    debug(f"[DEBUG] Reached max call depth limit")
+                    debug("[DEBUG] Reached max call depth limit")
                 break
 
         return None  # No path found

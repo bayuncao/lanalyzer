@@ -5,6 +5,7 @@ This module implements the handlers for MCP requests to Lanalyzer.
 """
 
 import os
+import sys
 import tempfile
 import logging
 import json
@@ -877,11 +878,9 @@ class LanalyzerMCPHandler:
         )
 
         explanation = [
-            f"Security Vulnerability Analysis Report",
-            f"====================================",
-            f"",
+            "Security Vulnerability Analysis Report",
+            "====================================",
             f"Found {len(vulnerabilities)} potential security vulnerabilities, affecting {len(files_affected)} file(s).",
-            f"",
         ]
 
         # Group vulnerabilities by file
@@ -1031,10 +1030,8 @@ class LanalyzerMCPHandler:
         )
 
         explanation = [
-            f"# Security Vulnerability Analysis Report",
-            f"",
+            "# Security Vulnerability Analysis Report",
             f"Found **{len(vulnerabilities)}** potential security vulnerabilities, affecting **{len(files_affected)}** file(s).",
-            f"",
         ]
 
         # Group vulnerabilities by file
