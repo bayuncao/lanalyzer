@@ -3,13 +3,14 @@ File Processing Utilities Module - Provides file searching, listing, and collect
 """
 
 import os
+from lanalyzer.logger import info, error, warning
 
 
 def list_target_files(target_path):
     """List all Python files in the target path"""
-    print(f"[File List] Target path: {target_path}")
+    info(f"[File List] Target path: {target_path}")
     if not os.path.exists(target_path):
-        print(f"[Error] Target path does not exist: {target_path}")
+        error(f"[Error] Target path does not exist: {target_path}")
         return
 
     if os.path.isdir(target_path):
@@ -17,14 +18,14 @@ def list_target_files(target_path):
             for file in files:
                 if file.endswith(".py"):
                     full_path = os.path.join(root, file)
-                    print(f"[File List] Found Python file: {full_path}")
+                    info(f"[File List] Found Python file: {full_path}")
     else:
-        print(f"[File List] Single file: {target_path}")
+        info(f"[File List] Single file: {target_path}")
 
 
 def search_for_file(base_dir, filename):
     """Search for a specific file"""
-    print(f"[Search] Searching for {filename} in {base_dir}...")
+    info(f"[Search] Searching for {filename} in {base_dir}...")
     found_locations = []
 
     if os.path.isdir(base_dir):
@@ -33,17 +34,17 @@ def search_for_file(base_dir, filename):
                 found_locations.append(os.path.join(root, filename))
 
     if found_locations:
-        print(f"[Search] Found {filename} at the following locations:")
+        info(f"[Search] Found {filename} at the following locations:")
         for loc in found_locations:
-            print(f"  - {loc}")
+            info(f"  - {loc}")
     else:
-        print(f"[Search] Could not find {filename}")
+        info(f"[Search] Could not find {filename}")
 
 
 def gather_target_files(target_path):
     """Gather the list of target files to analyze"""
     if not os.path.exists(target_path):
-        print(f"[Error] Target path does not exist: {target_path}")
+        error(f"[Error] Target path does not exist: {target_path}")
         return []
 
     if os.path.isdir(target_path):
@@ -58,5 +59,5 @@ def gather_target_files(target_path):
         if target_path.endswith(".py"):
             return [target_path]
         else:
-            print(f"[Warning] Target is not a Python file: {target_path}")
+            warning(f"[Warning] Target is not a Python file: {target_path}")
             return []

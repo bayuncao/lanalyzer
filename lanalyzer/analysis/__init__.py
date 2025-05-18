@@ -41,6 +41,8 @@ from lanalyzer.analysis.chain_utils import ChainUtils
 from lanalyzer.analysis.control_flow_analyzer import ControlFlowAnalyzer
 from lanalyzer.analysis.data_flow_analyzer import DataFlowAnalyzer
 
+from lanalyzer.logger import info, error
+
 
 def analyze_file(
     target_path: str,
@@ -72,7 +74,7 @@ def analyze_file(
         with open(config_path, "r") as f:
             config = json.load(f)
     except Exception as e:
-        print(f"Error loading configuration: {e}")
+        error(f"Error loading configuration: {e}")
         return [], {}
 
     # Set up enhanced tracker
@@ -108,32 +110,32 @@ def analyze_file(
 
     # Print statistics if requested
     if detailed:
-        print("\n" + "=" * 80)
-        print("ENHANCED TAINT ANALYSIS SUMMARY")
-        print("-" * 80)
-        print(f"Files analyzed: {summary['files_analyzed']}")
-        print(f"Functions analyzed: {summary['functions_analyzed']}")
-        print(f"Vulnerabilities found: {summary['vulnerabilities_found']}")
-        print(
+        info("\n" + "=" * 80)
+        info("ENHANCED TAINT ANALYSIS SUMMARY")
+        info("-" * 80)
+        info(f"Files analyzed: {summary['files_analyzed']}")
+        info(f"Functions analyzed: {summary['functions_analyzed']}")
+        info(f"Vulnerabilities found: {summary['vulnerabilities_found']}")
+        info(
             f"Vulnerabilities with propagation chains: {summary['vulnerabilities_with_propagation']}"
         )
-        print(f"Average propagation steps: {summary['average_propagation_steps']}")
-        print(
+        info(f"Average propagation steps: {summary['average_propagation_steps']}")
+        info(
             f"Vulnerabilities with call chains: {summary['vulnerabilities_with_call_chains']}"
         )
-        print(f"Average call chain length: {summary['average_call_chain_length']}")
-        print("-" * 80)
-        print("SOURCES:")
+        info(f"Average call chain length: {summary['average_call_chain_length']}")
+        info("-" * 80)
+        info("SOURCES:")
         for source, count in summary["source_counts"].items():
-            print(f"  {source}: {count}")
-        print("SINKS:")
+            info(f"  {source}: {count}")
+        info("SINKS:")
         for sink, count in summary["sink_counts"].items():
-            print(f"  {sink}: {count}")
-        print("-" * 80)
-        print("SOURCE -> SINK FLOWS:")
+            info(f"  {sink}: {count}")
+        info("-" * 80)
+        info("SOURCE -> SINK FLOWS:")
         for pair, count in summary["source_sink_pairs"].items():
-            print(f"  {pair}: {count}")
-        print("=" * 80)
+            info(f"  {pair}: {count}")
+        info("=" * 80)
 
     return vulnerabilities, summary
 

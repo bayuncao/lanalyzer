@@ -11,7 +11,14 @@ import argparse
 from typing import List, Optional
 
 from lanalyzer.analysis.tracker import EnhancedTaintTracker
-from lanalyzer.logger import LogTee, setup_application_logging
+from lanalyzer.logger import (
+    LogTee,
+    setup_application_logging,
+    info,
+    error,
+    debug,
+    warning,
+)
 from lanalyzer.cli.file_utils import list_target_files, gather_target_files
 from lanalyzer.cli.config_utils import load_configuration, save_output
 from lanalyzer.cli.analysis_utils import (
@@ -140,15 +147,15 @@ def enhanced_cli_main() -> int:
         try:
             from lanalyzer.mcp.mcpserver import create_mcp_server, server
 
-            print("Starting Lanalyzer MCP server using FastMCP")
+            info("Starting Lanalyzer MCP server using FastMCP")
 
-            debug = False
+            debug_mode = False
             host = "127.0.0.1"
             port = 8000
 
             # Get parameters
             if hasattr(args, "debug") and args.debug:
-                debug = True
+                debug_mode = True
             if hasattr(args, "host") and args.host:
                 host = args.host
             if hasattr(args, "port") and args.port:
@@ -156,7 +163,7 @@ def enhanced_cli_main() -> int:
 
             # Create and start the server
             if hasattr(args, "mcp_command") and args.mcp_command == "dev":
-                print(f"Starting server in development mode: {host}:{port}")
+                info(f"Starting server in development mode: {host}:{port}")
                 # Use FastMCP command line tool in dev mode
                 import subprocess
 
@@ -167,26 +174,26 @@ def enhanced_cli_main() -> int:
 
                 # Use absolute path to call FastMCP
                 cmd = ["fastmcp", "dev", f"{mcp_module_path}:server"]
-                if debug:
+                if debug_mode:
                     cmd.append("--with-debug")
 
-                print(f"Executing command: {' '.join(cmd)}")
+                info(f"Executing command: {' '.join(cmd)}")
                 try:
                     subprocess.run(cmd, check=True)
                 except subprocess.CalledProcessError as e:
-                    print(f"Command execution failed: {e}")
-                    if debug:
+                    error(f"Command execution failed: {e}")
+                    if debug_mode:
                         import traceback
 
-                        traceback.print_exc()
+                        error(traceback.format_exc())
                     return 1
                 except FileNotFoundError:
-                    print(
+                    error(
                         "Error: fastmcp command not found. Please ensure FastMCP is installed: pip install fastmcp"
                     )
                     return 1
             elif hasattr(args, "mcp_command") and args.mcp_command == "install":
-                print("Installing MCP server to Claude Desktop")
+                info("Installing MCP server to Claude Desktop")
                 # Use FastMCP command line tool in install mode
                 import subprocess
 
@@ -197,46 +204,46 @@ def enhanced_cli_main() -> int:
 
                 # Use absolute path to call FastMCP
                 cmd = ["fastmcp", "install", f"{mcp_module_path}:server"]
-                print(f"Executing command: {' '.join(cmd)}")
+                info(f"Executing command: {' '.join(cmd)}")
                 try:
                     subprocess.run(cmd, check=True)
                 except subprocess.CalledProcessError as e:
-                    print(f"Command execution failed: {e}")
-                    if debug:
+                    error(f"Command execution failed: {e}")
+                    if debug_mode:
                         import traceback
 
-                        traceback.print_exc()
+                        error(traceback.format_exc())
                     return 1
                 except FileNotFoundError:
-                    print(
+                    error(
                         "Error: fastmcp command not found. Please ensure FastMCP is installed: pip install fastmcp"
                     )
                     return 1
             else:
                 # Standard run mode
-                print(f"Starting server: {host}:{port}")
-                if debug:
-                    print("Debug mode: Enabled")
+                info(f"Starting server: {host}:{port}")
+                if debug_mode:
+                    info("Debug mode: Enabled")
 
-                server = create_mcp_server(debug=debug)
+                server = create_mcp_server(debug=debug_mode)
                 server.run(transport="sse", host=host, port=port)
 
             return 0
         except ImportError as e:
-            print("Error: MCP server dependencies not installed.")
-            print("Please install with: pip install lanalyzer[mcp]")
+            error("Error: MCP server dependencies not installed.")
+            error("Please install with: pip install lanalyzer[mcp]")
             if hasattr(args, "debug") and args.debug:
-                print(f"Detailed error: {str(e)}")
+                error(f"Detailed error: {str(e)}")
                 import traceback
 
-                traceback.print_exc()
+                error(traceback.format_exc())
             return 1
         except Exception as e:
-            print(f"Error: Failed to start MCP server: {str(e)}")
+            error(f"Error: Failed to start MCP server: {str(e)}")
             if hasattr(args, "debug") and args.debug:
                 import traceback
 
-                traceback.print_exc()
+                error(traceback.format_exc())
             return 1
 
     if args.command == "analyze" or (args.command is None and args.target):
@@ -259,7 +266,7 @@ def run_analysis(args) -> int:
     Returns:
         Exit code
     """
-    debug = args.debug
+    debug_mode = args.debug
     verbose = args.verbose
     target_path = args.target
     config_path = args.config
@@ -273,40 +280,40 @@ def run_analysis(args) -> int:
         return 0
 
     if log_file:
-        loggers = setup_application_logging(log_file, debug)
+        loggers = setup_application_logging(log_file, debug_mode)
         sys.stdout = LogTee(sys.stdout, loggers)
         sys.stderr = LogTee(sys.stderr, loggers)
 
     target_files = gather_target_files(target_path)
     if not target_files:
-        print(
+        error(
             "Error: No Python files found for analysis. Please check the target path."
         )
         return 1
 
     if verbose:
-        print(f"Target files to analyze ({len(target_files)}):")
+        info(f"Target files to analyze ({len(target_files)}):")
         for i, file_path in enumerate(target_files, 1):
-            print(f"{i}. {file_path}")
+            info(f"{i}. {file_path}")
 
     try:
-        config = load_configuration(config_path, debug)
-        tracker = EnhancedTaintTracker.from_config(config, debug)
-        vulnerabilities = analyze_files_with_logging(tracker, target_files, debug)
+        config = load_configuration(config_path, debug_mode)
+        tracker = EnhancedTaintTracker.from_config(config, debug_mode)
+        vulnerabilities = analyze_files_with_logging(tracker, target_files, debug_mode)
 
         if output_path:
-            save_output(vulnerabilities, output_path, pretty, debug)
+            save_output(vulnerabilities, output_path, pretty, debug_mode)
 
         # Print a comprehensive summary
         summary = tracker.get_summary()
         print_summary(summary, vulnerabilities)
 
     except Exception as e:
-        print(f"Error running analysis: {e}")
-        if debug:
+        error(f"Error running analysis: {e}")
+        if debug_mode:
             import traceback
 
-            traceback.print_exc()
+            error(traceback.format_exc())
         return 1
 
     return 0
@@ -328,10 +335,10 @@ def main(args: Optional[List[str]] = None) -> int:
     try:
         return enhanced_cli_main()
     except Exception as e:
-        print(f"Unexpected error: {e}")
+        error(f"Unexpected error: {e}")
         import traceback
 
-        traceback.print_exc()
+        error(traceback.format_exc())
         return 1
 
 

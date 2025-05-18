@@ -9,6 +9,8 @@ import os
 import sys
 from typing import Any, Dict
 
+from lanalyzer.logger import info, debug, warning, error
+
 
 class ConfigLoader:
     """
@@ -18,13 +20,13 @@ class ConfigLoader:
     """
 
     @staticmethod
-    def load(config_path: str, debug: bool = False) -> Dict[str, Any]:
+    def load(config_path: str, debug_mode: bool = False) -> Dict[str, Any]:
         """
         Load configuration from a file.
 
         Args:
             config_path: Path to the configuration file
-            debug: Whether to print debug information
+            debug_mode: Whether to print debug information
 
         Returns:
             Dictionary containing the configuration
@@ -34,12 +36,12 @@ class ConfigLoader:
             json.JSONDecodeError: If the configuration file contains invalid JSON
             ValueError: If the configuration is invalid
         """
-        if debug:
-            print(f"Loading configuration from: {config_path}")
+        if debug_mode:
+            debug(f"Loading configuration from: {config_path}")
 
         if not os.path.exists(config_path):
             error_msg = f"Configuration file not found: {config_path}"
-            print(error_msg, file=sys.stderr)
+            error(error_msg)
             raise FileNotFoundError(error_msg)
 
         try:
@@ -47,16 +49,16 @@ class ConfigLoader:
                 config = json.load(f)
 
             # Validate the configuration
-            ConfigLoader.validate(config, debug=debug)
+            ConfigLoader.validate(config, debug=debug_mode)
 
-            if debug:
+            if debug_mode:
                 ConfigLoader.print_config_summary(config)
 
             return config
 
         except json.JSONDecodeError as e:
             error_msg = f"Invalid JSON in configuration file: {e}"
-            print(error_msg, file=sys.stderr)
+            error(error_msg)
             raise
 
     @staticmethod
@@ -80,7 +82,7 @@ class ConfigLoader:
             if section not in config:
                 error_msg = f"Missing required configuration section: {section}"
                 if debug:
-                    print(error_msg, file=sys.stderr)
+                    error(error_msg)
                 raise ValueError(error_msg)
 
         # Validate sources
@@ -88,32 +90,32 @@ class ConfigLoader:
         if not isinstance(sources, list):
             error_msg = "Sources must be a list"
             if debug:
-                print(error_msg, file=sys.stderr)
+                error(error_msg)
             raise ValueError(error_msg)
 
         for i, source in enumerate(sources):
             if not isinstance(source, dict):
                 error_msg = f"Source at index {i} must be a dictionary"
                 if debug:
-                    print(error_msg, file=sys.stderr)
+                    error(error_msg)
                 raise ValueError(error_msg)
 
             if "name" not in source:
                 error_msg = f"Source at index {i} missing required field: name"
                 if debug:
-                    print(error_msg, file=sys.stderr)
+                    error(error_msg)
                 raise ValueError(error_msg)
 
             if "patterns" not in source:
                 error_msg = f"Source at index {i} missing required field: patterns"
                 if debug:
-                    print(error_msg, file=sys.stderr)
+                    error(error_msg)
                 raise ValueError(error_msg)
 
             if not isinstance(source["patterns"], list):
                 error_msg = f"Source patterns for '{source['name']}' must be a list"
                 if debug:
-                    print(error_msg, file=sys.stderr)
+                    error(error_msg)
                 raise ValueError(error_msg)
 
         # Validate sinks
@@ -121,32 +123,32 @@ class ConfigLoader:
         if not isinstance(sinks, list):
             error_msg = "Sinks must be a list"
             if debug:
-                print(error_msg, file=sys.stderr)
+                error(error_msg)
             raise ValueError(error_msg)
 
         for i, sink in enumerate(sinks):
             if not isinstance(sink, dict):
                 error_msg = f"Sink at index {i} must be a dictionary"
                 if debug:
-                    print(error_msg, file=sys.stderr)
+                    error(error_msg)
                 raise ValueError(error_msg)
 
             if "name" not in sink:
                 error_msg = f"Sink at index {i} missing required field: name"
                 if debug:
-                    print(error_msg, file=sys.stderr)
+                    error(error_msg)
                 raise ValueError(error_msg)
 
             if "patterns" not in sink:
                 error_msg = f"Sink at index {i} missing required field: patterns"
                 if debug:
-                    print(error_msg, file=sys.stderr)
+                    error(error_msg)
                 raise ValueError(error_msg)
 
             if not isinstance(sink["patterns"], list):
                 error_msg = f"Sink patterns for '{sink['name']}' must be a list"
                 if debug:
-                    print(error_msg, file=sys.stderr)
+                    error(error_msg)
                 raise ValueError(error_msg)
 
         # Validate rules if present
@@ -154,20 +156,20 @@ class ConfigLoader:
         if rules and not isinstance(rules, list):
             error_msg = "Rules must be a list"
             if debug:
-                print(error_msg, file=sys.stderr)
+                error(error_msg)
             raise ValueError(error_msg)
 
         for i, rule in enumerate(rules):
             if not isinstance(rule, dict):
                 error_msg = f"Rule at index {i} must be a dictionary"
                 if debug:
-                    print(error_msg, file=sys.stderr)
+                    error(error_msg)
                 raise ValueError(error_msg)
 
             if "name" not in rule:
                 error_msg = f"Rule at index {i} missing required field: name"
                 if debug:
-                    print(error_msg, file=sys.stderr)
+                    error(error_msg)
                 raise ValueError(error_msg)
 
         return True
@@ -195,7 +197,7 @@ class ConfigLoader:
                     json.dump(config, f)
             return True
         except Exception as e:
-            print(f"Error saving configuration: {e}", file=sys.stderr)
+            error(f"Error saving configuration: {e}")
             return False
 
     @staticmethod
@@ -206,56 +208,56 @@ class ConfigLoader:
         Args:
             config: Configuration to print
         """
-        print("\nConfiguration Summary:")
-        print("-" * 40)
+        info("\nConfiguration Summary:")
+        info("-" * 40)
 
-        print(f"Sources ({len(config.get('sources', []))}):")
+        info(f"Sources ({len(config.get('sources', []))}):")
         for source in config.get("sources", []):
             patterns = ", ".join(source.get("patterns", [])[:3])
             if len(source.get("patterns", [])) > 3:
                 patterns += ", ..."
-            print(f"  - {source.get('name')}: {patterns}")
+            info(f"  - {source.get('name')}: {patterns}")
 
-        print(f"\nSinks ({len(config.get('sinks', []))}):")
+        info(f"\nSinks ({len(config.get('sinks', []))}):")
         for sink in config.get("sinks", []):
             patterns = ", ".join(sink.get("patterns", [])[:3])
             if len(sink.get("patterns", [])) > 3:
                 patterns += ", ..."
-            print(f"  - {sink.get('name')}: {patterns}")
+            info(f"  - {sink.get('name')}: {patterns}")
 
         if "sanitizers" in config:
-            print(f"\nSanitizers ({len(config.get('sanitizers', []))}):")
+            info(f"\nSanitizers ({len(config.get('sanitizers', []))}):")
             for sanitizer in config.get("sanitizers", []):
                 patterns = ", ".join(sanitizer.get("patterns", [])[:3])
                 if len(sanitizer.get("patterns", [])) > 3:
                     patterns += ", ..."
-                print(f"  - {sanitizer.get('name')}: {patterns}")
+                info(f"  - {sanitizer.get('name')}: {patterns}")
 
         if "rules" in config:
-            print(f"\nRules ({len(config.get('rules', []))}):")
+            info(f"\nRules ({len(config.get('rules', []))}):")
             for rule in config.get("rules", []):
-                print(
+                info(
                     f"  - {rule.get('name')} (Severity: {rule.get('severity', 'unknown')})"
                 )
 
         if "analysis" in config:
-            print("\nAnalysis Settings:")
+            info("\nAnalysis Settings:")
             for key, value in config.get("analysis", {}).items():
                 if isinstance(value, list) and len(value) > 3:
-                    print(f"  - {key}: {value[:3]} ... ({len(value)} items)")
+                    info(f"  - {key}: {value[:3]} ... ({len(value)} items)")
                 else:
-                    print(f"  - {key}: {value}")
+                    info(f"  - {key}: {value}")
 
-        print("-" * 40)
+        info("-" * 40)
 
 
-def load_config(config_path: str, debug: bool = False) -> Dict[str, Any]:
+def load_config(config_path: str, debug_mode: bool = False) -> Dict[str, Any]:
     """
     Load configuration from a file.
 
     Args:
         config_path: Path to the configuration file
-        debug: Whether to print debug information
+        debug_mode: Whether to print debug information
 
     Returns:
         Dictionary containing the configuration
@@ -264,4 +266,4 @@ def load_config(config_path: str, debug: bool = False) -> Dict[str, Any]:
         FileNotFoundError: If the configuration file does not exist
         json.JSONDecodeError: If the configuration file contains invalid JSON
     """
-    return ConfigLoader.load(config_path, debug=debug)
+    return ConfigLoader.load(config_path, debug=debug_mode)
