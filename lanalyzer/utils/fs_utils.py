@@ -36,7 +36,43 @@ def get_python_files_in_directory(
     Returns:
         A list of Python file paths.
     """
-    exclude_dirs = exclude_dirs or ["__pycache__", "venv", ".git", ".github"]
+    exclude_dirs = exclude_dirs or [
+        # Compilation cache
+        "__pycache__",
+        # Virtual environments
+        "venv",
+        ".env",
+        ".venv",
+        "env",
+        # Version control
+        ".git",
+        ".github",
+        ".gitignore",
+        ".svn",
+        # Testing and coverage
+        ".pytest_cache",
+        ".coverage",
+        "htmlcov",
+        ".tox",
+        # Type checking and linting caches
+        ".mypy_cache",
+        ".ruff_cache",
+        ".pytype",
+        # Build and distribution
+        "dist",
+        "build",
+        "*.egg-info",
+        ".eggs",
+        "__pypackages__",
+        # IDE configurations
+        ".idea",
+        ".vscode",
+        ".vs",
+        # Others
+        ".ipynb_checkpoints",
+        "node_modules",
+        ".DS_Store",
+    ]
     python_files = []
 
     # Handle cases where the input is a file, not a directory

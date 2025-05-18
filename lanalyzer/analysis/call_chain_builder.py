@@ -533,9 +533,9 @@ class CallChainBuilder:
                         ):
                             entry_point_patterns.extend(entry_config["patterns"])
 
-            # If not specified in configuration, use default entry point patterns
+            # If not specified in configuration, use empty list
             if not entry_point_patterns:
-                entry_point_patterns = ["main", "run", "__main__"]
+                entry_point_patterns = []
 
             if self.debug:
                 print(f"[DEBUG] Using entry point patterns: {entry_point_patterns}")
@@ -853,7 +853,7 @@ class CallChainBuilder:
                             entry_point_patterns.extend(entry_config["patterns"])
 
             if not entry_point_patterns:
-                entry_point_patterns = ["main", "run", "__main__"]
+                entry_point_patterns = []
 
             for func_name, func_node in visitor.functions.items():
                 for pattern in entry_point_patterns:
@@ -875,11 +875,21 @@ class CallChainBuilder:
 
                     line = visitor.source_lines[line_num - 1].strip()
 
-                    # Use default method call patterns
-                    method_call_patterns = [
-                        r"self\.([a-zA-Z_][a-zA-Z0-9_]*)\(",
-                        r"([a-zA-Z_][a-zA-Z0-9_]*)\(",
-                    ]
+                    # Get method call patterns from configuration or use empty list
+                    method_call_patterns = []
+                    config = self.tracker.config
+                    if (
+                        isinstance(config, dict)
+                        and "analysis" in config
+                        and "method_call_patterns" in config["analysis"]
+                    ):
+                        method_call_patterns = config["analysis"][
+                            "method_call_patterns"
+                        ]
+
+                    # If not configured, don't detect any patterns
+                    if not method_call_patterns:
+                        method_call_patterns = []
 
                     # Check each pattern
                     for pattern in method_call_patterns:
@@ -949,11 +959,19 @@ class CallChainBuilder:
             start_line = start_func.line_no
             end_line = start_func.end_line_no
 
-            # Default patterns including self.method() and direct function calls
-            method_call_patterns = [
-                r"self\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(",
-                r"([a-zA-Z_][a-zA-Z0-9_]*)\s*\(",
-            ]
+            # Get method call patterns from configuration
+            method_call_patterns = []
+            config = self.tracker.config
+            if (
+                isinstance(config, dict)
+                and "analysis" in config
+                and "method_call_patterns" in config["analysis"]
+            ):
+                method_call_patterns = config["analysis"]["method_call_patterns"]
+
+            # If not configured, don't detect any patterns
+            if not method_call_patterns:
+                method_call_patterns = []
 
             # Search for calls to the target function within the source function body
             for line_num in range(start_line, end_line + 1):

@@ -1,85 +1,84 @@
 {
-    "sources": [
-      {
-        "name": "UserInput",
-        "patterns": ["input", "request.GET", "request.POST", "request.data", "request.form", "request.args", "request.json", "request.files", "request.cookies", "request.headers"]
-      },
-      {
-        "name": "FileRead",
-        "patterns": ["open", "read", "readlines", "readline", "file.read", "with open", "io.open", "*.open", "*.read*"]
-      },
-      {
-        "name": "NetworkInput",
-        "patterns": ["torch.distributed.recv", "recv", "recvfrom", "recvmsg", "requests.get", "requests.post", "urllib.request.urlopen", "socket.recv", "http.client", "aiohttp", "httpx", "recv_rpc_message", "recv_multipart"],
-        "priority": "high",
-        "auto_taint_return": true
-      },
-      {
-        "name": "DatabaseRead",
-        "patterns": ["fetchall", "fetchone", "fetchmany", "cursor.execute", "select", "find", "findOne", "get_object"]
-      },
-      {
-        "name": "EnvironmentVariables",
-        "patterns": ["os.environ", "os.getenv", "environ.get", "getenv"]
-      },
-      {
-        "name": "CommandLineArgs",
-        "patterns": ["sys.argv", "argparse", "ArgumentParser", "parse_args"]
-      }
-    ],
-    "sinks": [
-      {
-        "name": "PickleDeserialization",
-        "patterns": ["pickle.load", "pickle.loads", "cPickle.load", "cPickle.loads", "_pickle.load", "_pickle.loads", "cloudpickle.loads"],
-        "related_patterns": ["torch.distributed.recv", "recv_multipart"]
-      }
-    ],
-    "sanitizers": [
-      {
-        "name": "CustomPickleValidator",
-        "patterns": ["validate_pickle_data", "safe_loads", "restricted_load"]
-      }
-    ],
-    "rules": [
-      {
-        "name": "UnsafeDeserialization",
-        "sources": ["UserInput", "FileRead", "NetworkInput", "DatabaseRead", "EnvironmentVariables", "CommandLineArgs"],
-        "sinks": ["PickleDeserialization"],
-        "message": "Potential unsafe pickle deserialization detected. Untrusted data from {source} is being deserialized with pickle.load, which could lead to remote code execution."
-      }
-    ],
-    "control_flow": {
-      "entry_points": [
-        {
-          "name": "main",
-          "patterns": ["main", "run", "__main__", "if __name__ == \"__main__\""]
-        },
-        {
-          "name": "app_entry",
-          "patterns": ["app.run", "application.run", "server.run"]
-        },
-        {
-          "name": "class_methods",
-          "patterns": ["JobQueueWorker.run", "Worker.run", "Server.start", "Job.run", "run"]
-        }
-      ],
-      "max_call_depth": 10,
-      "follow_imports": true
+  "sources": [
+    {
+      "name": "UserInput",
+      "patterns": ["input", "request.GET", "request.POST", "request.data", "request.form", "request.args", "request.json", "request.files", "request.cookies", "request.headers"]
     },
-    "taint_propagation": {
-      "special_variables": {
-        "object_tensor": {
-          "from": ["torch.distributed.recv", "recv_multipart"],
-          "to": ["numpy", "tobytes", "pickle.loads", "cloudpickle.loads"]
-        }, 
-        "message": {
-          "from": ["recv_multipart"],
-          "to": ["pickle.loads", "cloudpickle.loads"]
-        }
-      },
-      "known_flows": [
-        {"from": "message = reply_socket.recv_multipart()", "to": "pickle.loads(message[1])"},
-        {"from": "message = reply_socket.recv_multipart()", "to": "cloudpickle.loads(message[2])"}
-      ]
+    {
+      "name": "FileRead",
+      "patterns": ["open", "read", "readlines", "readline", "file.read", "with open", "io.open", "*.open", "*.read*"]
+    },
+    {
+      "name": "NetworkInput",
+      "patterns": ["torch.distributed.recv", "recv", "recvfrom", "recvmsg", "requests.get", "requests.post", "urllib.request.urlopen", "socket.recv", "http.client", "aiohttp", "httpx", "recv_rpc_message", "recv_multipart"],
+      "priority": "high",
+      "auto_taint_return": true
+    },
+    {
+      "name": "DatabaseRead",
+      "patterns": ["fetchall", "fetchone", "fetchmany", "cursor.execute", "select", "find", "findOne", "get_object"]
+    },
+    {
+      "name": "EnvironmentVariables",
+      "patterns": ["os.environ", "os.getenv", "environ.get", "getenv"]
+    },
+    {
+      "name": "CommandLineArgs",
+      "patterns": ["sys.argv", "argparse", "ArgumentParser", "parse_args"]
     }
+  ],
+  "sinks": [
+    {
+      "name": "PickleDeserialization",
+      "patterns": ["pickle.load", "pickle.loads", "cPickle.load", "cPickle.loads", "_pickle.load", "_pickle.loads", "cloudpickle.loads"],
+      "related_patterns": ["torch.distributed.recv", "recv_multipart"]
+    }
+  ],
+  "sanitizers": [
+    {
+      "name": "CustomPickleValidator",
+      "patterns": ["validate_pickle_data", "safe_loads", "restricted_load"]
+    }
+  ],
+  "rules": [
+    {
+      "name": "UnsafeDeserialization",
+      "sources": ["UserInput", "FileRead", "NetworkInput", "DatabaseRead", "EnvironmentVariables", "CommandLineArgs"],
+      "sinks": ["PickleDeserialization"],
+      "message": "Potential unsafe pickle deserialization detected. Untrusted data from {source} is being deserialized with pickle.load, which could lead to remote code execution."
+    }
+  ],
+  "control_flow": {
+    "entry_points": [
+      {
+        "name": "main",
+        "patterns": ["main", "run", "__main__", "if __name__ == \"__main__\""]
+      },
+      {
+        "name": "app_entry",
+        "patterns": ["app.run", "application.run", "server.run"]
+      },
+      {
+        "name": "class_methods",
+        "patterns": ["run"]
+      }
+    ],
+    "max_call_depth": 10,
+    "follow_imports": true
+  },
+  "taint_propagation": {
+    "special_variables": {
+      "object_tensor": {
+        "from": ["torch.distributed.recv", "recv_multipart"],
+        "to": ["numpy", "tobytes", "pickle.loads", "cloudpickle.loads"]
+      }, 
+      "message": {
+        "from": ["recv_multipart"],
+        "to": ["pickle.loads", "cloudpickle.loads"]
+      }
+    },
+    "known_flows": [
+
+    ]
   }
+}
