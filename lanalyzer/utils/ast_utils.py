@@ -9,6 +9,8 @@ import ast
 import os
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from lanalyzer.logger import error
+
 
 def parse_file(file_path: str, encoding: str = "utf-8") -> Optional[ast.Module]:
     """
@@ -27,7 +29,7 @@ def parse_file(file_path: str, encoding: str = "utf-8") -> Optional[ast.Module]:
         PermissionError: If the file can't be read
     """
     if not os.path.exists(file_path):
-        print(f"Error: File not found: {file_path}")
+        error(f"Error: File not found: {file_path}")
         return None
 
     try:
@@ -35,13 +37,13 @@ def parse_file(file_path: str, encoding: str = "utf-8") -> Optional[ast.Module]:
             source_code = f.read()
         return ast.parse(source_code, filename=file_path)
     except SyntaxError as e:
-        print(f"Syntax error in {file_path}: {str(e)}")
+        error(f"Syntax error in {file_path}: {str(e)}")
         return None
     except UnicodeDecodeError as e:
-        print(f"Error decoding {file_path} with encoding {encoding}: {str(e)}")
+        error(f"Error decoding {file_path} with encoding {encoding}: {str(e)}")
         return None
     except Exception as e:
-        print(f"Error parsing {file_path}: {str(e)}")
+        error(f"Error parsing {file_path}: {str(e)}")
         return None
 
 
