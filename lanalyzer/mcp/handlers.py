@@ -228,22 +228,34 @@ class LanalyzerMCPHandler:
                     with open(output_path, "r", encoding="utf-8") as f:
                         analysis_output = json.load(f)
 
-                    # The CLI output is a dictionary with a "vulnerabilities" key
-                    vulnerabilities_json = analysis_output.get("vulnerabilities", [])
+                    # 支持直接为 list 的情况（如 examples/job_analysis.json）
+                    if isinstance(analysis_output, list):
+                        vulnerabilities_json = analysis_output
+                    else:
+                        vulnerabilities_json = analysis_output.get(
+                            "vulnerabilities", []
+                        )
 
-                    # Convert results to VulnerabilityInfo objects
                     vulnerabilities_info_list = []
                     for vuln_data in vulnerabilities_json:
                         try:
                             file_path_in_result = vuln_data.get("file", file_path)
                             source = vuln_data.get("source", {}) or {}
                             sink = vuln_data.get("sink", {}) or {}
-
+                            rule_value = vuln_data.get("rule", "Unknown")
+                            rule_name = (
+                                rule_value
+                                if isinstance(rule_value, str)
+                                else rule_value.get("name", "Unknown")
+                            )
+                            rule_id = (
+                                vuln_data.get("rule_id")
+                                if isinstance(rule_value, dict)
+                                else None
+                            )
                             vuln_info = VulnerabilityInfo(
-                                rule_name=vuln_data.get("rule", "Unknown"),
-                                rule_id=vuln_data.get(
-                                    "rule_id"
-                                ),  # Assuming rule_id might exist
+                                rule_name=rule_name,
+                                rule_id=rule_id,
                                 message=vuln_data.get(
                                     "message", "Potential security vulnerability"
                                 ),
@@ -263,14 +275,23 @@ class LanalyzerMCPHandler:
                                 f"Error converting vulnerability information: {e} - Data: {vuln_data}"
                             )
 
-                    summary = analysis_output.get(
-                        "summary",
-                        {
-                            "files_analyzed": 1,  # Approximation if CLI doesn't provide detailed summary
+                    summary = (
+                        analysis_output.get(
+                            "summary",
+                            {
+                                "files_analyzed": 1,  # Approximation if CLI doesn't provide detailed summary
+                                "vulnerabilities_count": len(vulnerabilities_info_list),
+                                "output_file": output_path,
+                                "command": " ".join(cmd),
+                            },
+                        )
+                        if isinstance(analysis_output, dict)
+                        else {
+                            "files_analyzed": 1,
                             "vulnerabilities_count": len(vulnerabilities_info_list),
                             "output_file": output_path,
                             "command": " ".join(cmd),
-                        },
+                        }
                     )
 
                     return AnalysisResponse(
@@ -530,12 +551,18 @@ class LanalyzerMCPHandler:
                 # Ensure all required fields have default values
                 source_data = vuln.get("source", {}) or {}
                 sink_data = vuln.get("sink", {}) or {}
-                rule_data = vuln.get("rule", {}) or {}
+                rule_value = vuln.get("rule", "Unknown")
+                rule_name = (
+                    rule_value
+                    if isinstance(rule_value, str)
+                    else rule_value.get("name", "Unknown")
+                )
+                rule_id = vuln.get("rule_id") if isinstance(rule_value, dict) else None
 
                 # Create vulnerability info
                 vuln_info = VulnerabilityInfo(
-                    rule_name=rule_data.get("name", "Unknown Rule"),
-                    rule_id=rule_data.get("id"),
+                    rule_name=rule_name,
+                    rule_id=rule_id,
                     message=vuln.get(
                         "message",
                         vuln.get("description", "Potential security vulnerability"),
@@ -613,6 +640,14 @@ class LanalyzerMCPHandler:
             # Generate temporary log file path
             log_file = os.path.join(output_dir, f"log_{int(time.time())}.txt")
 
+            # 新增调试日志，打印生成的路径
+            print(f"[DEBUG] output_path_val: {output_path_val}")
+            print(f"[DEBUG] log_file: {log_file}")
+            import logging
+
+            logging.debug(f"[DEBUG] output_path_val: {output_path_val}")
+            logging.debug(f"[DEBUG] log_file: {log_file}")
+
             # Build command line
             cmd = [
                 sys.executable,
@@ -662,7 +697,13 @@ class LanalyzerMCPHandler:
                     with open(output_path_val, "r", encoding="utf-8") as f:
                         analysis_output = json.load(f)
 
-                    vulnerabilities_json = analysis_output.get("vulnerabilities", [])
+                    # 支持直接为 list 的情况（如 examples/job_analysis.json）
+                    if isinstance(analysis_output, list):
+                        vulnerabilities_json = analysis_output
+                    else:
+                        vulnerabilities_json = analysis_output.get(
+                            "vulnerabilities", []
+                        )
                     vulnerabilities_info_list = []
                     for vuln_data in vulnerabilities_json:
                         try:
@@ -692,21 +733,24 @@ class LanalyzerMCPHandler:
                                 f"Error converting vulnerability information: {e} - Data: {vuln_data}"
                             )
 
-                    summary = analysis_output.get(
-                        "summary",
-                        {
-                            "files_analyzed": len(
-                                set(
-                                    v.file_path
-                                    for v in vulnerabilities_info_list
-                                    if v.file_path
-                                )
+                    # 生成摘要信息，处理analysis_output为列表的情况
+                    default_summary = {
+                        "files_analyzed": len(
+                            set(
+                                v.file_path
+                                for v in vulnerabilities_info_list
+                                if v.file_path
                             )
-                            or (1 if os.path.isfile(target_path) else 0),  # Best guess
-                            "vulnerabilities_count": len(vulnerabilities_info_list),
-                            "output_file": output_path_val,
-                        },
-                    )
+                        )
+                        or (1 if os.path.isfile(target_path) else 0),  # Best guess
+                        "vulnerabilities_count": len(vulnerabilities_info_list),
+                        "output_file": output_path_val,
+                    }
+
+                    if isinstance(analysis_output, list):
+                        summary = default_summary
+                    else:
+                        summary = analysis_output.get("summary", default_summary)
 
                     return AnalysisResponse(
                         success=True,
@@ -721,16 +765,16 @@ class LanalyzerMCPHandler:
                         errors=[f"Error reading analysis results: {str(e)}"],
                     )
                 finally:
-                    # Clean up the temp directory created for non-user-specified output
-                    if not request.output_path and os.path.exists(output_dir):
-                        try:
-                            import shutil
-
-                            shutil.rmtree(output_dir)
-                        except Exception as e_rm:
-                            logger.error(
-                                f"Failed to remove temp directory {output_dir}: {e_rm}"
-                            )
+                    # 注释自动清理临时目录和文件的代码，便于调试
+                    # if not request.output_path and os.path.exists(output_dir):
+                    #     try:
+                    #         import shutil
+                    #         shutil.rmtree(output_dir)
+                    #     except Exception as e_rm:
+                    #         logger.error(
+                    #             f"Failed to remove temp directory {output_dir}: {e_rm}"
+                    #         )
+                    pass
             else:
                 logger.error(
                     f"Analysis output file not found: {output_path_val}. Stdout: {stdout}, Stderr: {stderr}"
