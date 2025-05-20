@@ -8,11 +8,23 @@ import os
 import sys
 import logging
 import click
-from typing import Optional, Dict, Any
+import asyncio
+import contextlib
+from typing import Optional, Dict, Any, AsyncIterator
+import time
 
 try:
     # Import FastMCP core components
     from fastmcp import FastMCP, Context
+
+    # Check if streamable HTTP support is available
+    try:
+        from fastmcp.transport.streamable_http import StreamableHTTPTransport
+        from fastmcp.storage.memory import InMemoryEventStore
+
+        STREAMABLE_HTTP_AVAILABLE = True
+    except ImportError:
+        STREAMABLE_HTTP_AVAILABLE = False
 except ImportError:
     raise ImportError(
         "FastMCP dependency not found. "
@@ -27,6 +39,49 @@ from lanalyzer.mcp.models import (
     FileAnalysisRequest,  # Assuming this model will be used by the handler
     ConfigurationRequest,
 )
+
+
+# Create a simple in-memory event store for session management and resumability
+class SimpleEventStore:
+    """
+    Simple in-memory event store for session management.
+
+    This provides basic event persistence capability for streamable HTTP connections,
+    allowing clients to recover missed events after reconnection.
+    """
+
+    def __init__(self, max_events=1000):
+        self.events = {}
+        self.max_events = max_events
+
+    async def store_event(self, session_id, event_id, event_data):
+        if session_id not in self.events:
+            self.events[session_id] = []
+
+        self.events[session_id].append((event_id, event_data))
+
+        # Trim events if needed
+        if len(self.events[session_id]) > self.max_events:
+            self.events[session_id] = self.events[session_id][-self.max_events :]
+
+    async def get_events_since(self, session_id, last_event_id=None):
+        if session_id not in self.events:
+            return []
+
+        if not last_event_id:
+            return self.events[session_id]
+
+        # Find the index of the last event
+        for i, (event_id, _) in enumerate(self.events[session_id]):
+            if event_id == last_event_id:
+                return self.events[session_id][i + 1 :]
+
+        # If not found, return all events
+        return self.events[session_id]
+
+    async def cleanup_session(self, session_id):
+        if session_id in self.events:
+            del self.events[session_id]
 
 
 def create_mcp_server(debug: bool = False) -> FastMCP:
@@ -56,13 +111,17 @@ def create_mcp_server(debug: bool = False) -> FastMCP:
         logging.warning("Could not determine FastMCP version")
         fastmcp_version = "unknown"
 
-    # Create FastMCP instance - some options removed for compatibility with version 2.2.8
+    # Create FastMCP instance - with proper configuration for initialization
     mcp_instance = FastMCP(  # Renamed to avoid conflict with mcp subcommand
         "Lanalyzer",
         title="Lanalyzer - Python Taint Analysis Tool",
         description="MCP server for Lanalyzer, providing taint analysis for Python code to detect security vulnerabilities.",
         version=__version__,
         debug=debug,
+        # Add session expiration and initialization settings to improve client connections
+        session_keepalive_timeout=120,  # 2 minutes keepalive
+        session_expiry_timeout=1800,  # 30 minutes overall session expiry
+        initialization_timeout=5.0,  # 5 seconds initialization timeout
     )
 
     # Create handler instance
@@ -380,11 +439,153 @@ def cli():
     pass
 
 
+# Add a client code generation function before the CLI commands
+def generate_client_code_example(host: str, port: int, transport: str = "sse"):
+    """
+    Generate example code for a Python client to connect to this server.
+
+    Args:
+        host: Server host address
+        port: Server port
+        transport: Transport protocol ("sse" or "streamable-http")
+
+    Returns:
+        str: Example Python client code
+    """
+    if transport == "streamable-http":
+        code = f"""
+import asyncio
+from mcp.client.session import ClientSession
+from mcp.client.http import http_client
+
+async def run_client():
+    base_url = "http://{host}:{port}"
+    print(f"Connecting to {{base_url}}...")
+    
+    try:
+        async with http_client(base_url) as streams:
+            print("HTTP connection established")
+            read_stream, write_stream = streams
+            async with ClientSession(read_stream, write_stream) as session:
+                print("ClientSession created, explicitly initializing...")
+                
+                # IMPORTANT: Explicitly initialize the session to avoid the 
+                # "Received request before initialization was complete" error
+                max_retries = 3
+                retry_delay = 1.0  # seconds
+                
+                # Try initialization with retries
+                for attempt in range(max_retries):
+                    try:
+                        await session.initialize()
+                        print("Session initialized successfully")
+                        break
+                    except Exception as e:
+                        if attempt < max_retries - 1:
+                            print(f"Initialization attempt {{attempt+1}} failed: {{e}}")
+                            print(f"Retrying in {{retry_delay}} seconds...")
+                            await asyncio.sleep(retry_delay)
+                            retry_delay *= 1.5  # Exponential backoff
+                        else:
+                            print(f"All initialization attempts failed: {{e}}")
+                            raise
+                
+                # Now safe to make tool calls
+                info = await session.get_server_info()
+                print(f"Server info: {{info}}")
+                
+                # Example tool call:
+                # result = await session.call_tool("analyze_file", {{
+                #     "file_path": "path/to/your/file.py",
+                #     "config_path": "path/to/your/config.json"
+                # }})
+                # print(f"Analysis result: {{result}}")
+                
+    except Exception as e:
+        print(f"Error: {{e}}")
+
+if __name__ == "__main__":
+    asyncio.run(run_client())
+"""
+    else:  # SSE transport
+        code = f"""
+import asyncio
+from mcp.client.session import ClientSession
+from mcp.client.sse import sse_client
+
+async def run_client():
+    sse_url = "http://{host}:{port}/sse"
+    print(f"Connecting to {{sse_url}}...")
+    
+    try:
+        async with sse_client(sse_url) as streams:
+            print("SSE connection established")
+            read_stream, write_stream = streams
+            async with ClientSession(read_stream, write_stream) as session:
+                print("ClientSession created, explicitly initializing...")
+                
+                # IMPORTANT: Explicitly initialize the session to avoid the 
+                # "Received request before initialization was complete" error
+                max_retries = 3
+                retry_delay = 1.0  # seconds
+                
+                # Try initialization with retries
+                for attempt in range(max_retries):
+                    try:
+                        await session.initialize()
+                        print("Session initialized successfully")
+                        break
+                    except Exception as e:
+                        if attempt < max_retries - 1:
+                            print(f"Initialization attempt {{attempt+1}} failed: {{e}}")
+                            print(f"Retrying in {{retry_delay}} seconds...")
+                            await asyncio.sleep(retry_delay)
+                            retry_delay *= 1.5  # Exponential backoff
+                        else:
+                            print(f"All initialization attempts failed: {{e}}")
+                            raise
+                
+                # Now safe to make tool calls
+                info = await session.get_server_info()
+                print(f"Server info: {{info}}")
+                
+                # Example tool call:
+                # result = await session.call_tool("analyze_file", {{
+                #     "file_path": "path/to/your/file.py",
+                #     "config_path": "path/to/your/config.json"
+                # }})
+                # print(f"Analysis result: {{result}}")
+                
+    except Exception as e:
+        print(f"Error: {{e}}")
+
+if __name__ == "__main__":
+    asyncio.run(run_client())
+"""
+    return code
+
+
 @cli.command()
 @click.option("--debug", is_flag=True, help="Enable debug mode.")
 @click.option("--host", default="127.0.0.1", help="Host address.")
 @click.option("--port", default=8000, type=int, help="Port number.")
-def run(debug, host, port):
+@click.option(
+    "--transport",
+    default="sse",
+    type=click.Choice(["sse", "streamable-http"]),
+    help="Transport protocol to use (sse or streamable-http).",
+)
+@click.option(
+    "--json-response",
+    is_flag=True,
+    help="Use JSON responses with streamable-http transport.",
+)
+@click.option(
+    "--show-client",
+    is_flag=True,
+    help="Show example client code before starting the server.",
+)
+def run(debug, host, port, transport, json_response, show_client):
     """Start the MCP server."""
     # Configure logging (again, specific for this command's context)
     log_level = logging.DEBUG if debug else logging.INFO
@@ -400,20 +601,72 @@ def run(debug, host, port):
     click.echo("Server Name: Lanalyzer")
     click.echo(f"Server Version: {__version__}")
     click.echo(f"Server Address: http://{host}:{port}")  # Added http:// for clarity
+    click.echo(f"Transport: {transport}")
+
+    # Show client example if requested
+    if show_client:
+        click.echo("\n=== Example Python Client Code ===")
+        click.echo(generate_client_code_example(host, port, transport))
+        click.echo("=== End Example Client Code ===\n")
+        click.echo(
+            "You can save this code to a file and run it to connect to the server."
+        )
+        click.echo(
+            "Remember to install the MCP client library: pip install mcp-client\n"
+        )
 
     # Create FastMCP server instance specifically for this run command
     # This ensures the 'debug' flag from CLI is correctly applied to this server instance
     current_run_server = create_mcp_server(debug=debug)
 
-    # Start server in a way compatible with version 2.2.8
-    click.echo("Starting FastMCP server using SSE transport")
+    # Use streamable HTTP transport if specified and available
+    if transport == "streamable-http":
+        if not STREAMABLE_HTTP_AVAILABLE:
+            click.echo(
+                "Error: Streamable HTTP transport not available in this FastMCP version"
+            )
+            click.echo("Falling back to SSE transport")
+            transport = "sse"
+        else:
+            click.echo(
+                "Using Streamable HTTP transport with event store for resumability"
+            )
+            # Create in-memory event store for streamable HTTP
+            event_store = InMemoryEventStore() if STREAMABLE_HTTP_AVAILABLE else None
 
-    # According to the help documentation, FastMCP 2.2.8 only supports 'stdio' and 'sse' transport methods
-    current_run_server.run(
-        transport="sse",  # Explicitly specify using sse transport
-        host=host,
-        port=port,
-    )
+    # Print startup message indicating initialization
+    click.echo(f"Starting FastMCP server using {transport} transport")
+    logging.info("Initializing MCP server...")
+
+    # Setup pre-server start initialization
+    click.echo("\nIMPORTANT CONNECTION INFORMATION:")
+    click.echo("==================================")
+    click.echo("When connecting to this server with a Python client, you MUST:")
+    click.echo("1. Create your ClientSession normally")
+    click.echo("2. Call 'await session.initialize()' BEFORE any tool calls")
+    click.echo("3. Wait for initialization to complete before making requests")
+    click.echo("==================================\n")
+
+    # Add a small delay to ensure everything is printed before server starts
+    time.sleep(0.5)
+
+    # Now start the server with the appropriate transport
+    if transport == "streamable-http" and STREAMABLE_HTTP_AVAILABLE:
+        # Use Streamable HTTP transport with event store
+        current_run_server.run(
+            transport=StreamableHTTPTransport(
+                event_store=event_store, json_response=json_response
+            ),
+            host=host,
+            port=port,
+        )
+    else:
+        # Use regular SSE transport
+        current_run_server.run(
+            transport="sse",
+            host=host,
+            port=port,
+        )
 
 
 @cli.command(
@@ -423,7 +676,13 @@ def run(debug, host, port):
 @click.option(
     "--debug", is_flag=True, help="Enable debug mode for the FastMCP subprocess."
 )
-def mcpcmd(command_args, debug):
+@click.option(
+    "--transport",
+    default="sse",
+    type=click.Choice(["sse", "streamable-http"]),
+    help="Transport protocol to use (sse or streamable-http).",
+)
+def mcpcmd(command_args, debug, transport):
     """Run the server using FastMCP command-line tool (e.g., dev, run, install)."""
     import subprocess
 
@@ -439,11 +698,15 @@ def mcpcmd(command_args, debug):
     # Add module path - FastMCP will look for the 'server' variable in the script.
     cmd.append(f"{script_path}:server")
 
-    # Explicitly specify transport as sse to avoid default http for dev/run
-    # Note: FastMCP 2.2.8 only supports stdio and sse transport for these commands
+    # Explicitly specify transport
     if command_args and command_args[0] in ["dev", "run"]:
-        if "--transport" not in command_args:  # Add only if not specified by user
-            cmd.append("--transport=sse")
+        if "--transport" not in " ".join(
+            command_args
+        ):  # Add only if not specified by user
+            if transport == "streamable-http" and STREAMABLE_HTTP_AVAILABLE:
+                cmd.append("--transport=streamable-http")
+            else:
+                cmd.append("--transport=sse")
 
     if debug:
         if "--with-debug" not in command_args:  # Add only if not specified by user
