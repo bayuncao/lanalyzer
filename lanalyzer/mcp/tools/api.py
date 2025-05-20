@@ -8,7 +8,7 @@ from typing import Dict, Any, Optional
 
 from fastmcp import Context
 
-from lanalyzer.mcp.models import (
+from ..models import (
     AnalysisRequest,
     FileAnalysisRequest,
     ConfigurationRequest,

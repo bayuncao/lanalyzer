@@ -1,7 +1,7 @@
 """
-MCP data models for Lanalyzer.
+MCP data models for Lanalyzer (requests).
 
-This module defines the Pydantic models used for MCP requests and responses.
+This module defines the Pydantic models used for MCP requests.
 """
 
 from typing import Dict, List, Optional, Any
@@ -89,21 +89,6 @@ class AnalysisRequest(BaseModel):
     )
 
 
-class AnalysisResponse(BaseModel):
-    """Response model for code analysis."""
-
-    success: bool = Field(..., description="Whether the analysis was successful")
-    vulnerabilities: List[VulnerabilityInfo] = Field(
-        default_factory=list, description="List of detected vulnerabilities"
-    )
-    errors: List[str] = Field(
-        default_factory=list, description="List of errors encountered during analysis"
-    )
-    summary: Dict[str, Any] = Field(
-        default_factory=dict, description="Summary of the analysis results"
-    )
-
-
 class ConfigurationRequest(BaseModel):
     """Request model for configuration operations."""
 
@@ -116,46 +101,6 @@ class ConfigurationRequest(BaseModel):
     config_data: Optional[Dict[str, Any]] = Field(
         None, description="Configuration data for create/validate operations"
     )
-
-
-class ConfigurationResponse(BaseModel):
-    """Response model for configuration operations."""
-
-    success: bool = Field(..., description="Whether the operation was successful")
-    config: Optional[Dict[str, Any]] = Field(None, description="The configuration data")
-    errors: List[str] = Field(
-        default_factory=list,
-        description="List of errors encountered during the operation",
-    )
-    validation_result: Optional[Dict[str, Any]] = Field(
-        None, description="Validation results if applicable"
-    )
-
-
-class ServerInfoResponse(BaseModel):
-    """Response model for server information."""
-
-    name: str = Field("Lanalyzer MCP Server", description="The name of the server")
-    version: str = Field(..., description="The server version")
-    description: str = Field(
-        "MCP server for Lanalyzer Python taint analysis",
-        description="The server description",
-    )
-    capabilities: List[str] = Field(
-        default_factory=list, description="List of server capabilities"
-    )
-
-    class Config:
-        """Pydantic model configuration."""
-
-        json_schema_extra = {
-            "example": {
-                "name": "Lanalyzer MCP Server",
-                "version": "0.1.0",
-                "description": "MCP server for Lanalyzer Python taint analysis",
-                "capabilities": ["analyze_code", "get_config", "validate_config"],
-            }
-        }
 
 
 class FileAnalysisRequest(BaseModel):
@@ -176,18 +121,4 @@ class ExplainVulnerabilityRequest(BaseModel):
     format: str = Field("text", description="Explanation format: text, markdown")
     level: str = Field(
         "detailed", description="Explanation detail level: brief, detailed"
-    )
-
-
-class ExplainVulnerabilityResponse(BaseModel):
-    """Response model for vulnerability explanation."""
-
-    success: bool = Field(..., description="Whether the operation was successful")
-    explanation: str = Field("", description="Vulnerability explanation text")
-    vulnerabilities_count: int = Field(0, description="Number of vulnerabilities found")
-    files_affected: List[str] = Field(
-        default_factory=list, description="List of affected files"
-    )
-    errors: List[str] = Field(
-        default_factory=list, description="List of error messages"
     )

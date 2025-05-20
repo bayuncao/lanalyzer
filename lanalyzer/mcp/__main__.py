@@ -5,7 +5,7 @@ MCP模块的主入口点，允许通过python -m lanalyzer.mcp执行。
 """
 
 import sys
-from lanalyzer.mcp.mcpserver import cli
+from .server.mcpserver import cli
 
 if __name__ == "__main__":
     sys.exit(cli())

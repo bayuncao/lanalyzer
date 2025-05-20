@@ -51,7 +51,10 @@ def run(debug, host, port, transport, json_response, show_client):
     )
 
     # Import here to avoid circular imports
-    from lanalyzer.mcp.mcpserver import create_mcp_server, STREAMABLE_HTTP_AVAILABLE
+    from lanalyzer.mcp.server.mcpserver import (
+        create_mcp_server,
+        STREAMABLE_HTTP_AVAILABLE,
+    )
 
     click.echo(
         f"Starting Lanalyzer MCP server - Using FastMCP v{__import__('fastmcp').__version__}"
