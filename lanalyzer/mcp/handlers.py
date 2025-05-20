@@ -184,12 +184,11 @@ class LanalyzerMCPHandler:
                 sys.executable,  # Use current python interpreter
                 "-m",
                 "lanalyzer",  # Run as module
+                "analyze",  # Add analyze subcommand
                 "--target",
                 file_path,
                 "--config",
                 config_path,
-                "--format",
-                "json",  # Ensure JSON output for parsing
                 "--output",
                 output_path,
                 "--log-file",
@@ -619,12 +618,11 @@ class LanalyzerMCPHandler:
                 sys.executable,
                 "-m",
                 "lanalyzer",
+                "analyze",  # Add analyze subcommand
                 "--target",
                 target_path,
                 "--config",
                 config_path,
-                "--format",
-                "json",
                 "--output",
                 output_path_val,
                 "--log-file",
