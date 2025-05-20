@@ -15,13 +15,13 @@ from typing import Dict, List, Any
 
 from lanalyzer.analysis.tracker import EnhancedTaintTracker
 from lanalyzer.cli.config_utils import load_configuration
-from lanalyzer.mcp.models import (
+from ..models import (
     AnalysisRequest,
     AnalysisResponse,
     FileAnalysisRequest,
     VulnerabilityInfo,
 )
-from lanalyzer.mcp.base_handler import BaseMCPHandler
+from .base import BaseMCPHandler
 
 logger = logging.getLogger(__name__)
 

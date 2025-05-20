@@ -7,7 +7,7 @@ This module provides the base handler functionality for MCP requests to Lanalyze
 import logging
 from typing import Dict, List, Any, Optional
 
-from lanalyzer.mcp.models import (
+from ..models import (
     ServerInfoResponse,
     VulnerabilityInfo,
 )

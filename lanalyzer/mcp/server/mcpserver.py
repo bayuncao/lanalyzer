@@ -4,12 +4,8 @@ MCP server command-line entry point, implemented using FastMCP.
 Provides Model Context Protocol (MCP) functionality for lanalyzer.
 """
 
-import os
-import sys
 import logging
-import asyncio
-import contextlib
-from typing import Optional, Dict, Any, AsyncIterator
+from typing import Optional, Dict, Any
 
 try:
     # Import FastMCP core components

@@ -7,9 +7,9 @@ aggregating functionality from specialized handler modules.
 
 import logging
 
-from lanalyzer.mcp.config_handler import ConfigMCPHandler
-from lanalyzer.mcp.analysis_handler import AnalysisMCPHandler
-from lanalyzer.mcp.explanation_handler import ExplanationMCPHandler
+from .config import ConfigMCPHandler
+from .analysis import AnalysisMCPHandler
+from .explanation import ExplanationMCPHandler
 
 logger = logging.getLogger(__name__)
 
