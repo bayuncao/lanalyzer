@@ -193,7 +193,6 @@ class AnalysisMCPHandler(BaseMCPHandler):
                     with open(output_path, "r", encoding="utf-8") as f:
                         analysis_output = json.load(f)
 
-                    # 支持直接为 list 的情况（如 examples/job_analysis.json）
                     if isinstance(analysis_output, list):
                         vulnerabilities_json = analysis_output
                     else:
@@ -406,7 +405,6 @@ class AnalysisMCPHandler(BaseMCPHandler):
                     with open(output_path_val, "r", encoding="utf-8") as f:
                         analysis_output = json.load(f)
 
-                    # 支持直接为 list 的情况（如 examples/job_analysis.json）
                     if isinstance(analysis_output, list):
                         vulnerabilities_json = analysis_output
                     else:
@@ -442,7 +440,6 @@ class AnalysisMCPHandler(BaseMCPHandler):
                                 f"Error converting vulnerability information: {e} - Data: {vuln_data}"
                             )
 
-                    # 生成摘要信息，处理analysis_output为列表的情况
                     default_summary = {
                         "files_analyzed": len(
                             set(

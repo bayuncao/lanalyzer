@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Lanalyzer 包的主入口点，允许通过 python -m lanalyzer 执行。
+Lanalyzer package main entry point, allowing execution via `python -m lanalyzer`.
 """
 
 import sys
