@@ -10,4 +10,4 @@ uv pip install -e ".[mcp]"
 
 # 启动MCP服务器
 echo "启动lanalyzer MCP服务器..."
-lanalyzer mcp --host 0.0.0.0 --port 8000 --debug 
+lanalyzer mcp run --host 0.0.0.0 --port 8000 --debug 
