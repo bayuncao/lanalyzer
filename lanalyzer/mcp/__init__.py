@@ -14,28 +14,30 @@ except ImportError:
         "or `pip install fastmcp`"
     )
 
-from lanalyzer.mcp.mcpserver import create_mcp_server, cli
-
-from lanalyzer.mcp.handlers import LanalyzerMCPHandler
-
-from lanalyzer.mcp.models import (
-    AnalysisRequest,
-    AnalysisResponse,
-    ConfigurationRequest,
-    ConfigurationResponse,
-    VulnerabilityInfo,
-    FileAnalysisRequest,
-    ExplainVulnerabilityRequest,
-    ExplainVulnerabilityResponse,
-    ServerInfoResponse,
-)
+from .server import *
+from .cli import *
+from .tools import *
+from .handlers import *
+from .models import *
 
 __all__ = [
     "FastMCP",
     "Context",
+    # server
     "create_mcp_server",
+    "server",
+    "STREAMABLE_HTTP_AVAILABLE",
+    # cli
     "cli",
+    # tools
+    "analyze_code",
+    "analyze_file",
+    "get_config",
+    "validate_config",
+    "create_config",
+    # handlers
     "LanalyzerMCPHandler",
+    # models
     "AnalysisRequest",
     "AnalysisResponse",
     "ConfigurationRequest",
