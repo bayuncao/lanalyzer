@@ -12,3 +12,5 @@ analysis_log.txt
 rules/*
 .ruff_cache/
 logs/
+*.sh
+*.log
