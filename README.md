@@ -1,8 +1,43 @@
-# LanaLyzer
+[//]: # (Banner placeholder - replace with your actual banner URL)
+![Lanalyzer Banner](https://via.placeholder.com/1200x300.png?text=Lanalyzer+Static+Analysis)
 
-LanaLyzer is an advanced Python static taint analysis tool designed to detect potential security vulnerabilities in Python projects. It identifies data flows from untrusted sources (Sources) to sensitive operations (Sinks) and provides detailed insights into potential risks.
+# Lanalyzer
 
-## Features
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![uv](https://img.shields.io/badge/uv-0.1.18+-purple.svg)](https://github.com/astral-sh/uv)
+[![PyPI version](https://img.shields.io/pypi/v/lanalyzer.svg?logo=pypi&label=pypi&color=blue)](https://pypi.org/project/lanalyzer/)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/mxcrafts/lanalyzer/ci.yml?branch=main&style=flat-square)](https://github.com/mxcrafts/lanalyzer/actions)
+[![Code Coverage](https://img.shields.io/codecov/c/github/mxcrafts/lanalyzer.svg?style=flat-square)](https://codecov.io/gh/mxcrafts/lanalyzer)
+[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md)
+[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-orange.svg)](https://modelcontextprotocol.io/)
+
+Lanalyzer is an advanced Python static taint analysis tool designed to detect potential security vulnerabilities in Python projects. It identifies data flows from untrusted sources (Sources) to sensitive operations (Sinks) and provides detailed insights into potential risks.
+
+## 📖 Table of Contents
+
+- [✨ Features](#-features)
+- [🚀 Getting Started](#-getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+- [💻 Usage](#-usage)
+  - [Basic Analysis](#basic-analysis)
+  - [Command-Line Options](#command-line-options)
+  - [Example](#example)
+- [🧩 Model Context Protocol (MCP) Support](#-model-context-protocol-mcp-support)
+  - [Installing MCP Dependencies](#installing-mcp-dependencies)
+  - [Starting the MCP Server](#starting-the-mcp-server)
+  - [MCP Server Features](#mcp-server-features)
+  - [Integration with AI Tools](#integration-with-ai-tools)
+  - [Using in Cursor](#using-in-cursor)
+  - [MCP Command-Line Options](#mcp-command-line-options)
+  - [Advanced MCP Usage](#advanced-mcp-usage)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+- [📞 Contact](#-contact)
+
+
+## ✨ Features
 
 - **Taint Analysis**: Tracks data flows from sources to sinks.
 - **Customizable Rules**: Define your own sources, sinks, sanitizers, and taint propagation paths.
@@ -11,11 +46,11 @@ LanaLyzer is an advanced Python static taint analysis tool designed to detect po
 - **Detailed Reports**: Generate comprehensive analysis reports with vulnerability details and mitigation suggestions.
 - **Command-Line Interface**: Run analyses directly from the terminal.
 
-## Installation
+## 🚀 Getting Started
 
 ### Prerequisites
 - Python 3.10 or higher
-- [Poetry](https://python-poetry.org/) (recommended for dependency management)
+- [uv](https://github.com/astral-sh/uv) (recommended for dependency management)
 
 ### Steps
 1. Clone the repository:
@@ -24,54 +59,57 @@ LanaLyzer is an advanced Python static taint analysis tool designed to detect po
    cd lanalyzer
    ```
 
-2. Install dependencies:
+2. Create a virtual environment and install dependencies:
    ```bash
-   poetry install
+   uv venv
+   uv pip sync pyproject.toml --all-extras
    ```
 
 3. Activate the virtual environment:
    ```bash
-   poetry shell
+   source .venv/bin/activate
    ```
 
-## Usage
+## 💻 Usage
 
 ### Basic Analysis
 Run a taint analysis on a Python file:
 ```bash
-python -m lanalyzer analyze <target_file> --config <config_file>
+lanalyzer --target <target_file> --config <config_file> --pretty --output <output_file> --log-file <log_file> --debug
 ```
 
 ### Command-Line Options
+- `--target`: Path to the Python file or directory to analyze.
 - `--config`: Path to the configuration file.
 - `--output`: Path to save the analysis report.
+- `--log-file`: Path to save the log file.
 - `--pretty`: Pretty-print the output.
 - `--detailed`: Show detailed analysis statistics.
+- `--debug`: Enable debug mode with detailed logging.
 
 ### Example
 ```bash
-python -m lanalyzer analyze example.py --config rules/sql_injection.json --pretty
+lanalyzer --target example.py --config rules/sql_injection.json --pretty --output example_analysis.json --log-file example_analysis.log --debug
 ```
 
-## Contributing
+## 🤝 Contributing
 
-We welcome contributions! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines on how to contribute to LanaLyzer.
+We welcome contributions! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines on how to contribute to Lanalyzer.
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU Affero General Public License v3.0. See the [LICENSE](LICENSE) file for details.
 
-## Contact
+## 📞 Contact
 
-For questions or support, please open an issue on GitHub or email us at [lanalyzer@example.com](mailto:lanalyzer@example.com).
+### Contact
 
-## Recent Updates
+- Issues: [GitHub Issues](https://github.com/mxcrafts/ltrack/issues)
+- Email: support@mx-crafts.com
 
-- Enhanced context analysis and call chain building: Fixed issues with source and sink association in taint analysis, prioritizing source finding within the same function to avoid incorrectly linking to identical statements in other functions.
+## 🧩 Model Context Protocol (MCP) Support
 
-## Model Context Protocol (MCP) Support
-
-LanaLyzer now supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/), allowing it to run as an MCP server that AI models and tools can use to access taint analysis functionality through a standard interface.
+Lanalyzer now supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/), allowing it to run as an MCP server that AI models and tools can use to access taint analysis functionality through a standard interface.
 
 ### Installing MCP Dependencies
 
@@ -98,10 +136,7 @@ There are multiple ways to start the MCP server:
 python -m lanalyzer.mcp --help
 
 # Start the server
-python -m lanalyzer.mcp run --host 127.0.0.1 --port 8000
-
-# Use debug mode
-python -m lanalyzer.mcp run --debug
+python -m lanalyzer.mcp run --host 0.0.0.0 --port 8000 --debug
 ```
 
 2. **Using the lanalyzer Command-Line Tool**:
@@ -111,10 +146,10 @@ python -m lanalyzer.mcp run --debug
 lanalyzer mcp --help
 
 # Start the server
-lanalyzer mcp run --host 127.0.0.1 --port 8000
+lanalyzer mcp run --host 0.0.0.0 --port 8000 --debug
 
-# Use FastMCP development mode
-lanalyzer mcp dev
+# Use FastMCP development mode (if applicable, verify this command)
+# lanalyzer mcp dev
 ```
 
 ### MCP Server Features
@@ -152,13 +187,13 @@ print(result)
 
 ### Using in Cursor
 
-If you're working in the Cursor editor, you can directly ask the AI to use LanaLyzer to analyze your code:
+If you're working in the Cursor editor, you can directly ask the AI to use Lanalyzer to analyze your code:
 
 ```
 Please use lanalyzer to analyze the current file for security vulnerabilities and explain the potential risks.
 ```
 
-### Command-Line Options
+### MCP Command-Line Options
 
 The MCP server supports the following command-line options:
 
@@ -166,7 +201,7 @@ The MCP server supports the following command-line options:
 - `--host`: Set the server listening address (default: 127.0.0.1)
 - `--port`: Set the server listening port (default: 8000)
 
-### Advanced Usage
+### Advanced MCP Usage
 
 #### Custom Configurations
 
@@ -198,53 +233,3 @@ result = client.call({
     "output_path": "/path/to/output.json"  # Optional
 })
 ```
-
-## Getting Started
-
-# Lanalyzer MCP 使用说明
-
-Lanalyzer MCP 是一个安全分析工具，可与Claude Desktop或其他MCP兼容客户端一起使用。
-
-## 脚本说明
-
-本项目包含两个主要脚本：
-
-### install_lanalyzer_mcp.sh
-
-此脚本用于安装Lanalyzer MCP服务器到Claude Desktop或其他MCP兼容客户端中：
-
-- 检查并安装MCP CLI工具（如果尚未安装）
-- 安装Lanalyzer MCP所需的依赖
-- 使用MCP CLI将Lanalyzer注册为安全分析工具
-- 安装完成后，可以在Claude Desktop中使用Lanalyzer功能
-
-使用方法：
-```bash
-./install_lanalyzer_mcp.sh
-```
-
-### lanalyzer_mcp.sh
-
-此脚本用于直接启动Lanalyzer MCP服务器：
-
-- 检查并安装所需的MCP依赖（fastapi, uvicorn, pydantic）
-- 启动Lanalyzer MCP服务器，默认监听所有网络接口（0.0.0.0）和8000端口
-- 启用调试模式
-
-使用方法：
-```bash
-./lanalyzer_mcp.sh
-```
-
-## 其他使用方式
-
-除了使用上述脚本外，还可以通过命令行直接运行：
-```bash
-lanalyzer mcp
-```
-
-## 依赖要求
-
-- Python 3.x
-- pip 包管理器
-- MCP CLI 工具 (v1.7.1或更高版本)
