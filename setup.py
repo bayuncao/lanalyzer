@@ -3,12 +3,20 @@
 LanaLyzer setup script
 """
 
+import os
 from setuptools import setup, find_packages
+
+# Read the contents of README.md
+this_directory = os.path.abspath(os.path.dirname(__file__))
+with open(os.path.join(this_directory, "README.md"), encoding="utf-8") as f:
+    long_description = f.read()
 
 setup(
     name="lanalyzer",
     version="0.1.0",
     description="Python Taint Analysis Tool for finding security vulnerabilities",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     author="LanaLyzer Team",
     author_email="lanalyzer@example.com",
     packages=find_packages(),
@@ -27,6 +35,15 @@ setup(
             "uvicorn[standard]>=0.23.2,<0.24.0",
             "pydantic>=2.4.0,<3.0.0",
             "fastmcp>=2.0.0",
+        ],
+        "dev": [
+            "pytest>=7.4.0,<8",
+            "pytest-cov>=4.1.0,<5",
+            "black>=23.7.0,<24",
+            "isort>=5.12.0,<6",
+            "mypy>=1.5.1,<2",
+            "flake8>=6.1.0,<7",
+            "pre-commit>=4.2.0",
         ],
     },
     entry_points={
@@ -52,7 +69,11 @@ setup(
         "mcp",
         "model-context-protocol",
     ],
-    url="https://github.com/yourusername/lanalyzer",
-    long_description_content_type="text/markdown",
+    project_urls={
+        "Homepage": "https://github.com/mxcrafts/lanalyzer",
+        "Bug Tracker": "https://github.com/mxcrafts/lanalyzer/issues",
+        "Documentation": "https://github.com/mxcrafts/lanalyzer#readme",
+        "Source Code": "https://github.com/mxcrafts/lanalyzer",
+    },
     include_package_data=True,
 )
