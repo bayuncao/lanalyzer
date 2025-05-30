@@ -1,0 +1,23 @@
+[flake8]
+max-line-length = 88
+extend-ignore = 
+    # ignore trailing whitespace
+    W291,
+    # ignore line too long
+    E501,
+    # ignore space before colon
+    E203,
+    # ignore binary operator before line break
+    W503,
+    # ignore missing whitespace after comma
+    E203
+
+exclude = 
+    .git,
+    __pycache__,
+    build,
+    dist,
+    .venv
+
+per-file-ignores =
+    __init__.py:F401
