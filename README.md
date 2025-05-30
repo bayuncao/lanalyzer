@@ -1,5 +1,4 @@
-[//]: # (Banner placeholder - replace with your actual banner URL)
-![Lanalyzer Banner](https://via.placeholder.com/1200x300.png?text=Lanalyzer+Static+Analysis)
+![Lanalyzer Banner](./images/banner.png)
 
 # Lanalyzer
 

@@ -1,5 +1,5 @@
-[//]: # (横幅占位符 - 请替换为您的实际横幅图片URL)
-![Lanalyzer 横幅](https://via.placeholder.com/1200x300.png?text=Lanalyzer+%E9%9D%99%E6%80%81%E5%88%86%E6%9E%90)
+![Lanalyzer Banner](./images/banner.png)
+
 
 # Lanalyzer
 
