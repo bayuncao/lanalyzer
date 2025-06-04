@@ -11,6 +11,11 @@
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-orange.svg)](https://modelcontextprotocol.io/)
 
+<p align="center">
+ :book:语言选择： <a href="https://github.com/bayuncao/lanalyzer/blob/main/README.md">English</a> • 
+  <a href="https://github.com/bayuncao/lanalyzer/blob/main/README.zh.md">中文</a> 
+</p>
+
 Lanalyzer is an advanced Python static taint analysis tool designed to detect potential security vulnerabilities in Python projects. It identifies data flows from untrusted sources (Sources) to sensitive operations (Sinks) and provides detailed insights into potential risks.
 
 ## 📖 Table of Contents

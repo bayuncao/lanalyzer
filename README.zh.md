@@ -12,6 +12,11 @@
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-orange.svg)](https://modelcontextprotocol.io/)
 
+<p align="center">
+ :book:语言选择： <a href="https://github.com/bayuncao/lanalyzer/blob/main/README.md">English</a> • 
+  <a href="https://github.com/bayuncao/lanalyzer/blob/main/README.zh.md">中文</a> 
+</p>
+
 Lanalyzer 是一个高级的 Python 静态污点分析工具，旨在检测 Python 项目中的潜在安全漏洞。它通过分析从不受信任的数据源（Sources）到敏感操作点（Sinks）的数据流动，提供详细的风险洞察。
 
 ## 📖 目录
