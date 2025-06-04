@@ -54,7 +54,7 @@ Lanalyzer is an advanced Python static taint analysis tool designed to detect po
 ### Steps
 1. Clone the repository:
    ```bash
-   git clone https://github.com/mxcrafts/lanalyzer.git
+   git clone https://github.com/bayuncao/lanalyzer.git
    cd lanalyzer
    ```
 
