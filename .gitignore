@@ -11,7 +11,7 @@ analysis_log.txt
 .cursor/
 /rules/*.json
 .ruff_cache/
-!rules/
+!/rules/
 /logs/*.log
-!logs/
+!/logs/
 *.sh
