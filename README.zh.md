@@ -59,7 +59,7 @@ Lanalyzer 是一个高级的 Python 静态污点分析工具，旨在检测 Pyth
 ### 安装步骤
 1. 克隆仓库：
    ```bash
-   git clone https://github.com/mxcrafts/lanalyzer.git
+   git clone https://github.com/bayuncao/lanalyzer.git
    cd lanalyzer
    ```
 
