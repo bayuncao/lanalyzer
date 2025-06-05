@@ -9,8 +9,9 @@ examples/*
 .DS_Store
 analysis_log.txt
 .cursor/
-rules/*
+/rules/*.json
 .ruff_cache/
-logs/
+!rules/
+/logs/*.log
+!logs/
 *.sh
-*.log
