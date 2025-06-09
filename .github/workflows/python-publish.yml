@@ -1,4 +1,4 @@
-# This workflow will upload a Python Package to PyPI when a release is created
+# This workflow will upload a Python Package to PyPI manually from main branch
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-to-package-registries
 
 # This workflow uses actions that are not certified by GitHub.
@@ -9,15 +9,12 @@
 name: Upload Python Package
 
 on:
-  release:
-    types: [published]
-
-permissions:
-  contents: read
+  workflow_dispatch:
 
 jobs:
   release-build:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4
