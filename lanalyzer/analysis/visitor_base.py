@@ -14,12 +14,17 @@ from typing import (
     Union,
 )  # Added List, Any, Union for type hints
 
-from lanalyzer.analysis.ast_parser import (
-    TaintVisitor,
-)  # Assuming this base class exists
 from lanalyzer.logger import debug, error
 
 from .pathsensitive import PathNode  # Assuming this module and class exist
+
+# Legacy fallback; prefer visitors.taint_visitor
+# TaintVisitor will be imported lazily below
+
+try:
+    from lanalyzer.analysis.visitors.taint_visitor import TaintVisitor  # type: ignore
+except ImportError:
+    from lanalyzer.analysis.ast_parser import TaintVisitor  # type: ignore
 
 
 class EnhancedTaintVisitor(TaintVisitor):
