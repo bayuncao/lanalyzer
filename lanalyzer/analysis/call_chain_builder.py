@@ -10,6 +10,11 @@ from lanalyzer.analysis.data_flow_analyzer import DataFlowAnalyzer
 from lanalyzer.analysis.control_flow_analyzer import ControlFlowAnalyzer
 from lanalyzer.analysis.chain_utils import ChainUtils
 from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
+from lanalyzer.analysis.builder_core import find_shortest_path
+from lanalyzer.analysis.description_formatter import (
+    format_source_description,
+    format_sink_description,
+)
 
 
 class CallChainBuilder:
@@ -101,7 +106,7 @@ class CallChainBuilder:
                 "statement": source_stmt_info["statement"],
                 "context_lines": [source_line - 1, source_line + 1],
                 "type": "source",
-                "description": f"Source of tainted data ({source_name}) assigned to variable {self._extract_var_name_from_stmt(source_stmt_info['statement'])}",
+                "description": format_source_description(source_name, source_line),
             }
             call_chain.append(source_stmt)
 
@@ -121,12 +126,12 @@ class CallChainBuilder:
                 # Use configuration-based extraction method
                 sink_arg_expressions = self.utils.extract_sink_parameters(sink_code)
 
-            sink_desc = f"Unsafe {sink_name} operation, potentially leading to {sink.get('vulnerability_type', 'vulnerability')}"
-            # If parameter expressions are extracted, add them to the description
-            if sink_arg_expressions:
-                sink_desc += (
-                    f". Processing data from: {', '.join(sink_arg_expressions)}"
-                )
+            sink_desc = format_sink_description(
+                sink_name,
+                sink_line,
+                arg_expressions=sink_arg_expressions,
+                vulnerability_type=sink.get("vulnerability_type"),
+            )
 
             sink_stmt = {
                 "function": sink_operation,
@@ -148,34 +153,21 @@ class CallChainBuilder:
                 "statement": f"function {source_func.name}",
                 "context_lines": [source_func.line_no, source_func.end_line_no],
                 "type": "source+sink",
-                "description": f"Contains both source {source_name}(line {source_line}) and sink {sink_name}(line {sink_line})",
+                "description": format_source_description(source_name, source_line),
             }
             call_chain.append(func_info)
             return self.utils.reorder_call_chain_by_data_flow(call_chain)
 
         # Recursively find all paths from source_func to sink_func
-        def dfs(current_func, target_func, path, depth):
-            if self.debug:
-                print(
-                    f"[DEBUG][DFS] At {current_func.name} -> {target_func.name}, depth={depth}, path={[f.name for f in path]}"
-                )
-            if current_func == target_func:
-                return path + [current_func]
-            if depth > 20:
-                if self.debug:
-                    print(f"[DEBUG][DFS] Max depth reached at {current_func.name}")
-                return None
-            for callee in getattr(current_func, "callees", []):
-                if callee in path:
-                    continue
-                result = dfs(callee, target_func, path + [current_func], depth + 1)
-                if result:
-                    return result
-            return None
-
         found_paths = []
         if source_func and sink_func:
-            found_paths = dfs(source_func, sink_func, [], 0)
+            # 使用外部路径搜索模块替换内部 DFS
+            path_result = find_shortest_path(
+                source_func, sink_func, max_depth=20, debug=self.debug
+            )
+            if path_result:
+                # 包装为列表，保持与旧逻辑一致 (列表内元素为路径列表)
+                found_paths = [path_result]
             if self.debug:
                 print(
                     f"[DEBUG] Found {len(found_paths) if found_paths else 0} path(s) from {source_func.name} to {sink_func.name}"
@@ -205,10 +197,10 @@ class CallChainBuilder:
                 description = "Intermediate function in the call chain"
                 if i == 0:
                     node_type = "source"
-                    description = f"Contains source {source_name} at line {source_line}"
+                    description = format_source_description(source_name, source_line)
                 elif i == len(path) - 1:
                     node_type = "sink"
-                    description = f"Contains sink {sink_name} at line {sink_line}"
+                    description = format_sink_description(sink_name, sink_line)
                 line_num = func.line_no
                 call_statement = ""
                 if i > 0:
@@ -339,13 +331,11 @@ class CallChainBuilder:
                     sink_arg_expressions = self.utils.extract_sink_parameters(sink_code)
 
                 # Build call chain including common caller
-                sink_desc = f"Contains sink {sink_name} at line {sink_line}"
-                if sink_arg_expressions:
-                    sink_desc += (
-                        f" processing data from: {', '.join(sink_arg_expressions)}"
-                    )
+                sink_desc = format_sink_description(
+                    sink_name, sink_line, arg_expressions=sink_arg_expressions
+                )
 
-                source_desc = f"Contains source {source_name} at line {source_line}"
+                source_desc = format_source_description(source_name, source_line)
 
                 # Build call chain in data flow order: source -> source func -> common caller -> sink func -> sink
                 call_chain = [
@@ -461,11 +451,12 @@ class CallChainBuilder:
         )
         sink_entry = None
         if sink_operation:
-            sink_desc = f"Unsafe {sink_name} operation, potentially leading to {vulnerability_type}"
-            if sink_arg_expressions:
-                sink_desc += (
-                    f". Processing data from: {', '.join(sink_arg_expressions)}"
-                )
+            sink_desc = format_sink_description(
+                sink_name,
+                sink_line,
+                arg_expressions=sink_arg_expressions,
+                vulnerability_type=vulnerability_type,
+            )
 
             sink_entry = {
                 "function": sink_operation,
