@@ -10,8 +10,8 @@ import copy
 from typing import Any, Dict, List, Optional, Set
 
 from lanalyzer.logger import debug, error
-from lanalyzer.analysis.import_tracker import ImportTracker
-from lanalyzer.analysis.source_sink_classifier import SourceSinkClassifier
+from ..import_tracker import ImportTracker
+from ..source_sink_classifier import SourceSinkClassifier
 from .ast_processor import ASTProcessor
 
 

@@ -10,7 +10,7 @@ import sys
 import argparse
 from typing import List, Optional
 
-from lanalyzer.analysis.tracker import EnhancedTaintTracker
+from lanalyzer.analysis import EnhancedTaintTracker
 from lanalyzer.logger import (
     LogTee,
     setup_application_logging,

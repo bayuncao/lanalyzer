@@ -17,22 +17,49 @@ class SourceSinkClassifier:
     def __init__(self, visitor) -> None:
         # 访客需暴露 .sources, .sinks, .debug, 以及 import 映射集合
         self.visitor = visitor
+        # 用于新架构的配置存储
+        self._sources = []
+        self._sinks = []
+
+    def configure(self, sources, sinks):
+        """配置源和汇的定义（新架构使用）"""
+        self._sources = sources or []
+        self._sinks = sinks or []
+        # 同时更新 visitor 的属性以保持兼容性
+        if hasattr(self.visitor, 'sources'):
+            self.visitor.sources = self._sources
+        if hasattr(self.visitor, 'sinks'):
+            self.visitor.sinks = self._sinks
+
+    @property
+    def sources(self):
+        """获取源配置"""
+        if hasattr(self.visitor, 'sources') and self.visitor.sources:
+            return self.visitor.sources
+        return self._sources
+
+    @property
+    def sinks(self):
+        """获取汇配置"""
+        if hasattr(self.visitor, 'sinks') and self.visitor.sinks:
+            return self.visitor.sinks
+        return self._sinks
 
     # --------------------------- public helpers ---------------------------
     def is_source(self, func_name: str, full_name: Optional[str] = None) -> bool:
-        return self._match_patterns(self.visitor.sources, func_name, full_name)
+        return self._match_patterns(self.sources, func_name, full_name)
 
     def source_type(self, func_name: str, full_name: Optional[str] = None) -> str:
-        return self._get_type(self.visitor.sources, func_name, full_name)
+        return self._get_type(self.sources, func_name, full_name)
 
     def is_sink(self, func_name: str, full_name: Optional[str] = None) -> bool:
-        return self._match_patterns(self.visitor.sinks, func_name, full_name)
+        return self._match_patterns(self.sinks, func_name, full_name)
 
     def sink_type(self, func_name: str, full_name: Optional[str] = None) -> str:
-        return self._get_type(self.visitor.sinks, func_name, full_name)
+        return self._get_type(self.sinks, func_name, full_name)
 
     def sink_vulnerability_type(self, sink_type: str) -> str:
-        for sink in self.visitor.sinks:
+        for sink in self.sinks:
             if sink.get("name") == sink_type:
                 return sink.get("vulnerability_type", "vulnerability")
         return "vulnerability"

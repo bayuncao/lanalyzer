@@ -9,7 +9,7 @@ import re
 from typing import Any, Dict, List, Set, Optional
 
 from lanalyzer.logger import debug
-from lanalyzer.analysis.core.visitor import TaintAnalysisVisitor
+from ..core.visitor import TaintAnalysisVisitor
 
 
 class FlowAnalyzer:
