@@ -9,8 +9,8 @@ import re
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from lanalyzer.logger import debug
-from lanalyzer.analysis.import_tracker import ImportTracker
-from lanalyzer.analysis.source_sink_classifier import SourceSinkClassifier
+from ..import_tracker import ImportTracker
+from ..source_sink_classifier import SourceSinkClassifier
 
 
 class AnalysisHelpers:

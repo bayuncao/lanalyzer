@@ -13,7 +13,7 @@ import time
 import logging
 from typing import Dict, List, Any
 
-from lanalyzer.analysis.tracker import EnhancedTaintTracker
+from lanalyzer.analysis import EnhancedTaintTracker
 from lanalyzer.cli.config_utils import load_configuration
 from ..models import (
     AnalysisRequest,

@@ -8,7 +8,7 @@ import time
 import traceback
 from typing import Any, Dict, List
 
-from lanalyzer.analysis.tracker import EnhancedTaintTracker
+from lanalyzer.analysis import EnhancedTaintTracker
 from lanalyzer.logger import info, warning, error
 
 

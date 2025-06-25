@@ -12,8 +12,8 @@ import os
 from typing import Any, Dict, List, Optional, Tuple
 
 from lanalyzer.logger import get_logger, debug
-from lanalyzer.analysis.import_tracker import ImportTracker
-from lanalyzer.analysis.source_sink_classifier import SourceSinkClassifier
+from ..import_tracker import ImportTracker
+from ..source_sink_classifier import SourceSinkClassifier
 
 logger = get_logger("lanalyzer.analysis.core.ast_processor")
 

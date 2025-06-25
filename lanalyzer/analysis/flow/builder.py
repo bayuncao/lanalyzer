@@ -8,7 +8,7 @@ detecting vulnerabilities in the refactored architecture.
 from typing import Any, Dict, List, Optional
 
 from lanalyzer.logger import debug
-from lanalyzer.analysis.core.visitor import TaintAnalysisVisitor
+from ..core.visitor import TaintAnalysisVisitor
 from .analyzer import FlowAnalyzer
 
 
