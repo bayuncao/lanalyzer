@@ -10,7 +10,7 @@
     },
     {
       "name": "NetworkInput",
-      "patterns": ["torch.distributed.recv", "recv", "recvfrom", "recvmsg", "requests.get", "requests.post", "urllib.request.urlopen", "socket.recv", "http.client", "aiohttp", "httpx", "recv_rpc_message", "recv_multipart", "all_reduce", "dist.all_reduce", "torch.distributed.all_reduce", "all_gather", "dist.all_gather", "torch.distributed.all_gather"],
+      "patterns": ["torch.distributed.recv", "recv", "recvfrom", "recvmsg", "requests.get", "requests.post", "urllib.request.urlopen", "socket.recv", "http.client", "aiohttp", "httpx", "recv_rpc_message", "recv_multipart", "all_reduce", "dist.all_reduce", "torch.distributed.all_reduce", "all_gather", "dist.all_gather", "torch.distributed.all_gather", "torch.distributed.broadcast_object_list", "broadcast_object_list"],
       "priority": "high",
       "auto_taint_return": true
     },
@@ -92,6 +92,14 @@
       "dist.recv": {
         "taints_parameters": [0],
         "description": "distributed recv modifies the first parameter in-place with received data"
+      },
+      "torch.distributed.broadcast_object_list": {
+        "taints_parameters": [0],
+        "description": "torch.distributed.broadcast_object_list modifies the first parameter (object_list) in-place with received data"
+      },
+      "broadcast_object_list": {
+        "taints_parameters": [0],
+        "description": "broadcast_object_list modifies the first parameter (object_list) in-place with received data"
       }
     }
   }
