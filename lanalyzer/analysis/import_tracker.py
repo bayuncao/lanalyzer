@@ -7,8 +7,6 @@
 from __future__ import annotations
 
 import ast
-import sys
-import importlib.util
 from typing import Dict, Set, Optional, List, Any
 
 from lanalyzer.logger import get_logger

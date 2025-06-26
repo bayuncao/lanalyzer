@@ -135,6 +135,8 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
         self._apply_pending_parameter_taints(node.name)
 
 
+
+
         
         # Visit function body
         self.generic_visit(node)
@@ -162,6 +164,8 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
             "function": self.current_function,
         }
         self.call_locations.append(call_info)
+
+
 
         # Check for sources
         if func_name and self._is_source(func_name, full_name):
@@ -742,5 +746,13 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
 
         if self.debug:
             debug(f"[VISITOR] Created call chain from cross-function analysis: {source_info['name']} -> {sink_func_name}")
+
+
+
+
+
+
+
+
 
 
