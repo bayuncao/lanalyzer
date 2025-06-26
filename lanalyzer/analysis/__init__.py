@@ -9,19 +9,17 @@ This package provides advanced taint analysis with the following capabilities:
 4. Complete propagation chain tracking - Records all steps in taint flow
 5. Detailed call graph construction - Maps relationships between all functions
 
-## Refactored Architecture
+## Architecture
 
-The analysis module has been refactored for better organization:
+The analysis module is organized as follows:
 - `core/` - Core analysis engine (AST processing, visitor, tracker)
 - `flow/` - Data and control flow analysis
 - `models/` - Data structures (call graph, data structures, path analysis)
 - `utils/` - Utilities and formatters
 """
 
-# Common components
+# Core components
 from lanalyzer.analysis.base import BaseAnalyzer
-
-# New refactored components (primary imports)
 from lanalyzer.analysis.core import (
     ASTProcessor,
     ParentNodeVisitor,
@@ -34,66 +32,19 @@ from lanalyzer.analysis.models import (
     DefUseChain,
     PathNode,
 )
-# Avoid circular imports
-# from lanalyzer.analysis.flow import (
-#     FlowAnalyzer,
-#     CallChainBuilder,
-# )
 from lanalyzer.analysis.utils import (
     AnalysisHelpers,
     DescriptionFormatter,
 )
 
-# Backward compatibility imports
-# These maintain compatibility with existing code while using the new implementations
-try:
-    # Try to import from old locations for backward compatibility
-    from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
-except ImportError:
-    # Use new implementation if old one doesn't exist
-    EnhancedTaintAnalysisVisitor = TaintAnalysisVisitor
-
-# Backward compatibility aliases
-EnhancedTaintVisitor = TaintAnalysisVisitor  # Alias for old name
-
-# Import functions from utils package
+# Utility functions
 from lanalyzer.utils.ast_utils import (
     contains_sink_patterns,
     extract_call_targets,
     extract_function_calls,
+    parse_file as parse_ast,
 )
-from lanalyzer.utils.ast_utils import parse_file as parse_ast
 from lanalyzer.utils.fs_utils import get_python_files_in_directory as get_python_files
-
-# Legacy component aliases for backward compatibility
-try:
-    from lanalyzer.analysis.chain_utils import ChainUtils
-except ImportError:
-    # Create a compatibility wrapper if old module doesn't exist
-    class ChainUtils:
-        def __init__(self, builder):
-            self.builder = builder
-            self.helpers = AnalysisHelpers(builder.debug if hasattr(builder, 'debug') else False)
-
-# Temporarily disable these imports to avoid circular dependency issues
-# try:
-#     from lanalyzer.analysis.control_flow_analyzer import ControlFlowAnalyzer
-# except ImportError:
-#     # Use new FlowAnalyzer as compatibility wrapper
-#     ControlFlowAnalyzer = FlowAnalyzer
-
-# try:
-#     from lanalyzer.analysis.data_flow_analyzer import DataFlowAnalyzer
-# except ImportError:
-#     # Use new FlowAnalyzer as compatibility wrapper
-#     DataFlowAnalyzer = FlowAnalyzer
-
-# Create dummy classes for now
-class ControlFlowAnalyzer:
-    pass
-
-class DataFlowAnalyzer:
-    pass
 
 from lanalyzer.logger import info, error
 
@@ -182,30 +133,12 @@ def analyze_file(
     return vulnerabilities, summary
 
 
-# Legacy call chain builder for backward compatibility
-# try:
-#     from lanalyzer.analysis.call_chain_builder import CallChainBuilder as LegacyCallChainBuilder
-# except ImportError:
-#     # Use new CallChainBuilder if legacy doesn't exist
-#     LegacyCallChainBuilder = CallChainBuilder
-
-# Create dummy class for now
-class LegacyCallChainBuilder:
-    pass
-
-# Provide alias for old function name for backward compatibility
-enhanced_analyze_file = analyze_file
-
 __all__ = [
-    # Main analysis classes (new refactored)
+    # Core analysis classes
     "EnhancedTaintTracker",
     "TaintAnalysisVisitor",
     "ASTProcessor",
     "ParentNodeVisitor",
-
-    # Backward compatibility classes
-    "EnhancedTaintAnalysisVisitor",
-    "EnhancedTaintVisitor",
 
     # Data structures
     "CallGraphNode",
@@ -213,17 +146,12 @@ __all__ = [
     "DefUseChain",
     "PathNode",
 
-    # Flow analysis (commented out to avoid circular imports)
-    # "FlowAnalyzer",
-    # "CallChainBuilder",
-
     # Utilities
     "AnalysisHelpers",
     "DescriptionFormatter",
 
     # Public API functions
     "analyze_file",
-    "enhanced_analyze_file",  # Compatibility alias
 
     # Base components
     "BaseAnalyzer",
@@ -232,10 +160,4 @@ __all__ = [
     "extract_call_targets",
     "extract_function_calls",
     "contains_sink_patterns",
-
-    # Legacy compatibility
-    "ChainUtils",
-    "ControlFlowAnalyzer",
-    "DataFlowAnalyzer",
-    "LegacyCallChainBuilder",
 ]
