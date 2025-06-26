@@ -1,5 +1,5 @@
 """source_sink_classifier.py
-提取源/汇（sink）分类判断逻辑，供 AST 访客等使用。
+Extract source/sink classification judgment logic for use by AST visitors, etc.
 """
 from __future__ import annotations
 
@@ -12,23 +12,23 @@ logger = get_logger("lanalyzer.analysis.source_sink_classifier")
 
 
 class SourceSinkClassifier:
-    """根据配置判断函数是否为 taint 源或汇。"""
+    """Judgement logic for classifying functions as sources or sinks based on configuration."""
 
     def __init__(self, visitor) -> None:
-        # 访客需暴露 .sources, .sinks, .debug, 以及 import 映射集合
+        # The visitor must expose .sources, .sinks, .debug, and import mappings
         self.visitor = visitor
-        # 用于新架构的配置存储
+        # For storage of new architecture configuration
         self._sources = []
         self._sinks = []
         self.config = None
 
 
     def configure(self, sources, sinks, config=None):
-        """配置源和汇的定义（新架构使用）"""
+        """Configure source and sink definitions (for new architecture)"""
         self._sources = sources or []
         self._sinks = sinks or []
         self.config = config
-        # 同时更新 visitor 的属性以保持兼容性
+        # Also update visitor attributes for compatibility
         if hasattr(self.visitor, 'sources'):
             self.visitor.sources = self._sources
         if hasattr(self.visitor, 'sinks'):
@@ -36,14 +36,14 @@ class SourceSinkClassifier:
 
     @property
     def sources(self):
-        """获取源配置"""
+        """Get source configuration"""
         if hasattr(self.visitor, 'sources') and self.visitor.sources:
             return self.visitor.sources
         return self._sources
 
     @property
     def sinks(self):
-        """获取汇配置"""
+        """Get sink configuration"""
         if hasattr(self.visitor, 'sinks') and self.visitor.sinks:
             return self.visitor.sinks
         return self._sinks
