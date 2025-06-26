@@ -88,12 +88,12 @@ class EnhancedTaintTracker:
         if not os.path.exists(file_path):
             if self.debug:
                 log_debug(f"File not found: {file_path}")
-            return []
+            return [], []
 
         if file_path in self.analyzed_files:
             if self.debug:
                 log_debug(f"File already analyzed: {file_path}")
-            return []
+            return [], []
 
         self.analyzed_files.add(file_path)
 
@@ -105,7 +105,7 @@ class EnhancedTaintTracker:
             tree, source_lines, parent_map = self.ast_processor.parse_file(file_path)
             
             if tree is None:
-                return []
+                return [], []
 
             # Store current file contents for context display
             if source_lines:
@@ -132,20 +132,20 @@ class EnhancedTaintTracker:
             # Update global state
             self._update_global_state(visitor, file_path)
             
-            # Convert vulnerabilities to standard format
-            vulnerabilities = self._convert_vulnerabilities(visitor)
-            
+            # Convert vulnerabilities to standard format and extract call chains
+            vulnerabilities, call_chains = self._convert_vulnerabilities(visitor)
+
             if self.debug:
-                log_debug(f"Found {len(vulnerabilities)} vulnerabilities in {file_path}")
-            
-            return vulnerabilities
+                log_debug(f"Found {len(vulnerabilities)} vulnerabilities and {len(call_chains)} call chains in {file_path}")
+
+            return vulnerabilities, call_chains
 
         except Exception as e:
             if self.debug:
                 log_debug(f"Error analyzing {file_path}: {e}")
                 import traceback
                 log_debug(traceback.format_exc())
-            return []
+            return [], []
 
     def analyze_multiple_files(self, file_paths: List[str]) -> List[Dict[str, Any]]:
         """
@@ -165,7 +165,7 @@ class EnhancedTaintTracker:
             if self.debug:
                 log_debug(f"Initial analysis pass for: {file_path}")
             
-            vulnerabilities = self.analyze_file(file_path)
+            vulnerabilities, _ = self.analyze_file(file_path)  # Ignore call_chains for now
             
             for vuln in vulnerabilities:
                 # Create a hashable representation for deduplication
@@ -229,6 +229,11 @@ class EnhancedTaintTracker:
                 "imported_classes": sorted(list(all_imported_classes)),
             }
 
+        # Add call chain analysis summary if available
+        if self.visitor and hasattr(self.visitor, 'call_chain_tracker'):
+            call_chain_summary = self.visitor.call_chain_tracker.get_summary()
+            summary["call_chains"] = call_chain_summary
+
         return summary
 
     def _update_global_state(self, visitor: TaintAnalysisVisitor, file_path: str) -> None:
@@ -250,9 +255,10 @@ class EnhancedTaintTracker:
         import_info = visitor.import_tracker.get_import_summary()
         self.all_imports[file_path] = import_info
 
-    def _convert_vulnerabilities(self, visitor: TaintAnalysisVisitor) -> List[Dict[str, Any]]:
-        """Convert visitor vulnerabilities to standard format."""
+    def _convert_vulnerabilities(self, visitor: TaintAnalysisVisitor) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Convert visitor vulnerabilities to standard format and extract call chains."""
         vulnerabilities = []
+        call_chains = []
 
         for vuln in visitor.found_vulnerabilities:
             source_info = vuln.get("source", {})
@@ -277,31 +283,66 @@ class EnhancedTaintTracker:
                     "description": f"Detected dangerous sink: {sink_info.get('name', 'Unknown')} at line {sink_info.get('line', 0)}",
                     "recommendation": "Review the arguments passed to this function to ensure they are properly validated and sanitized.",
                 }
+                vulnerabilities.append(vulnerability)
             else:
-                # Traditional source-to-sink detection
-                vulnerability = {
-                    "type": sink_info.get("vulnerability_type", "Unknown"),
-                    "severity": "High",  # Higher severity for confirmed taint flow
-                    "detection_method": "taint_flow",
+                # Traditional source-to-sink detection - don't add to vulnerabilities
+                # since we now have dedicated call_chains for this information
+                pass
+
+                # Extract call chain information separately
+                call_chain_entry = {
+                    "id": len(call_chains) + 1,  # Unique identifier
                     "source": {
-                        "name": source_info.get("name", "Unknown"),
+                        "type": source_info.get("name", "Unknown"),
                         "line": source_info.get("line", 0),
                         "file": visitor.file_path,
+                        "function": source_info.get("function_name", ""),
                     },
                     "sink": {
-                        "name": sink_info.get("name", "Unknown"),
+                        "type": sink_info.get("name", "Unknown"),
                         "line": sink_info.get("line", 0),
                         "file": visitor.file_path,
-                        "function_name": sink_info.get("function_name", ""),
+                        "function": sink_info.get("function_name", ""),
                         "full_name": sink_info.get("full_name", ""),
                     },
                     "tainted_variable": vuln.get("tainted_var", ""),
-                    "description": f"Tainted data from {source_info.get('name', 'source')} flows to {sink_info.get('name', 'sink')}",
+                    "vulnerability_type": sink_info.get("vulnerability_type", "Unknown"),
+                    "flow_description": f"{source_info.get('name', 'source')} -> {sink_info.get('name', 'sink')}",
                 }
 
-            vulnerabilities.append(vulnerability)
+                # Add detailed call chain information if available
+                if "taint_path" in vuln:
+                    taint_path = vuln["taint_path"]
+                    call_chain_entry.update({
+                        "path_analysis": {
+                            "path_length": taint_path.path_length,
+                            "confidence": taint_path.confidence,
+                            "intermediate_steps": len(taint_path.intermediate_nodes),
+                            "complexity": "low" if taint_path.path_length <= 3 else "medium" if taint_path.path_length <= 6 else "high"
+                        },
+                        "intermediate_nodes": [
+                            {
+                                "function": node.function_name,
+                                "line": node.line_number,
+                                "type": node.node_type,
+                                "variable": node.variable_name
+                            }
+                            for node in taint_path.intermediate_nodes
+                        ]
+                    })
+                else:
+                    # Default path analysis for simple flows
+                    call_chain_entry["path_analysis"] = {
+                        "path_length": 2,
+                        "confidence": 1.0,
+                        "intermediate_steps": 0,
+                        "complexity": "low"
+                    }
+                    call_chain_entry["intermediate_nodes"] = []
 
-        return vulnerabilities
+                call_chains.append(call_chain_entry)
+
+        return vulnerabilities, call_chains
 
     def _propagate_taint_across_functions(self) -> None:
         """Propagate taint information across function boundaries."""

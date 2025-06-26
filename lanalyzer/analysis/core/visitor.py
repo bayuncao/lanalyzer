@@ -13,6 +13,7 @@ from lanalyzer.logger import debug, error
 from ..import_tracker import ImportTracker
 from ..source_sink_classifier import SourceSinkClassifier
 from .ast_processor import ASTProcessor
+from ..flow.call_chain_tracker import CallChainTracker
 
 
 class TaintAnalysisVisitor(ast.NodeVisitor):
@@ -89,6 +90,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
         
         # Source/Sink classifier
         self.classifier = SourceSinkClassifier(self)
+
+        # Call chain tracker for enhanced taint analysis
+        self.call_chain_tracker = CallChainTracker(file_path, debug=debug_mode)
 
     def visit_Module(self, node: ast.Module) -> None:
         """Visit a module node and initialize analysis."""
@@ -265,21 +269,24 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
     def _handle_source(self, node: ast.Call, func_name: str, full_name: Optional[str], line_no: int, col_offset: int) -> None:
         """Handle detection of a taint source."""
         source_type = self.classifier.source_type(func_name, full_name)
-        
+
         source_info = {
             "name": source_type,
             "line": line_no,
             "col": col_offset,
             "node": node,
         }
-        
+
         self.found_sources.append(source_info)
-        
+
         if self.debug:
             debug(f"[VISITOR] Found source: {source_type} at line {line_no}")
-        
+
+        # Track source in call chain
+        source_node = self.call_chain_tracker.track_source(node, source_info)
+
         # Track taint propagation
-        self._track_assignment_taint(node, source_info)
+        self._track_assignment_taint(node, source_info, source_node)
 
     def _handle_sink(self, node: ast.Call, func_name: str, full_name: Optional[str], line_no: int, col_offset: int) -> None:
         """Handle detection of a taint sink."""
@@ -301,13 +308,16 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
         if self.debug:
             debug(f"[VISITOR] Found sink: {sink_type} at line {line_no}")
 
+        # Track sink in call chain
+        sink_node = self.call_chain_tracker.track_sink(node, sink_info)
+
         # Always report sink as potential vulnerability (sink-first approach)
         self._report_sink_vulnerability(node, sink_type, sink_info)
 
         # Also check sink arguments for tainted data (traditional approach)
-        self._check_sink_args(node, sink_type, sink_info)
+        self._check_sink_args(node, sink_type, sink_info, sink_node)
 
-    def _track_assignment_taint(self, node: ast.Call, source_info: Dict[str, Any]) -> None:
+    def _track_assignment_taint(self, node: ast.Call, source_info: Dict[str, Any], source_node=None) -> None:
         """Track taint propagation from source assignments."""
         # Find the assignment target if this call is part of an assignment
         parent = self.parent_map.get(node)
@@ -316,10 +326,20 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
                 if isinstance(target, ast.Name):
                     var_name = target.id
                     self.tainted[var_name] = source_info
+
+                    # Track assignment in call chain
+                    if source_node:
+                        self.call_chain_tracker.track_assignment(
+                            var_name,
+                            getattr(parent, 'lineno', 0),
+                            getattr(parent, 'col_offset', 0),
+                            source_node
+                        )
+
                     if self.debug:
                         debug(f"[VISITOR] Marked variable {var_name} as tainted from {source_info['name']}")
 
-    def _check_sink_args(self, node: ast.Call, sink_type: str, sink_info: Dict[str, Any]) -> None:
+    def _check_sink_args(self, node: ast.Call, sink_type: str, sink_info: Dict[str, Any], sink_node=None) -> None:
         """Check sink arguments for tainted data."""
         for i, arg in enumerate(node.args):
             if isinstance(arg, ast.Name) and arg.id in self.tainted:
@@ -331,6 +351,17 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
                     "arg_index": i,
                 }
                 self.found_vulnerabilities.append(vulnerability)
+
+                # Create detailed taint path if we have call chain tracking
+                if sink_node and hasattr(self, 'call_chain_tracker'):
+                    # Find the source node for this tainted variable
+                    source_nodes = [node for node in self.call_chain_tracker.current_chain
+                                  if node.node_type == "source"]
+                    if source_nodes:
+                        taint_path = self.call_chain_tracker.create_taint_path(
+                            source_nodes[0], sink_node, arg.id
+                        )
+                        vulnerability["taint_path"] = taint_path
 
                 if self.debug:
                     debug(f"[VISITOR] Found vulnerability: {arg.id} flows to {sink_type}")
