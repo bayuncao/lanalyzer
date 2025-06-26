@@ -134,6 +134,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
         # Check if this function has pending parameter taints from previous calls
         self._apply_pending_parameter_taints(node.name)
 
+        # Apply reverse inference: analyze sinks in this function to infer parameter sources
+        self._apply_reverse_inference(node.name, func_info)
+
 
 
 
@@ -166,6 +169,10 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
         self.call_locations.append(call_info)
 
 
+
+        # Check for data flow patterns (like in-place modification)
+        if func_name:
+            self._check_data_flow_patterns(node, func_name, full_name, line_no, col_offset)
 
         # Check for sources
         if func_name and self._is_source(func_name, full_name):
@@ -746,6 +753,214 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
 
         if self.debug:
             debug(f"[VISITOR] Created call chain from cross-function analysis: {source_info['name']} -> {sink_func_name}")
+
+    def _apply_reverse_inference(self, func_name: str, func_info: Dict[str, Any]) -> None:
+        """Apply reverse inference: analyze sinks to infer parameter sources."""
+        if self.debug:
+            debug(f"[VISITOR] Applying reverse inference for function {func_name}")
+
+        param_names = func_info["args"]
+        func_node = func_info["node"]
+        inferred_sources = []
+
+        # Walk through the function body to find all sink calls
+        for node in ast.walk(func_node):
+            if isinstance(node, ast.Call):
+                sink_func_name, sink_full_name = self.ast_processor.get_func_name_with_module(node.func)
+                if sink_func_name and self._is_sink(sink_func_name, sink_full_name):
+                    # Analyze each argument of the sink call
+                    for i, arg in enumerate(node.args):
+                        source_param = self._trace_to_function_parameter(arg, param_names)
+                        if source_param is not None:
+                            if self.debug:
+                                debug(f"[VISITOR] Reverse inference: sink {sink_func_name} uses source {source_param}")
+
+                            if source_param == "tainted_variable":
+                                # Already tainted variable, create call chain directly
+                                self._create_call_chain_for_tainted_variable(arg, node, sink_func_name, sink_full_name)
+                            elif source_param not in inferred_sources:
+                                # Infer this parameter as a potential NetworkInput source
+                                inferred_sources.append(source_param)
+                                self._mark_parameter_as_inferred_source(source_param, func_info, node)
+
+        if inferred_sources and self.debug:
+            debug(f"[VISITOR] Inferred {len(inferred_sources)} parameters as potential sources: {inferred_sources}")
+
+    def _trace_to_function_parameter(self, arg_node: ast.AST, param_names: List[str]) -> Optional[str]:
+        """Trace an argument back to a function parameter or tainted variable."""
+        return self._trace_to_source_recursive(arg_node, param_names, set())
+
+    def _trace_to_source_recursive(self, node: ast.AST, param_names: List[str], visited: set) -> Optional[str]:
+        """Recursively trace a node back to a source (parameter or tainted variable)."""
+        # Avoid infinite recursion
+        node_id = id(node)
+        if node_id in visited:
+            return None
+        visited.add(node_id)
+
+        if isinstance(node, ast.Name):
+            # Direct parameter usage: sink(param)
+            if node.id in param_names:
+                return node.id
+            # Check if this variable is tainted
+            elif node.id in self.tainted:
+                return "tainted_variable"
+
+        elif isinstance(node, ast.Attribute):
+            # Attribute access: sink(param.attr) or sink(var.attr)
+            base_source = self._trace_to_source_recursive(node.value, param_names, visited)
+            if base_source:
+                return base_source
+
+        elif isinstance(node, ast.Subscript):
+            # Subscript access: sink(param[key]) or sink(var[key])
+            base_source = self._trace_to_source_recursive(node.value, param_names, visited)
+            if base_source:
+                return base_source
+
+        elif isinstance(node, ast.Call):
+            # Method calls: sink(var.method()) or sink(func(var))
+            if isinstance(node.func, ast.Attribute):
+                # Method call: var.method()
+                base_source = self._trace_to_source_recursive(node.func.value, param_names, visited)
+                if base_source:
+                    return base_source
+
+            # Check arguments of function calls
+            for arg in node.args:
+                arg_source = self._trace_to_source_recursive(arg, param_names, visited)
+                if arg_source:
+                    return arg_source
+
+        return None
+
+    def _mark_parameter_as_inferred_source(self, param_name: str, func_info: Dict[str, Any], sink_node: ast.Call) -> None:
+        """Mark a function parameter as an inferred NetworkInput source."""
+        # Create source info for the inferred source
+        source_info = {
+            "name": "NetworkInput",
+            "line": func_info["line"],
+            "col": 0,
+            "node": func_info["node"],
+            "inferred": True,  # Mark as inferred rather than explicit
+        }
+
+        # Mark the parameter as tainted
+        self.tainted[param_name] = source_info
+
+        if self.debug:
+            debug(f"[VISITOR] Marked parameter {param_name} as inferred NetworkInput source")
+
+        # Re-check all sinks in this function now that the parameter is tainted
+        self._recheck_sinks_in_function(func_info["node"])
+
+    def _create_call_chain_for_tainted_variable(self, arg_node: ast.AST, sink_node: ast.Call,
+                                               sink_func_name: str, sink_full_name: str) -> None:
+        """Create a call chain for a sink that uses an already tainted variable."""
+        # Find the tainted variable name
+        tainted_var_name = self._get_variable_name_from_node(arg_node)
+        if not tainted_var_name or tainted_var_name not in self.tainted:
+            return
+
+        source_info = self.tainted[tainted_var_name]
+        line_no = getattr(sink_node, "lineno", 0)
+        col_offset = getattr(sink_node, "col_offset", 0)
+
+        # Create vulnerability info for this tainted flow
+        sink_type = self.classifier.sink_type(sink_func_name, sink_full_name)
+
+        vulnerability = {
+            "source": source_info,
+            "sink": {
+                "name": sink_type,
+                "line": line_no,
+                "col": col_offset,
+                "node": sink_node,
+                "function_name": sink_func_name,
+                "full_name": sink_full_name,
+                "vulnerability_type": "UnsafeDeserialization"
+            },
+            "tainted_var": self._describe_argument(arg_node),
+            "arg_index": 0,  # Simplified
+        }
+
+        self.found_vulnerabilities.append(vulnerability)
+
+        if self.debug:
+            debug(f"[VISITOR] Created call chain for tainted variable: {source_info['name']} -> {sink_func_name}")
+
+    def _get_variable_name_from_node(self, node: ast.AST) -> Optional[str]:
+        """Extract the base variable name from a complex expression."""
+        if isinstance(node, ast.Name):
+            return node.id
+        elif isinstance(node, ast.Attribute):
+            return self._get_variable_name_from_node(node.value)
+        elif isinstance(node, ast.Subscript):
+            return self._get_variable_name_from_node(node.value)
+        elif isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Attribute):
+                return self._get_variable_name_from_node(node.func.value)
+        return None
+
+    def _check_data_flow_patterns(self, node: ast.Call, func_name: str, full_name: Optional[str],
+                                  line_no: int, col_offset: int) -> None:
+        """Check for configured data flow patterns like in-place modification."""
+        if not hasattr(self.classifier, 'config') or not self.classifier.config:
+            return
+
+        data_flow_patterns = self.classifier.config.get('data_flow_patterns', {})
+
+        # Check in-place modification patterns
+        in_place_patterns = data_flow_patterns.get('in_place_modification', {}).get('patterns', [])
+
+        for pattern in in_place_patterns:
+            function_patterns = pattern.get('function_patterns', [])
+            modifies_parameter = pattern.get('modifies_parameter', 0)
+            source_type = pattern.get('source_type', 'NetworkInput')
+
+            # Check if this function matches any pattern
+            if self._matches_function_pattern(func_name, full_name, function_patterns):
+                if self.debug:
+                    debug(f"[VISITOR] Found in-place modification pattern: {func_name} modifies parameter {modifies_parameter}")
+
+                # Mark the specified parameter as tainted
+                if modifies_parameter < len(node.args):
+                    arg = node.args[modifies_parameter]
+                    if isinstance(arg, ast.Name):
+                        var_name = arg.id
+
+                        # Create source info for the in-place modification
+                        source_info = {
+                            "name": source_type,
+                            "line": line_no,
+                            "col": col_offset,
+                            "node": node,
+                            "pattern_matched": True,
+                        }
+
+                        self.tainted[var_name] = source_info
+
+                        if self.debug:
+                            debug(f"[VISITOR] Marked variable {var_name} as tainted from in-place modification {func_name}")
+
+    def _matches_function_pattern(self, func_name: str, full_name: Optional[str], patterns: List[str]) -> bool:
+        """Check if a function name matches any of the given patterns."""
+        import fnmatch
+
+        for pattern in patterns:
+            # Check against function name
+            if fnmatch.fnmatch(func_name, pattern):
+                return True
+
+            # Check against full name if available
+            if full_name and fnmatch.fnmatch(full_name, pattern):
+                return True
+
+            # Check if pattern is contained in full name
+            if full_name and pattern.replace('*', '') in full_name:
+                return True
+
+        return False
 
 
 
