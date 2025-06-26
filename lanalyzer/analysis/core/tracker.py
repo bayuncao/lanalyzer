@@ -51,6 +51,9 @@ class EnhancedTaintTracker:
         self.all_tainted_vars: Dict[str, Any] = {}
         self.global_call_graph: Dict[str, List[str]] = {}
         self.module_map: Dict[str, str] = {}
+
+        # Import information tracking
+        self.all_imports: Dict[str, Dict[str, Any]] = {}  # file_path -> import_info
         
         # Core components
         self.ast_processor = ASTProcessor(debug)
@@ -182,7 +185,7 @@ class EnhancedTaintTracker:
     def get_summary(self) -> Dict[str, Any]:
         """
         Get analysis summary statistics.
-        
+
         Returns:
             Dictionary containing analysis summary
         """
@@ -191,14 +194,41 @@ class EnhancedTaintTracker:
             "functions_found": len(self.all_functions),
             "tainted_variables": len(self.all_tainted_vars),
         }
-        
+
         if self.visitor:
             summary.update({
                 "sources_found": len(self.visitor.found_sources),
                 "sinks_found": len(self.visitor.found_sinks),
                 "vulnerabilities_found": len(self.visitor.found_vulnerabilities),
             })
-        
+
+        # Add import information summary
+        if self.all_imports:
+            all_stdlib_modules = set()
+            all_third_party_modules = set()
+            all_imported_functions = set()
+            all_imported_classes = set()
+            total_imports = 0
+
+            for file_path, import_info in self.all_imports.items():
+                all_stdlib_modules.update(import_info.get("standard_library_modules", []))
+                all_third_party_modules.update(import_info.get("third_party_modules", []))
+                all_imported_functions.update(import_info.get("imported_functions", []))
+                all_imported_classes.update(import_info.get("imported_classes", []))
+                total_imports += import_info.get("total_imports", 0)
+
+            summary["imports"] = {
+                "total_imports": total_imports,
+                "unique_stdlib_modules": len(all_stdlib_modules),
+                "unique_third_party_modules": len(all_third_party_modules),
+                "unique_functions": len(all_imported_functions),
+                "unique_classes": len(all_imported_classes),
+                "stdlib_modules": sorted(list(all_stdlib_modules)),
+                "third_party_modules": sorted(list(all_third_party_modules)),
+                "imported_functions": sorted(list(all_imported_functions)),
+                "imported_classes": sorted(list(all_imported_classes)),
+            }
+
         return summary
 
     def _update_global_state(self, visitor: TaintAnalysisVisitor, file_path: str) -> None:
@@ -216,33 +246,61 @@ class EnhancedTaintTracker:
         # Update module mapping
         self.module_map[os.path.basename(file_path).replace(".py", "")] = file_path
 
+        # Collect import information
+        import_info = visitor.import_tracker.get_import_summary()
+        self.all_imports[file_path] = import_info
+
     def _convert_vulnerabilities(self, visitor: TaintAnalysisVisitor) -> List[Dict[str, Any]]:
         """Convert visitor vulnerabilities to standard format."""
         vulnerabilities = []
-        
+
         for vuln in visitor.found_vulnerabilities:
             source_info = vuln.get("source", {})
             sink_info = vuln.get("sink", {})
-            
-            vulnerability = {
-                "type": sink_info.get("vulnerability_type", "Unknown"),
-                "severity": "High",  # Default severity
-                "source": {
-                    "name": source_info.get("name", "Unknown"),
-                    "line": source_info.get("line", 0),
-                    "file": visitor.file_path,
-                },
-                "sink": {
-                    "name": sink_info.get("name", "Unknown"),
-                    "line": sink_info.get("line", 0),
-                    "file": visitor.file_path,
-                },
-                "tainted_variable": vuln.get("tainted_var", ""),
-                "description": f"Tainted data from {source_info.get('name', 'source')} flows to {sink_info.get('name', 'sink')}",
-            }
-            
+            detection_type = vuln.get("detection_type", "traditional")
+
+            # Handle sink-only detection differently
+            if detection_type == "sink_only":
+                vulnerability = {
+                    "type": sink_info.get("vulnerability_type", "PotentialVulnerability"),
+                    "severity": "Medium",  # Lower severity for sink-only detection
+                    "detection_method": "sink_detection",
+                    "sink": {
+                        "name": sink_info.get("name", "Unknown"),
+                        "line": sink_info.get("line", 0),
+                        "file": visitor.file_path,
+                        "function_name": sink_info.get("function_name", ""),
+                        "full_name": sink_info.get("full_name", ""),
+                    },
+                    "argument": vuln.get("tainted_var", "unknown"),
+                    "argument_index": vuln.get("arg_index", -1),
+                    "description": f"Detected dangerous sink: {sink_info.get('name', 'Unknown')} at line {sink_info.get('line', 0)}",
+                    "recommendation": "Review the arguments passed to this function to ensure they are properly validated and sanitized.",
+                }
+            else:
+                # Traditional source-to-sink detection
+                vulnerability = {
+                    "type": sink_info.get("vulnerability_type", "Unknown"),
+                    "severity": "High",  # Higher severity for confirmed taint flow
+                    "detection_method": "taint_flow",
+                    "source": {
+                        "name": source_info.get("name", "Unknown"),
+                        "line": source_info.get("line", 0),
+                        "file": visitor.file_path,
+                    },
+                    "sink": {
+                        "name": sink_info.get("name", "Unknown"),
+                        "line": sink_info.get("line", 0),
+                        "file": visitor.file_path,
+                        "function_name": sink_info.get("function_name", ""),
+                        "full_name": sink_info.get("full_name", ""),
+                    },
+                    "tainted_variable": vuln.get("tainted_var", ""),
+                    "description": f"Tainted data from {source_info.get('name', 'source')} flows to {sink_info.get('name', 'sink')}",
+                }
+
             vulnerabilities.append(vulnerability)
-        
+
         return vulnerabilities
 
     def _propagate_taint_across_functions(self) -> None:

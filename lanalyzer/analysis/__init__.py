@@ -145,7 +145,11 @@ def analyze_file(
 
     # Write results to output file if specified
     if output_path:
-        result_data = {"vulnerabilities": vulnerabilities, "summary": summary}
+        result_data = {
+            "vulnerabilities": vulnerabilities,
+            "summary": summary,
+            "imports": tracker.all_imports  # Add detailed import information
+        }
 
         with open(output_path, "w") as f:
             if pretty:
