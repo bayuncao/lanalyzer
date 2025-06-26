@@ -287,7 +287,6 @@ class EnhancedTaintTracker:
             else:
                 # Traditional source-to-sink detection - don't add to vulnerabilities
                 # since we now have dedicated call_chains for this information
-                pass
 
                 # Extract call chain information separately
                 call_chain_entry = {
