@@ -121,7 +121,7 @@ class EnhancedTaintTracker:
             )
             
             # Configure visitor with sources and sinks
-            visitor.classifier.configure(self.sources, self.sinks)
+            visitor.classifier.configure(self.sources, self.sinks, self.config)
             
             # Visit the AST
             visitor.visit(tree)

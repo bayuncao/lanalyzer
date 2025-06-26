@@ -80,10 +80,18 @@
     "follow_imports": true
   },
   "taint_propagation": {
-    "special_variables": {
-      "object_tensor": {
-        "from": ["torch.distributed.recv", "recv_multipart"],
-        "to": ["numpy", "tobytes", "pickle.loads", "cloudpickle.loads"]
+    "parameter_tainting": {
+      "torch.distributed.recv": {
+        "taints_parameters": [0],
+        "description": "torch.distributed.recv modifies the first parameter (tensor) in-place with received data"
+      },
+      "recv": {
+        "taints_parameters": [0],
+        "description": "recv functions modify the first parameter in-place with received data"
+      },
+      "dist.recv": {
+        "taints_parameters": [0],
+        "description": "distributed recv modifies the first parameter in-place with received data"
       }
     }
   }
