@@ -74,6 +74,11 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
         self.current_function: Optional[Any] = None
         self.call_locations: List[Any] = []
         self.var_assignments: Dict[str, List[Dict[str, Any]]] = {}
+
+        # Cross-function analysis for parameter tracking
+        self.function_calls_with_tainted_args: Dict[str, List[Dict[str, Any]]] = {}
+        self.function_definitions: Dict[str, Dict[str, Any]] = {}
+        self.pending_parameter_taints: List[Dict[str, Any]] = []
         
         # Data structure tracking
         self.data_structures: Dict[str, Any] = {}
@@ -118,10 +123,16 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
             "line": getattr(node, "lineno", 0),
             "args": [arg.arg for arg in node.args.args],
         }
-        
+
         self.functions[node.name] = func_info
+        # Store function definition for cross-function analysis
+        self.function_definitions[node.name] = func_info
+
         previous_function = self.current_function
         self.current_function = func_info
+
+        # Check if this function has pending parameter taints from previous calls
+        self._apply_pending_parameter_taints(node.name)
         
         # Visit function body
         self.generic_visit(node)
@@ -162,6 +173,10 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
         # This should be checked regardless of whether the function is also a source
         if func_name and self._has_parameter_tainting(func_name, full_name):
             self._handle_parameter_tainting(node, func_name, full_name, line_no, col_offset)
+
+        # Cross-function analysis: track calls with tainted arguments
+        if func_name:
+            self._track_function_call_with_tainted_args(node, func_name, full_name, line_no, col_offset)
 
         # Continue visiting child nodes
         self.generic_visit(node)
@@ -647,3 +662,135 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
         """Handle from-import statements."""
         self.import_tracker.visit_ImportFrom(node)
         self.generic_visit(node)
+
+    # Cross-function analysis methods
+    def _track_function_call_with_tainted_args(self, node: ast.Call, func_name: str, full_name: Optional[str], line_no: int, col_offset: int) -> None:
+        """Track function calls that have tainted arguments for cross-function analysis."""
+        tainted_args = []
+
+        # Check each argument for taint
+        for i, arg in enumerate(node.args):
+            taint_info = self._check_expression_taint(arg)
+            if taint_info:
+                tainted_args.append({
+                    "index": i,
+                    "taint_info": taint_info,
+                    "arg_node": arg
+                })
+
+        # If we found tainted arguments, record this call
+        if tainted_args:
+            call_info = {
+                "function_name": func_name,
+                "full_name": full_name,
+                "line": line_no,
+                "col": col_offset,
+                "tainted_args": tainted_args,
+                "call_node": node
+            }
+
+            if func_name not in self.function_calls_with_tainted_args:
+                self.function_calls_with_tainted_args[func_name] = []
+            self.function_calls_with_tainted_args[func_name].append(call_info)
+
+            if self.debug:
+                debug(f"[VISITOR] Tracked call to {func_name} with {len(tainted_args)} tainted arguments at line {line_no}")
+
+            # If we haven't seen the function definition yet, store as pending
+            if func_name not in self.function_definitions:
+                self.pending_parameter_taints.append({
+                    "function_name": func_name,
+                    "call_info": call_info
+                })
+            else:
+                # Apply parameter taints immediately
+                self._apply_parameter_taints_for_function(func_name, call_info)
+
+    def _apply_pending_parameter_taints(self, func_name: str) -> None:
+        """Apply pending parameter taints when a function definition is encountered."""
+        # Find and apply any pending taints for this function
+        pending_to_remove = []
+        for i, pending in enumerate(self.pending_parameter_taints):
+            if pending["function_name"] == func_name:
+                self._apply_parameter_taints_for_function(func_name, pending["call_info"])
+                pending_to_remove.append(i)
+
+        # Remove processed pending taints
+        for i in reversed(pending_to_remove):
+            del self.pending_parameter_taints[i]
+
+    def _apply_parameter_taints_for_function(self, func_name: str, call_info: Dict[str, Any]) -> None:
+        """Apply parameter taints for a specific function call."""
+        if func_name not in self.function_definitions:
+            return
+
+        func_def = self.function_definitions[func_name]
+        param_names = func_def["args"]
+        func_node = func_def["node"]
+
+        # Apply taint to each tainted parameter
+        for tainted_arg in call_info["tainted_args"]:
+            param_index = tainted_arg["index"]
+            if param_index < len(param_names):
+                param_name = param_names[param_index]
+                taint_info = tainted_arg["taint_info"]
+
+                # Mark the parameter as tainted
+                self.tainted[param_name] = taint_info
+
+                if self.debug:
+                    debug(f"[VISITOR] Marked parameter {param_name} of function {func_name} as tainted from cross-function analysis")
+
+        # Re-check all sinks in this function now that parameters are tainted
+        self._recheck_sinks_in_function(func_node)
+
+    def _recheck_sinks_in_function(self, func_node: ast.FunctionDef) -> None:
+        """Re-check all sinks in a function after parameters have been tainted."""
+        if self.debug:
+            debug(f"[VISITOR] Re-checking sinks in function {func_node.name} after parameter tainting")
+
+        # Walk through the function body to find all Call nodes
+        for node in ast.walk(func_node):
+            if isinstance(node, ast.Call):
+                func_name, full_name = self.ast_processor.get_func_name_with_module(node.func)
+                if func_name and self._is_sink(func_name, full_name):
+                    line_no = getattr(node, "lineno", 0)
+                    col_offset = getattr(node, "col_offset", 0)
+
+                    # Check if any arguments are now tainted
+                    for i, arg in enumerate(node.args):
+                        taint_info = self._check_expression_taint(arg)
+                        if taint_info:
+                            if self.debug:
+                                debug(f"[VISITOR] Found tainted argument in {func_name} at line {line_no} after cross-function analysis")
+
+                            # Create a call chain for this tainted flow
+                            self._create_call_chain_from_cross_function_analysis(taint_info, node, func_name, full_name, line_no, col_offset, i)
+                            break
+
+    def _create_call_chain_from_cross_function_analysis(self, source_info: Dict[str, Any], sink_node: ast.Call,
+                                                       sink_func_name: str, sink_full_name: str,
+                                                       line_no: int, col_offset: int, arg_index: int) -> None:
+        """Create a call chain from cross-function analysis."""
+        # Create vulnerability info for this cross-function flow
+        sink_type = self.classifier.sink_type(sink_func_name, sink_full_name)
+
+        vulnerability = {
+            "source": source_info,
+            "sink": {
+                "name": sink_type,
+                "line": line_no,
+                "col": col_offset,
+                "node": sink_node,
+                "function_name": sink_func_name,
+                "full_name": sink_full_name,
+                "vulnerability_type": "UnsafeDeserialization"
+            },
+            "tainted_var": self._describe_argument(sink_node.args[arg_index]),
+            "arg_index": arg_index,
+        }
+
+        self.found_vulnerabilities.append(vulnerability)
+
+        if self.debug:
+            debug(f"[VISITOR] Created call chain from cross-function analysis: {source_info['name']} -> {sink_func_name}")
