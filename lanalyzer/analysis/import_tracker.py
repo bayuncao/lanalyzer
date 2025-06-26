@@ -13,6 +13,7 @@ import ast
 from typing import Dict, Set, Optional, List, Any
 
 from lanalyzer.logger import get_logger
+from lanalyzer.utils.stdlib_detector import get_stdlib_detector
 
 logger = get_logger("lanalyzer.analysis.import_tracker")
 
@@ -44,20 +45,8 @@ class ImportTracker(ast.NodeVisitor):
         self.standard_library_imports: Set[str] = set()
         self.third_party_imports: Set[str] = set()
 
-        # Predefined standard library modules (common in Python 3.x)
-        self.stdlib_modules = {
-            'os', 'sys', 'json', 'pickle', 'subprocess', 'socket', 'urllib', 'http',
-            'ast', 're', 'collections', 'itertools', 'functools', 'operator',
-            'datetime', 'time', 'random', 'math', 'statistics', 'decimal',
-            'pathlib', 'glob', 'shutil', 'tempfile', 'zipfile', 'tarfile',
-            'csv', 'xml', 'html', 'email', 'base64', 'hashlib', 'hmac',
-            'sqlite3', 'logging', 'argparse', 'configparser', 'unittest',
-            'threading', 'multiprocessing', 'asyncio', 'concurrent',
-            'io', 'struct', 'array', 'weakref', 'copy', 'pprint',
-            'warnings', 'contextlib', 'abc', 'typing', 'dataclasses',
-            'enum', 'inspect', 'importlib', 'pkgutil', 'modulefinder',
-            'platform', 'ctypes', 'mmap', 'select', 'signal', 'errno',
-        }
+        # Initialize standard library detector
+        self.stdlib_detector = get_stdlib_detector(debug=self.debug)
 
     # --- ast.NodeVisitor overrides -------------------------------------------------
 
@@ -71,7 +60,7 @@ class ImportTracker(ast.NodeVisitor):
                     )
                 )
 
-            # Original logic (for backward compatibility)
+            # Record import information
             if name.asname:
                 # import xxx as alias
                 self.import_aliases[name.asname] = name.name
@@ -84,7 +73,7 @@ class ImportTracker(ast.NodeVisitor):
                 if self.debug:
                     logger.debug(f"  Direct import recorded: {name.name}")
 
-            # New detailed information collection
+            # Record detailed information
             self._record_detailed_import(
                 import_type="import",
                 module_name=name.name,
@@ -192,33 +181,7 @@ class ImportTracker(ast.NodeVisitor):
 
     def _is_standard_library(self, module_name: str) -> bool:
         """Judge whether a module is a Python standard library."""
-        if not module_name:
-            return False
-
-        # Check the predefined standard library list
-        if module_name in self.stdlib_modules:
-            return True
-
-        # Check some common standard library prefixes
-        stdlib_prefixes = ['urllib', 'xml', 'html', 'email', 'http', 'concurrent']
-        for prefix in stdlib_prefixes:
-            if module_name.startswith(prefix):
-                return True
-
-        # Try to check via importlib (may have performance impact, but more accurate)
-        try:
-            import importlib.util
-            spec = importlib.util.find_spec(module_name)
-            if spec and spec.origin:
-                # Standard libraries are usually in the Python installation directory
-                import sys
-                python_path = sys.executable
-                stdlib_path = python_path.replace('python', '').replace('Python', '')
-                return stdlib_path in spec.origin
-        except (ImportError, AttributeError, ValueError):
-            pass
-
-        return False
+        return self.stdlib_detector.is_standard_library(module_name)
 
     def get_import_summary(self) -> Dict[str, Any]:
         """Get summary of import information."""
