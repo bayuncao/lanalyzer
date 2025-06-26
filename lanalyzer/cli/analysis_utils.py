@@ -14,7 +14,7 @@ from lanalyzer.logger import info, warning, error
 
 def analyze_files_with_logging(
     tracker: EnhancedTaintTracker, files: List[str], debug: bool = False
-) -> List[Dict[str, Any]]:
+) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """
     Analyze multiple files with detailed logging.
 
@@ -24,9 +24,10 @@ def analyze_files_with_logging(
         debug: Whether to enable debug mode
 
     Returns:
-        List of found vulnerabilities
+        Tuple of (vulnerabilities, call_chains)
     """
     all_vulnerabilities = []
+    all_call_chains = []
     total_files = len(files)
     start_time = time.time()
 
@@ -77,12 +78,13 @@ def analyze_files_with_logging(
             info(f"{progress} Starting AST analysis...")
 
             try:
-                file_vulnerabilities = tracker.analyze_file(file_path)
+                file_vulnerabilities, file_call_chains = tracker.analyze_file(file_path)
             except Exception as e:
                 error(f"{progress} Exception during analysis: {e}")
                 if debug:
                     error(traceback.format_exc())
                 file_vulnerabilities = []
+                file_call_chains = []
 
             file_end_time = time.time()
             analysis_duration = file_end_time - file_start_time
@@ -94,6 +96,9 @@ def analyze_files_with_logging(
             info(f"{progress} AST analysis time: {ast_analysis_time:.2f} seconds")
             info(
                 f"{progress} Number of vulnerabilities found: {len(file_vulnerabilities)}"
+            )
+            info(
+                f"{progress} Number of call chains found: {len(file_call_chains)}"
             )
 
             sources_count = 0
@@ -191,6 +196,7 @@ def analyze_files_with_logging(
                         )
 
             all_vulnerabilities.extend(file_vulnerabilities)
+            all_call_chains.extend(file_call_chains)
 
         except Exception as e:
             error(f"{progress} Error analyzing file: {e}")
@@ -246,7 +252,7 @@ def analyze_files_with_logging(
         f"[Analysis] End time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     )
 
-    return all_vulnerabilities
+    return all_vulnerabilities, all_call_chains
 
 
 def print_summary(

@@ -34,10 +34,11 @@ from lanalyzer.analysis.models import (
     DefUseChain,
     PathNode,
 )
-from lanalyzer.analysis.flow import (
-    FlowAnalyzer,
-    CallChainBuilder,
-)
+# Avoid circular imports
+# from lanalyzer.analysis.flow import (
+#     FlowAnalyzer,
+#     CallChainBuilder,
+# )
 from lanalyzer.analysis.utils import (
     AnalysisHelpers,
     DescriptionFormatter,
@@ -74,17 +75,25 @@ except ImportError:
             self.builder = builder
             self.helpers = AnalysisHelpers(builder.debug if hasattr(builder, 'debug') else False)
 
-try:
-    from lanalyzer.analysis.control_flow_analyzer import ControlFlowAnalyzer
-except ImportError:
-    # Use new FlowAnalyzer as compatibility wrapper
-    ControlFlowAnalyzer = FlowAnalyzer
+# Temporarily disable these imports to avoid circular dependency issues
+# try:
+#     from lanalyzer.analysis.control_flow_analyzer import ControlFlowAnalyzer
+# except ImportError:
+#     # Use new FlowAnalyzer as compatibility wrapper
+#     ControlFlowAnalyzer = FlowAnalyzer
 
-try:
-    from lanalyzer.analysis.data_flow_analyzer import DataFlowAnalyzer
-except ImportError:
-    # Use new FlowAnalyzer as compatibility wrapper
-    DataFlowAnalyzer = FlowAnalyzer
+# try:
+#     from lanalyzer.analysis.data_flow_analyzer import DataFlowAnalyzer
+# except ImportError:
+#     # Use new FlowAnalyzer as compatibility wrapper
+#     DataFlowAnalyzer = FlowAnalyzer
+
+# Create dummy classes for now
+class ControlFlowAnalyzer:
+    pass
+
+class DataFlowAnalyzer:
+    pass
 
 from lanalyzer.logger import info, error
 
@@ -138,7 +147,7 @@ def analyze_file(
         vulnerabilities = tracker.analyze_multiple_files(file_paths)
     else:
         # Single file analysis
-        vulnerabilities = tracker.analyze_file(target_path)
+        vulnerabilities, _ = tracker.analyze_file(target_path)  # Ignore call_chains for now
 
     # Get summary (use new method name)
     summary = tracker.get_summary()
@@ -174,11 +183,15 @@ def analyze_file(
 
 
 # Legacy call chain builder for backward compatibility
-try:
-    from lanalyzer.analysis.call_chain_builder import CallChainBuilder as LegacyCallChainBuilder
-except ImportError:
-    # Use new CallChainBuilder if legacy doesn't exist
-    LegacyCallChainBuilder = CallChainBuilder
+# try:
+#     from lanalyzer.analysis.call_chain_builder import CallChainBuilder as LegacyCallChainBuilder
+# except ImportError:
+#     # Use new CallChainBuilder if legacy doesn't exist
+#     LegacyCallChainBuilder = CallChainBuilder
+
+# Create dummy class for now
+class LegacyCallChainBuilder:
+    pass
 
 # Provide alias for old function name for backward compatibility
 enhanced_analyze_file = analyze_file
@@ -200,9 +213,9 @@ __all__ = [
     "DefUseChain",
     "PathNode",
 
-    # Flow analysis
-    "FlowAnalyzer",
-    "CallChainBuilder",
+    # Flow analysis (commented out to avoid circular imports)
+    # "FlowAnalyzer",
+    # "CallChainBuilder",
 
     # Utilities
     "AnalysisHelpers",

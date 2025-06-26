@@ -72,7 +72,7 @@ class AnalysisMCPHandler(BaseMCPHandler):
                 tracker = EnhancedTaintTracker(config, debug=self.debug)
 
                 # Analyze the file
-                vulnerabilities = tracker.analyze_file(temp_file_path)
+                vulnerabilities, _ = tracker.analyze_file(temp_file_path)  # Ignore call_chains for now
 
                 # Convert vulnerabilities to response format
                 vuln_info_list = self._convert_vulnerabilities(
