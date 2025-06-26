@@ -133,6 +133,8 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
 
         # Check if this function has pending parameter taints from previous calls
         self._apply_pending_parameter_taints(node.name)
+
+
         
         # Visit function body
         self.generic_visit(node)
@@ -169,10 +171,7 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
         if func_name and self._is_sink(func_name, full_name):
             self._handle_sink(node, func_name, full_name, line_no, col_offset)
 
-        # Check for parameter tainting (functions that modify parameters in-place)
-        # This should be checked regardless of whether the function is also a source
-        if func_name and self._has_parameter_tainting(func_name, full_name):
-            self._handle_parameter_tainting(node, func_name, full_name, line_no, col_offset)
+
 
         # Cross-function analysis: track calls with tainted arguments
         if func_name:
@@ -286,22 +285,7 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
         """Check if function is a taint sink."""
         return self.classifier.is_sink(func_name, full_name)
 
-    def _has_parameter_tainting(self, func_name: str, full_name: Optional[str] = None) -> bool:
-        """Check if function has parameter tainting configuration."""
-        if not hasattr(self.classifier, 'config') or not self.classifier.config:
-            if self.debug:
-                debug(f"[VISITOR] No classifier config available for parameter tainting check")
-            return False
 
-        param_tainting = self.classifier.config.get('taint_propagation', {}).get('parameter_tainting', {})
-        has_tainting = func_name in param_tainting or (full_name and full_name in param_tainting)
-
-        if self.debug:
-            debug(f"[VISITOR] Parameter tainting check for {func_name} (full: {full_name}): {has_tainting}")
-            if param_tainting:
-                debug(f"[VISITOR] Available parameter tainting configs: {list(param_tainting.keys())}")
-
-        return has_tainting
 
     def _handle_source(self, node: ast.Call, func_name: str, full_name: Optional[str], line_no: int, col_offset: int) -> None:
         """Handle detection of a taint source."""
@@ -428,43 +412,7 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
                 if self.debug:
                     debug(f"[VISITOR] Found vulnerability: {tainted_var} flows to {sink_type}")
 
-    def _handle_parameter_tainting(self, node: ast.Call, func_name: str, full_name: Optional[str], line_no: int, col_offset: int) -> None:
-        """Handle functions that taint their parameters in-place."""
-        if not hasattr(self.classifier, 'config') or not self.classifier.config:
-            return
 
-        param_tainting = self.classifier.config.get('taint_propagation', {}).get('parameter_tainting', {})
-
-        # Get the tainting configuration for this function
-        config_key = full_name if full_name and full_name in param_tainting else func_name
-        if config_key not in param_tainting:
-            return
-
-        tainting_config = param_tainting[config_key]
-        taints_parameters = tainting_config.get('taints_parameters', [])
-
-        if self.debug:
-            debug(f"[VISITOR] Processing parameter tainting for {config_key} at line {line_no}")
-
-        # Create source info for this tainting operation
-        source_info = {
-            "name": "NetworkInput",  # Assume network input for distributed functions
-            "line": line_no,
-            "col": col_offset,
-            "node": node,
-        }
-
-        # Taint the specified parameters
-        for param_index in taints_parameters:
-            if param_index < len(node.args):
-                arg = node.args[param_index]
-                if isinstance(arg, ast.Name):
-                    var_name = arg.id
-                    self.tainted[var_name] = source_info
-                    if self.debug:
-                        debug(f"[VISITOR] Marked parameter {var_name} as tainted from {config_key}")
-                elif self.debug:
-                    debug(f"[VISITOR] Parameter {param_index} is not a simple variable name, skipping tainting")
 
     def _report_sink_vulnerability(self, node: ast.Call, sink_type: str, sink_info: Dict[str, Any]) -> None:
         """Report a sink as a potential vulnerability (sink-first approach)."""
@@ -794,3 +742,5 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
 
         if self.debug:
             debug(f"[VISITOR] Created call chain from cross-function analysis: {source_info['name']} -> {sink_func_name}")
+
+

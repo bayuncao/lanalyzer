@@ -78,29 +78,5 @@
     ],
     "max_call_depth": 10,
     "follow_imports": true
-  },
-  "taint_propagation": {
-    "parameter_tainting": {
-      "torch.distributed.recv": {
-        "taints_parameters": [0],
-        "description": "torch.distributed.recv modifies the first parameter (tensor) in-place with received data"
-      },
-      "recv": {
-        "taints_parameters": [0],
-        "description": "recv functions modify the first parameter in-place with received data"
-      },
-      "dist.recv": {
-        "taints_parameters": [0],
-        "description": "distributed recv modifies the first parameter in-place with received data"
-      },
-      "torch.distributed.broadcast_object_list": {
-        "taints_parameters": [0],
-        "description": "torch.distributed.broadcast_object_list modifies the first parameter (object_list) in-place with received data"
-      },
-      "broadcast_object_list": {
-        "taints_parameters": [0],
-        "description": "broadcast_object_list modifies the first parameter (object_list) in-place with received data"
-      }
-    }
   }
 }

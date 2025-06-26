@@ -20,14 +20,12 @@ class SourceSinkClassifier:
         # 用于新架构的配置存储
         self._sources = []
         self._sinks = []
-        # 配置存储
-        self.config = None
 
-    def configure(self, sources, sinks, config=None):
+
+    def configure(self, sources, sinks):
         """配置源和汇的定义（新架构使用）"""
         self._sources = sources or []
         self._sinks = sinks or []
-        self.config = config
         # 同时更新 visitor 的属性以保持兼容性
         if hasattr(self.visitor, 'sources'):
             self.visitor.sources = self._sources
