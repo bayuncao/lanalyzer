@@ -73,10 +73,22 @@ class SourceSinkClassifier:
             full_name = None
         for item in config_list:
             for pattern in item.get("patterns", []):
-                if pattern == func_name or (full_name and pattern == full_name):
+                # Normalize pattern by removing trailing parentheses for function calls
+                normalized_pattern = pattern.rstrip("(")
+
+                # Direct match with normalized pattern
+                if normalized_pattern == func_name or (full_name and normalized_pattern == full_name):
                     return True
+
+                # Check if pattern is contained in full_name
                 if pattern in (full_name or ""):
                     return True
+
+                # Check if normalized pattern is contained in full_name
+                if normalized_pattern in (full_name or ""):
+                    return True
+
+                # Wildcard matching
                 if "*" in pattern:
                     regex_pattern = pattern.replace(".", "\\.").replace("*", ".*")
                     if re.match(regex_pattern, func_name) or (
@@ -91,12 +103,26 @@ class SourceSinkClassifier:
             full_name = None
         for item in config_list:
             for pattern in item.get("patterns", []):
-                if pattern == func_name or (full_name and pattern in full_name):
+                # Normalize pattern by removing trailing parentheses for function calls
+                normalized_pattern = pattern.rstrip("(")
+
+                # Direct match with normalized pattern
+                if normalized_pattern == func_name or (full_name and normalized_pattern == full_name):
                     return item.get("name", "Unknown")
+
+                # Check if pattern is contained in full_name
+                if pattern in (full_name or ""):
+                    return item.get("name", "Unknown")
+
+                # Check if normalized pattern is contained in full_name
+                if normalized_pattern in (full_name or ""):
+                    return item.get("name", "Unknown")
+
+                # Wildcard matching
                 if "*" in pattern:
                     regex_pattern = pattern.replace(".", "\\.").replace("*", ".*")
                     if re.match(regex_pattern, func_name) or (
                         full_name and re.match(regex_pattern, full_name)
                     ):
                         return item.get("name", "Unknown")
-        return "Unknown" 
+        return "Unknown"

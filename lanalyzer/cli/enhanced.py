@@ -7,6 +7,7 @@ complete propagation and call chains.
 """
 
 import sys
+import os
 import argparse
 from typing import List, Optional
 
@@ -301,11 +302,35 @@ def run_analysis(args) -> int:
         tracker = EnhancedTaintTracker.from_config(config, debug_mode)
         vulnerabilities = analyze_files_with_logging(tracker, target_files, debug_mode)
 
-        if output_path:
-            save_output(vulnerabilities, output_path, pretty, debug_mode)
-
         # Print a comprehensive summary
         summary = tracker.get_summary()
+
+        if output_path:
+            # Create enhanced result data with imports information
+            result_data = {
+                "vulnerabilities": vulnerabilities,
+                "summary": summary,
+                "imports": tracker.all_imports  # Add detailed import information
+            }
+
+            # Save enhanced output instead of just vulnerabilities
+            try:
+                import json
+                output_dir = os.path.dirname(output_path)
+                if output_dir and not os.path.exists(output_dir):
+                    os.makedirs(output_dir)
+
+                with open(output_path, "w", encoding="utf-8") as f:
+                    if pretty:
+                        json.dump(result_data, f, indent=2)
+                    else:
+                        json.dump(result_data, f)
+
+                if debug_mode:
+                    info(f"Saved enhanced output to {output_path}")
+            except Exception as e:
+                error(f"Error saving output to {output_path}: {e}")
+
         print_summary(summary, vulnerabilities)
 
     except Exception as e:
