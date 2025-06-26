@@ -341,13 +341,38 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
 
     def _check_sink_args(self, node: ast.Call, sink_type: str, sink_info: Dict[str, Any], sink_node=None) -> None:
         """Check sink arguments for tainted data."""
+        if self.debug:
+            debug(f"[VISITOR] Checking sink args for {sink_type} at line {sink_info.get('line', 0)}")
+
         for i, arg in enumerate(node.args):
+            taint_info = None
+            tainted_var = None
+
+            if self.debug:
+                debug(f"[VISITOR] Checking arg {i}: {type(arg).__name__}")
+
             if isinstance(arg, ast.Name) and arg.id in self.tainted:
+                # Simple variable reference
+                taint_info = self.tainted[arg.id]
+                tainted_var = arg.id
+                if self.debug:
+                    debug(f"[VISITOR] Found tainted variable: {arg.id}")
+            else:
+                # Complex expression - check for taint
+                taint_info = self._check_expression_taint(arg)
+                if taint_info:
+                    tainted_var = self._describe_argument(arg)
+                    if self.debug:
+                        debug(f"[VISITOR] Found tainted complex expression: {tainted_var}")
+                elif self.debug:
+                    debug(f"[VISITOR] No taint found in complex expression")
+
+            if taint_info:
                 # Found tainted data flowing to sink
                 vulnerability = {
-                    "source": self.tainted[arg.id],
+                    "source": taint_info,
                     "sink": sink_info,
-                    "tainted_var": arg.id,
+                    "tainted_var": tainted_var,
                     "arg_index": i,
                 }
                 self.found_vulnerabilities.append(vulnerability)
@@ -359,12 +384,12 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
                                   if node.node_type == "source"]
                     if source_nodes:
                         taint_path = self.call_chain_tracker.create_taint_path(
-                            source_nodes[0], sink_node, arg.id
+                            source_nodes[0], sink_node, tainted_var
                         )
                         vulnerability["taint_path"] = taint_path
 
                 if self.debug:
-                    debug(f"[VISITOR] Found vulnerability: {arg.id} flows to {sink_type}")
+                    debug(f"[VISITOR] Found vulnerability: {tainted_var} flows to {sink_type}")
 
     def _report_sink_vulnerability(self, node: ast.Call, sink_type: str, sink_info: Dict[str, Any]) -> None:
         """Report a sink as a potential vulnerability (sink-first approach)."""
@@ -480,7 +505,12 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
                         "col": getattr(expr, "col_offset", 0),
                         "node": expr,
                     }
-            # Check if the base value is tainted
+            elif isinstance(expr.value, ast.Name):
+                # Check if the base variable is tainted (e.g., buffer[i])
+                base_taint = self.tainted.get(expr.value.id)
+                if base_taint:
+                    return base_taint
+            # Check if the base value is tainted (recursive check)
             return self._check_expression_taint(expr.value)
 
         elif isinstance(expr, ast.Attribute):
@@ -494,8 +524,22 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
                     "col": getattr(expr, "col_offset", 0),
                     "node": expr,
                 }
-            # Check if the base value is tainted
-            return self._check_expression_taint(expr.value)
+            # Check if the base value is tainted (e.g., buffer.cpu() where buffer is tainted)
+            base_taint = self._check_expression_taint(expr.value)
+            if base_taint:
+                return base_taint
+
+        elif isinstance(expr, ast.Call):
+            # Check if function call arguments are tainted
+            # This handles cases like bytes(tainted_data)
+            for arg in expr.args:
+                arg_taint = self._check_expression_taint(arg)
+                if arg_taint:
+                    return arg_taint
+            # Check if the function itself is tainted (e.g., tainted_func())
+            func_taint = self._check_expression_taint(expr.func)
+            if func_taint:
+                return func_taint
 
         elif isinstance(expr, ast.IfExp):
             # Conditional expression: check both branches
