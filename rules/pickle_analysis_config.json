@@ -78,5 +78,17 @@
     ],
     "max_call_depth": 10,
     "follow_imports": true
+  },
+  "data_flow_patterns": {
+    "in_place_modification": {
+      "description": "Functions that modify their arguments in-place with network data",
+      "patterns": [
+        {
+          "function_patterns": ["*recv*", "*broadcast*", "*gather*", "*scatter*"],
+          "modifies_parameter": 0,
+          "source_type": "NetworkInput"
+        }
+      ]
+    }
   }
 }
