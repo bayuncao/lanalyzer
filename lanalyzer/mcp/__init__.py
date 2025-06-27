@@ -44,9 +44,11 @@ __all__ = [
     # tools
     "analyze_code",
     "analyze_file",
+    "analyze_path",
     "get_config",
     "validate_config",
     "create_config",
+    "explain_vulnerabilities",
     # handlers
     "LanalyzerMCPHandler",
     # models
