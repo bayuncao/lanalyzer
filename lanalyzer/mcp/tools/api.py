@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 """
 Tool implementations for MCP server.
+
+This module provides the actual tool implementations that are exposed
+through the MCP server interface.
 """
 
 import logging
@@ -13,6 +16,7 @@ from ..models import (
     FileAnalysisRequest,
     ConfigurationRequest,
 )
+from ..exceptions import MCPToolError, MCPValidationError, handle_exception
 
 
 # Tool implementations
@@ -59,40 +63,60 @@ async def analyze_code(
             "config_path", actual_config_path
         )  # This will re-assign if "config_path" is a key
 
-    # If actual_code is still not a string after potential extraction, it's an error.
-    if not isinstance(actual_code, str):
-        error_msg = "Cannot extract a valid code parameter from the request"
+    # Validate extracted parameters
+    try:
+        if not isinstance(actual_code, str):
+            raise MCPValidationError(
+                "Code parameter must be a string",
+                field_errors=[{"field": "code", "error": "Invalid type"}]
+            )
+        if not isinstance(actual_file_path, str):
+            raise MCPValidationError(
+                "File path parameter must be a string",
+                field_errors=[{"field": "file_path", "error": "Invalid type"}]
+            )
+        if not isinstance(actual_config_path, str):
+            raise MCPValidationError(
+                "Config path parameter must be a string",
+                field_errors=[{"field": "config_path", "error": "Invalid type"}]
+            )
+    except MCPValidationError as e:
+        error_info = e.to_dict()
         if ctx:
-            await ctx.error(error_msg)
-        return {"success": False, "errors": [error_msg]}
-    if not isinstance(actual_file_path, str):
-        error_msg = "Cannot extract a valid file_path parameter from the request (must be string)"
+            await ctx.error(error_info["message"])
+        return {"success": False, "errors": [error_info["message"]], "validation_errors": error_info["field_errors"]}
+
+    try:
         if ctx:
-            await ctx.error(error_msg)
-        return {"success": False, "errors": [error_msg]}
-    if not isinstance(actual_config_path, str):
-        error_msg = "Cannot extract a valid config_path parameter from the request (must be string)"
-        if ctx:
-            await ctx.error(error_msg)
-        return {"success": False, "errors": [error_msg]}
+            await ctx.info(f"Starting code analysis, file path: {actual_file_path}")
+            await ctx.info(f"Using configuration file: {actual_config_path}")
 
-    if ctx:
-        await ctx.info(f"Starting code analysis, file path: {actual_file_path}")
-        await ctx.info(f"Using configuration file: {actual_config_path}")
-
-    request_obj = AnalysisRequest(
-        code=actual_code,
-        file_path=actual_file_path,
-        config_path=actual_config_path,
-    )
-    result = await handler.handle_analysis_request(request_obj)
-
-    if ctx and result.vulnerabilities:
-        await ctx.warning(
-            f"Detected {len(result.vulnerabilities)} potential vulnerabilities"
+        request_obj = AnalysisRequest(
+            code=actual_code,
+            file_path=actual_file_path,
+            config_path=actual_config_path,
         )
+        result = await handler.handle_analysis_request(request_obj)
 
-    return result.model_dump()
+        if ctx and result.vulnerabilities:
+            await ctx.warning(
+                f"Detected {len(result.vulnerabilities)} potential vulnerabilities"
+            )
+
+        return result.model_dump()
+
+    except Exception as e:
+        error_info = handle_exception(e)
+        logging.error(f"Code analysis failed: {error_info}")
+        if ctx:
+            await ctx.error(f"Analysis failed: {error_info.get('message', str(e))}")
+
+        return {
+            "success": False,
+            "errors": [error_info.get("message", str(e))],
+            "vulnerabilities": [],
+            "summary": {}
+        }
 
 
 async def analyze_file(
