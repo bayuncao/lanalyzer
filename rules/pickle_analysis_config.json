@@ -29,10 +29,30 @@
   ],
   "sinks": [
     {
+      "name": "CommandExecution",
+      "patterns": ["os.system", "subprocess.call", "subprocess.run", "subprocess.Popen", "os.popen", "os.execv", "os.execve", "os.spawnv", "commands.getoutput"],
+      "vulnerability_type": "CommandInjection"
+    },
+    {
+      "name": "CodeExecution",
+      "patterns": ["eval", "exec", "compile", "__import__", "importlib.import_module"],
+      "vulnerability_type": "CodeInjection"
+    },
+    {
       "name": "PickleDeserialization",
       "patterns": ["pickle.load", "pickle.loads", "cPickle.load", "cPickle.loads", "_pickle.load", "_pickle.loads", "cloudpickle.loads"],
       "vulnerability_type": "UnsafeDeserialization",
       "related_patterns": ["torch.distributed.recv", "recv_multipart"]
+    },
+    {
+      "name": "SQLQuery",
+      "patterns": ["execute", "executemany", "cursor.execute", "query", "raw", "extra"],
+      "vulnerability_type": "SQLInjection"
+    },
+    {
+      "name": "FileWrite",
+      "patterns": ["open", "write", "writelines", "file.write", "with open"],
+      "vulnerability_type": "PathTraversal"
     }
   ],
   "sanitizers": [
@@ -89,6 +109,14 @@
           "source_type": "NetworkInput"
         }
       ]
+    }
+  },
+  "taint_propagation": {
+    "special_variables": {
+      "object_tensor": {
+        "from": ["torch.distributed.recv", "recv_multipart"],
+        "to": ["numpy", "tobytes", "pickle.loads", "cloudpickle.loads"]
+      }
     }
   }
 }

@@ -122,8 +122,25 @@ class CallChainTracker:
             logger.debug(f"[CallChain] Tracked sink: {sink_node.function_name} at line {sink_node.line_number}")
         
         return sink_node
-    
-    def track_assignment(self, var_name: str, line: int, col: int, 
+
+    def create_source_node_from_taint(self, taint_info: Dict[str, Any]) -> CallChainNode:
+        """Create a source node from taint information."""
+        source_node = CallChainNode(
+            function_name=taint_info.get("name", "unknown"),
+            line_number=taint_info.get("line", 0),
+            column=taint_info.get("col", 0),
+            file_path=self.file_path,
+            node_type="source",
+            taint_info=taint_info,
+            arguments=[]
+        )
+
+        if self.debug:
+            logger.debug(f"[CallChain] Created source node from taint: {source_node.function_name} at line {source_node.line_number}")
+
+        return source_node
+
+    def track_assignment(self, var_name: str, line: int, col: int,
                         source_node: Optional[CallChainNode] = None) -> CallChainNode:
         """Track variable assignment."""
         assignment_node = CallChainNode(
