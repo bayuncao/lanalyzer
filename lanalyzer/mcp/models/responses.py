@@ -5,7 +5,7 @@ This module defines the Pydantic models used for MCP responses.
 """
 
 from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from .requests import VulnerabilityInfo
 
 
@@ -45,8 +45,8 @@ class ServerInfoResponse(BaseModel):
         default_factory=list, description="List of server capabilities"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "name": "Lanalyzer MCP Server",
                 "version": "0.1.0",
@@ -54,6 +54,7 @@ class ServerInfoResponse(BaseModel):
                 "capabilities": ["analyze_code", "get_config", "validate_config"],
             }
         }
+    )
 
 
 class ExplainVulnerabilityResponse(BaseModel):

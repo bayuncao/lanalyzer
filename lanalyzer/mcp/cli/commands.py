@@ -12,6 +12,7 @@ import subprocess
 
 from lanalyzer.__version__ import __version__
 from lanalyzer.mcp.utils import generate_client_code_example
+from lanalyzer.mcp.settings import MCPServerSettings, TransportType
 
 
 @click.group()
@@ -42,19 +43,17 @@ def cli():
 )
 def run(debug, host, port, transport, json_response, show_client):
     """Start the MCP server."""
-    # Configure logging (again, specific for this command's context)
-    log_level = logging.DEBUG if debug else logging.INFO
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        force=True,  # Ensure reconfiguration if already configured
+    # Create settings from command line arguments
+    settings = MCPServerSettings(
+        host=host,
+        port=port,
+        transport=TransportType(transport),
+        debug=debug,
+        json_response=json_response,
     )
 
     # Import here to avoid circular imports
-    from lanalyzer.mcp.server.mcpserver import (
-        create_mcp_server,
-        STREAMABLE_HTTP_AVAILABLE,
-    )
+    from lanalyzer.mcp.server.mcpserver import create_mcp_server
 
     click.echo(
         f"Starting Lanalyzer MCP server - Using FastMCP v{__import__('fastmcp').__version__}"
@@ -77,25 +76,24 @@ def run(debug, host, port, transport, json_response, show_client):
         )
 
     # Create FastMCP server instance specifically for this run command
-    # This ensures the 'debug' flag from CLI is correctly applied to this server instance
-    current_run_server = create_mcp_server(debug=debug)
+    # This ensures the settings from CLI are correctly applied to this server instance
+    current_run_server = create_mcp_server(settings=settings)
 
-    # Use streamable HTTP transport if specified and available
+    # Store settings for run() method (as transport_kwargs)
+    run_kwargs = {
+        "host": settings.host,
+        "port": settings.port,
+    }
+
+    # Add transport-specific kwargs
+    if settings.json_response:
+        run_kwargs["json_response"] = settings.json_response
+
+    # Check transport availability
     if transport == "streamable-http":
-        if not STREAMABLE_HTTP_AVAILABLE:
-            click.echo(
-                "Error: Streamable HTTP transport not available in this FastMCP version"
-            )
-            click.echo("Falling back to SSE transport")
-            transport = "sse"
-        else:
-            click.echo(
-                "Using Streamable HTTP transport with event store for resumability"
-            )
-            # Create in-memory event store for streamable HTTP
-            from fastmcp.storage.memory import InMemoryEventStore
-
-            event_store = InMemoryEventStore() if STREAMABLE_HTTP_AVAILABLE else None
+        click.echo("Using Streamable HTTP transport")
+    else:
+        click.echo("Using SSE transport")
 
     # Print startup message indicating initialization
     click.echo(f"Starting FastMCP server using {transport} transport")
@@ -114,23 +112,17 @@ def run(debug, host, port, transport, json_response, show_client):
     time.sleep(0.5)
 
     # Now start the server with the appropriate transport
-    if transport == "streamable-http" and STREAMABLE_HTTP_AVAILABLE:
-        # Use Streamable HTTP transport with event store
-        from fastmcp.transport.streamable_http import StreamableHTTPTransport
-
+    # Pass runtime settings to run() method as recommended by FastMCP
+    if transport == "streamable-http":
         current_run_server.run(
-            transport=StreamableHTTPTransport(
-                event_store=event_store, json_response=json_response
-            ),
-            host=host,
-            port=port,
+            transport="streamable-http",
+            **run_kwargs
         )
     else:
         # Use regular SSE transport
         current_run_server.run(
             transport="sse",
-            host=host,
-            port=port,
+            **run_kwargs
         )
 
 
@@ -147,11 +139,8 @@ def run(debug, host, port, transport, json_response, show_client):
 )
 def mcpcmd(command_args, debug, transport):
     """Run the server using FastMCP command-line tool (e.g., dev, run, install)."""
-    # Import here to avoid circular imports
-    from lanalyzer.mcp.mcpserver import STREAMABLE_HTTP_AVAILABLE
-
     # Get the absolute path of mcpserver.py file
-    script_path = os.path.join(os.path.dirname(__file__), "mcpserver.py")
+    script_path = os.path.join(os.path.dirname(__file__), "..", "server", "mcpserver.py")
     script_path = os.path.abspath(script_path)
 
     # Build FastMCP command
@@ -168,7 +157,7 @@ def mcpcmd(command_args, debug, transport):
         if "--transport" not in " ".join(
             command_args
         ):  # Add only if not specified by user
-            if transport == "streamable-http" and STREAMABLE_HTTP_AVAILABLE:
+            if transport == "streamable-http":
                 cmd.append("--transport=streamable-http")
             else:
                 cmd.append("--transport=sse")
