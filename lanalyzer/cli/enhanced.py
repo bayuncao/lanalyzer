@@ -302,8 +302,8 @@ def run_analysis(args) -> int:
         tracker = EnhancedTaintTracker.from_config(config, debug_mode)
         vulnerabilities, call_chains = analyze_files_with_logging(tracker, target_files, debug_mode)
 
-        # Print a comprehensive summary
-        summary = tracker.get_summary()
+        # Print a comprehensive summary with call chains and vulnerabilities information
+        summary = tracker.get_summary(call_chains, vulnerabilities)
 
         if output_path:
             # Create enhanced result data with imports and call chains information

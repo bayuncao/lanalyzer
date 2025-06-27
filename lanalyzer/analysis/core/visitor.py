@@ -411,14 +411,27 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
 
                 # Create detailed taint path if we have call chain tracking
                 if sink_node and hasattr(self, 'call_chain_tracker'):
-                    # Find the source node for this tainted variable
+                    # Try to find the source node for this tainted variable
+                    source_node = None
+
+                    # First, check current chain for source nodes
                     source_nodes = [node for node in self.call_chain_tracker.current_chain
                                   if node.node_type == "source"]
                     if source_nodes:
+                        source_node = source_nodes[0]
+                    else:
+                        # If no source in current chain, create a source node from taint_info
+                        if taint_info:
+                            source_node = self.call_chain_tracker.create_source_node_from_taint(taint_info)
+
+                    if source_node:
                         taint_path = self.call_chain_tracker.create_taint_path(
-                            source_nodes[0], sink_node, tainted_var
+                            source_node, sink_node, tainted_var
                         )
                         vulnerability["taint_path"] = taint_path
+
+                        if self.debug:
+                            debug(f"[VISITOR] Created taint path from {source_node.function_name} to {sink_node.function_name}")
 
                 if self.debug:
                     debug(f"[VISITOR] Found vulnerability: {tainted_var} flows to {sink_type}")

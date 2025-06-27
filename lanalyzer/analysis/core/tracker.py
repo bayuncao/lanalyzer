@@ -182,9 +182,13 @@ class EnhancedTaintTracker:
 
         return all_vulnerabilities
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self, all_call_chains: List[Dict[str, Any]] = None, all_vulnerabilities: List[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Get analysis summary statistics.
+
+        Args:
+            all_call_chains: Optional list of all call chains from analysis
+            all_vulnerabilities: Optional list of all vulnerabilities from analysis
 
         Returns:
             Dictionary containing analysis summary
@@ -196,10 +200,21 @@ class EnhancedTaintTracker:
         }
 
         if self.visitor:
+            # Calculate total vulnerabilities from actual output (vulnerabilities + call_chains)
+            total_vulnerabilities = 0
+            if all_vulnerabilities is not None:
+                total_vulnerabilities += len(all_vulnerabilities)
+            if all_call_chains is not None:
+                total_vulnerabilities += len(all_call_chains)
+
+            # If we don't have the actual output, fall back to visitor count
+            if total_vulnerabilities == 0:
+                total_vulnerabilities = len(self.visitor.found_vulnerabilities)
+
             summary.update({
                 "sources_found": len(self.visitor.found_sources),
                 "sinks_found": len(self.visitor.found_sinks),
-                "vulnerabilities_found": len(self.visitor.found_vulnerabilities),
+                "vulnerabilities_found": total_vulnerabilities,
             })
 
         # Add import information summary
@@ -229,10 +244,46 @@ class EnhancedTaintTracker:
                 "imported_classes": sorted(list(all_imported_classes)),
             }
 
-        # Add call chain analysis summary if available
-        if self.visitor and hasattr(self.visitor, 'call_chain_tracker'):
+        # Add call chain analysis summary
+        if all_call_chains is not None:
+            # Calculate statistics from actual call chains
+            total_paths = len(all_call_chains)
+            if total_paths > 0:
+                path_lengths = [chain.get("path_analysis", {}).get("path_length", 2) for chain in all_call_chains]
+                avg_path_length = sum(path_lengths) / len(path_lengths)
+                high_confidence_paths = len([chain for chain in all_call_chains
+                                           if chain.get("path_analysis", {}).get("confidence", 0) > 0.8])
+                complex_paths = len([chain for chain in all_call_chains
+                                   if chain.get("path_analysis", {}).get("path_length", 2) > 6])
+            else:
+                avg_path_length = 0
+                high_confidence_paths = 0
+                complex_paths = 0
+
+            summary["call_chains"] = {
+                "total_paths": total_paths,
+                "average_path_length": avg_path_length,
+                "high_confidence_paths": high_confidence_paths,
+                "complex_paths": complex_paths,
+                "tracked_variables": len(self.all_tainted_vars),
+                "tracked_functions": len(self.all_functions),
+                "data_flow_edges": total_paths  # Each call chain represents a data flow edge
+            }
+        elif self.visitor and hasattr(self.visitor, 'call_chain_tracker'):
+            # Fallback to tracker summary if available
             call_chain_summary = self.visitor.call_chain_tracker.get_summary()
             summary["call_chains"] = call_chain_summary
+        else:
+            # Provide default call chain summary if tracker is not available
+            summary["call_chains"] = {
+                "total_paths": 0,
+                "average_path_length": 0,
+                "high_confidence_paths": 0,
+                "complex_paths": 0,
+                "tracked_variables": 0,
+                "tracked_functions": 0,
+                "data_flow_edges": 0
+            }
 
         return summary
 
@@ -259,6 +310,9 @@ class EnhancedTaintTracker:
         """Convert visitor vulnerabilities to standard format and extract call chains."""
         vulnerabilities = []
         call_chains = []
+
+        # Track unique call chains to prevent duplicates
+        seen_call_chains = set()
 
         for vuln in visitor.found_vulnerabilities:
             source_info = vuln.get("source", {})
@@ -287,6 +341,23 @@ class EnhancedTaintTracker:
             else:
                 # Traditional source-to-sink detection - don't add to vulnerabilities
                 # since we now have dedicated call_chains for this information
+
+                # Create a unique identifier for this call chain to prevent duplicates
+                call_chain_key = (
+                    source_info.get("name", "Unknown"),
+                    source_info.get("line", 0),
+                    sink_info.get("name", "Unknown"),
+                    sink_info.get("line", 0),
+                    vuln.get("tainted_var", "")
+                )
+
+                # Skip if we've already seen this exact call chain
+                if call_chain_key in seen_call_chains:
+                    if self.debug:
+                        log_debug(f"Skipping duplicate call chain: {call_chain_key}")
+                    continue
+
+                seen_call_chains.add(call_chain_key)
 
                 # Extract call chain information separately
                 call_chain_entry = {
