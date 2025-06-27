@@ -15,6 +15,7 @@ from ..models import (
     AnalysisRequest,
     FileAnalysisRequest,
     ConfigurationRequest,
+    ExplainVulnerabilityRequest,
 )
 from ..exceptions import MCPToolError, MCPValidationError, handle_exception
 
@@ -285,5 +286,146 @@ async def create_config(
         await ctx.info("Configuration creation successful")
     elif ctx and not result.success:
         await ctx.error(f"Configuration creation failed: {result.errors}")
+
+    return result.model_dump()
+
+
+async def analyze_path(
+    target_path: str,
+    config_path: str,
+    handler,
+    ctx: Optional[Context] = None,
+) -> Dict[str, Any]:
+    """
+    Analyze a file or directory path for security vulnerabilities.
+
+    Args:
+        target_path: Path to the file or directory to analyze.
+        config_path: Configuration file path (required).
+        handler: Instance of LanalyzerMCPHandler.
+        ctx: MCP context.
+
+    Returns:
+        Analysis results, including detected vulnerability information.
+    """
+    # Log original parameters to aid debugging
+    logging.debug(
+        f"analyze_path original parameters: target_path={target_path}, config_path={config_path}"
+    )
+
+    actual_target_path = target_path
+    actual_config_path = config_path
+
+    # Handle nested parameter situations
+    if isinstance(target_path, dict):
+        logging.warning(f"Nested parameter situation (target_path is dict): {target_path}")
+        actual_target_path = target_path.get("target_path", actual_target_path)
+        actual_config_path = target_path.get("config_path", actual_config_path)
+    elif isinstance(config_path, dict):
+        logging.warning(f"Nested parameter situation (config_path is dict): {config_path}")
+        actual_config_path = config_path.get("config_path", actual_config_path)
+        if "target_path" in config_path:
+            actual_target_path = config_path.get("target_path")
+
+    # Parameter validation
+    if not isinstance(actual_target_path, str):
+        error_msg = f"Target path must be a string, received: {type(actual_target_path)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return {"success": False, "errors": [error_msg]}
+
+    if not isinstance(actual_config_path, str):
+        error_msg = f"Configuration path must be a string, received: {type(actual_config_path)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return {"success": False, "errors": [error_msg]}
+
+    if ctx:
+        await ctx.info(f"Starting path analysis: {actual_target_path}")
+        await ctx.info(f"Using configuration file: {actual_config_path}")
+
+    request_obj = FileAnalysisRequest(
+        target_path=actual_target_path, config_path=actual_config_path
+    )
+    result = await handler.handle_file_path_analysis(request_obj)
+
+    if ctx and result.vulnerabilities:
+        await ctx.warning(
+            f"Detected {len(result.vulnerabilities)} potential vulnerabilities"
+        )
+
+    return result.model_dump()
+
+
+async def explain_vulnerabilities(
+    analysis_file: str,
+    format: str = "text",
+    level: str = "brief",
+    handler=None,
+    ctx: Optional[Context] = None,
+) -> Dict[str, Any]:
+    """
+    Explain vulnerability analysis results with natural language descriptions.
+
+    Args:
+        analysis_file: Path to the analysis results file (JSON format).
+        format: Output format, either "text" or "markdown" (default: "text").
+        level: Detail level, either "brief" or "detailed" (default: "brief").
+        handler: Instance of LanalyzerMCPHandler.
+        ctx: MCP context.
+
+    Returns:
+        Explanation results with natural language descriptions.
+    """
+    # Log original parameters to aid debugging
+    logging.debug(
+        f"explain_vulnerabilities original parameters: analysis_file={analysis_file}, format={format}, level={level}"
+    )
+
+    actual_analysis_file = analysis_file
+    actual_format = format
+    actual_level = level
+
+    # Handle nested parameter situations
+    if isinstance(analysis_file, dict):
+        logging.warning(f"Nested parameter situation (analysis_file is dict): {analysis_file}")
+        actual_analysis_file = analysis_file.get("analysis_file", actual_analysis_file)
+        actual_format = analysis_file.get("format", actual_format)
+        actual_level = analysis_file.get("level", actual_level)
+
+    # Parameter validation
+    if not isinstance(actual_analysis_file, str):
+        error_msg = f"Analysis file path must be a string, received: {type(actual_analysis_file)}"
+        if ctx:
+            await ctx.error(error_msg)
+        return {"success": False, "errors": [error_msg]}
+
+    if actual_format not in ["text", "markdown"]:
+        error_msg = f"Format must be 'text' or 'markdown', received: {actual_format}"
+        if ctx:
+            await ctx.error(error_msg)
+        return {"success": False, "errors": [error_msg]}
+
+    if actual_level not in ["brief", "detailed"]:
+        error_msg = f"Level must be 'brief' or 'detailed', received: {actual_level}"
+        if ctx:
+            await ctx.error(error_msg)
+        return {"success": False, "errors": [error_msg]}
+
+    if ctx:
+        await ctx.info(f"Explaining vulnerabilities from: {actual_analysis_file}")
+        await ctx.info(f"Format: {actual_format}, Level: {actual_level}")
+
+    request_obj = ExplainVulnerabilityRequest(
+        analysis_file=actual_analysis_file,
+        format=actual_format,
+        level=actual_level
+    )
+    result = await handler.explain_vulnerabilities(request_obj)
+
+    if ctx and result.success:
+        await ctx.info(f"Generated explanation for {result.vulnerabilities_count} vulnerabilities")
+    elif ctx and not result.success:
+        await ctx.error(f"Failed to explain vulnerabilities: {result.errors}")
 
     return result.model_dump()
