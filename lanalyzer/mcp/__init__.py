@@ -19,6 +19,18 @@ from .cli import *
 from .tools import *
 from .handlers import *
 from .models import *
+from .settings import MCPServerSettings, MCPClientSettings, TransportType, LogLevel
+from .exceptions import (
+    MCPError,
+    MCPConfigurationError,
+    MCPAnalysisError,
+    MCPValidationError,
+    MCPTransportError,
+    MCPInitializationError,
+    MCPToolError,
+    MCPDependencyError,
+    MCPFileError,
+)
 
 __all__ = [
     "FastMCP",
@@ -32,9 +44,11 @@ __all__ = [
     # tools
     "analyze_code",
     "analyze_file",
+    "analyze_path",
     "get_config",
     "validate_config",
     "create_config",
+    "explain_vulnerabilities",
     # handlers
     "LanalyzerMCPHandler",
     # models
@@ -47,6 +61,21 @@ __all__ = [
     "ExplainVulnerabilityRequest",
     "ExplainVulnerabilityResponse",
     "ServerInfoResponse",
+    # settings
+    "MCPServerSettings",
+    "MCPClientSettings",
+    "TransportType",
+    "LogLevel",
+    # exceptions
+    "MCPError",
+    "MCPConfigurationError",
+    "MCPAnalysisError",
+    "MCPValidationError",
+    "MCPTransportError",
+    "MCPInitializationError",
+    "MCPToolError",
+    "MCPDependencyError",
+    "MCPFileError",
 ]
 
 if __name__ == "__main__":
