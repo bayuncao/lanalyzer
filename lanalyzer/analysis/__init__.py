@@ -8,38 +8,43 @@ This package provides advanced taint analysis with the following capabilities:
 3. Path-sensitive analysis - Considers conditional branches in code execution
 4. Complete propagation chain tracking - Records all steps in taint flow
 5. Detailed call graph construction - Maps relationships between all functions
+
+## Architecture
+
+The analysis module is organized as follows:
+- `core/` - Core analysis engine (AST processing, visitor, tracker)
+- `flow/` - Data and control flow analysis
+- `models/` - Data structures (call graph, data structures, path analysis)
+- `utils/` - Utilities and formatters
 """
 
-# Common components
+# Core components
 from lanalyzer.analysis.base import BaseAnalyzer
-
-# Core analysis components
-from lanalyzer.analysis.callgraph import CallGraphNode
-from lanalyzer.analysis.datastructures import DataStructureNode
-from lanalyzer.analysis.defuse import DefUseChain
-from lanalyzer.analysis.pathsensitive import PathNode
-from lanalyzer.analysis.tracker import EnhancedTaintTracker
-from lanalyzer.analysis.visitor import EnhancedTaintAnalysisVisitor
-
-
-# For backward compatibility
-from lanalyzer.analysis.visitor import (
-    EnhancedTaintAnalysisVisitor as EnhancedTaintVisitor,
+from lanalyzer.analysis.core import (
+    ASTProcessor,
+    ParentNodeVisitor,
+    TaintAnalysisVisitor,
+    EnhancedTaintTracker,
+)
+from lanalyzer.analysis.models import (
+    CallGraphNode,
+    DataStructureNode,
+    DefUseChain,
+    PathNode,
+)
+from lanalyzer.analysis.utils import (
+    AnalysisHelpers,
+    DescriptionFormatter,
 )
 
-# Import functions we have migrated from the utils package
+# Utility functions
 from lanalyzer.utils.ast_utils import (
     contains_sink_patterns,
     extract_call_targets,
     extract_function_calls,
+    parse_file as parse_ast,
 )
-from lanalyzer.utils.ast_utils import parse_file as parse_ast
 from lanalyzer.utils.fs_utils import get_python_files_in_directory as get_python_files
-
-from lanalyzer.analysis.call_chain_builder import CallChainBuilder
-from lanalyzer.analysis.chain_utils import ChainUtils
-from lanalyzer.analysis.control_flow_analyzer import ControlFlowAnalyzer
-from lanalyzer.analysis.data_flow_analyzer import DataFlowAnalyzer
 
 from lanalyzer.logger import info, error
 
@@ -93,14 +98,18 @@ def analyze_file(
         vulnerabilities = tracker.analyze_multiple_files(file_paths)
     else:
         # Single file analysis
-        vulnerabilities = tracker.analyze_file(target_path)
+        vulnerabilities, _ = tracker.analyze_file(target_path)  # Ignore call_chains for now
 
-    # Get detailed summary
-    summary = tracker.get_detailed_summary(vulnerabilities)
+    # Get summary (use new method name)
+    summary = tracker.get_summary()
 
     # Write results to output file if specified
     if output_path:
-        result_data = {"vulnerabilities": vulnerabilities, "summary": summary}
+        result_data = {
+            "vulnerabilities": vulnerabilities,
+            "summary": summary,
+            "imports": tracker.all_imports  # Add detailed import information
+        }
 
         with open(output_path, "w") as f:
             if pretty:
@@ -113,49 +122,37 @@ def analyze_file(
         info("\n" + "=" * 80)
         info("ENHANCED TAINT ANALYSIS SUMMARY")
         info("-" * 80)
-        info(f"Files analyzed: {summary['files_analyzed']}")
-        info(f"Functions analyzed: {summary['functions_analyzed']}")
-        info(f"Vulnerabilities found: {summary['vulnerabilities_found']}")
-        info(
-            f"Vulnerabilities with propagation chains: {summary['vulnerabilities_with_propagation']}"
-        )
-        info(f"Average propagation steps: {summary['average_propagation_steps']}")
-        info(
-            f"Vulnerabilities with call chains: {summary['vulnerabilities_with_call_chains']}"
-        )
-        info(f"Average call chain length: {summary['average_call_chain_length']}")
-        info("-" * 80)
-        info("SOURCES:")
-        for source, count in summary["source_counts"].items():
-            info(f"  {source}: {count}")
-        info("SINKS:")
-        for sink, count in summary["sink_counts"].items():
-            info(f"  {sink}: {count}")
-        info("-" * 80)
-        info("SOURCE -> SINK FLOWS:")
-        for pair, count in summary["source_sink_pairs"].items():
-            info(f"  {pair}: {count}")
+        info(f"Files analyzed: {summary.get('files_analyzed', 0)}")
+        info(f"Functions found: {summary.get('functions_found', 0)}")
+        info(f"Sources found: {summary.get('sources_found', 0)}")
+        info(f"Sinks found: {summary.get('sinks_found', 0)}")
+        info(f"Vulnerabilities found: {summary.get('vulnerabilities_found', len(vulnerabilities))}")
+        info(f"Tainted variables: {summary.get('tainted_variables', 0)}")
         info("=" * 80)
 
     return vulnerabilities, summary
 
 
-# Provide alias for old function name for backward compatibility
-enhanced_analyze_file = analyze_file
-
 __all__ = [
-    # Main analysis classes
+    # Core analysis classes
     "EnhancedTaintTracker",
-    "EnhancedTaintAnalysisVisitor",
-    "EnhancedTaintVisitor",  # Backward compatibility
-    # Helper data structures
+    "TaintAnalysisVisitor",
+    "ASTProcessor",
+    "ParentNodeVisitor",
+
+    # Data structures
     "CallGraphNode",
     "DataStructureNode",
     "DefUseChain",
     "PathNode",
+
+    # Utilities
+    "AnalysisHelpers",
+    "DescriptionFormatter",
+
     # Public API functions
     "analyze_file",
-    "enhanced_analyze_file",  # Compatibility alias
+
     # Base components
     "BaseAnalyzer",
     "parse_ast",
@@ -163,9 +160,4 @@ __all__ = [
     "extract_call_targets",
     "extract_function_calls",
     "contains_sink_patterns",
-    "CallChainBuilder",
-    "ChainUtils",
-    "ControlFlowAnalyzer",
-    "DataFlowAnalyzer",
-    "LegacyCallChainBuilder",
 ]

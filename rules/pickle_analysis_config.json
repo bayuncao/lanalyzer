@@ -10,7 +10,7 @@
     },
     {
       "name": "NetworkInput",
-      "patterns": ["torch.distributed.recv", "recv", "recvfrom", "recvmsg", "requests.get", "requests.post", "urllib.request.urlopen", "socket.recv", "http.client", "aiohttp", "httpx", "recv_rpc_message", "recv_multipart"],
+      "patterns": ["torch.distributed.recv", "recv", "recvfrom", "recvmsg", "requests.get", "requests.post", "urllib.request.urlopen", "socket.recv", "http.client", "aiohttp", "httpx", "recv_rpc_message", "recv_multipart", "all_reduce", "dist.all_reduce", "torch.distributed.all_reduce", "all_gather", "dist.all_gather", "torch.distributed.all_gather", "torch.distributed.broadcast_object_list", "broadcast_object_list"],
       "priority": "high",
       "auto_taint_return": true
     },
@@ -31,16 +31,33 @@
     {
       "name": "PickleDeserialization",
       "patterns": ["pickle.load", "pickle.loads", "cPickle.load", "cPickle.loads", "_pickle.load", "_pickle.loads", "cloudpickle.loads"],
+      "vulnerability_type": "UnsafeDeserialization",
       "related_patterns": ["torch.distributed.recv", "recv_multipart"]
     }
   ],
   "sanitizers": [
+    {
+      "name": "InputValidation",
+      "patterns": ["escape", "sanitize", "validate", "clean", "filter"]
+    },
     {
       "name": "CustomPickleValidator",
       "patterns": ["validate_pickle_data", "safe_loads", "restricted_load"]
     }
   ],
   "rules": [
+    {
+      "name": "CommandInjection",
+      "sources": ["UserInput", "FileRead", "NetworkInput", "DatabaseRead", "EnvironmentVariables", "CommandLineArgs"],
+      "sinks": ["CommandExecution"],
+      "message": "Potential command injection detected. Untrusted data from {source} is being executed as a system command."
+    },
+    {
+      "name": "CodeInjection",
+      "sources": ["UserInput", "FileRead", "NetworkInput", "DatabaseRead", "EnvironmentVariables", "CommandLineArgs"],
+      "sinks": ["CodeExecution"],
+      "message": "Potential code injection detected. Untrusted data from {source} is being executed as code."
+    },
     {
       "name": "UnsafeDeserialization",
       "sources": ["UserInput", "FileRead", "NetworkInput", "DatabaseRead", "EnvironmentVariables", "CommandLineArgs"],
@@ -57,28 +74,21 @@
       {
         "name": "app_entry",
         "patterns": ["app.run", "application.run", "server.run"]
-      },
-      {
-        "name": "class_methods",
-        "patterns": ["run"]
       }
     ],
     "max_call_depth": 10,
     "follow_imports": true
   },
-  "taint_propagation": {
-    "special_variables": {
-      "object_tensor": {
-        "from": ["torch.distributed.recv", "recv_multipart"],
-        "to": ["numpy", "tobytes", "pickle.loads", "cloudpickle.loads"]
-      }, 
-      "message": {
-        "from": ["recv_multipart"],
-        "to": ["pickle.loads", "cloudpickle.loads"]
-      }
-    },
-    "known_flows": [
-
-    ]
+  "data_flow_patterns": {
+    "in_place_modification": {
+      "description": "Functions that modify their arguments in-place with network data",
+      "patterns": [
+        {
+          "function_patterns": ["*recv*", "*broadcast*", "*gather*", "*scatter*"],
+          "modifies_parameter": 0,
+          "source_type": "NetworkInput"
+        }
+      ]
+    }
   }
 }

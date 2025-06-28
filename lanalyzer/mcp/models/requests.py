@@ -5,7 +5,7 @@ This module defines the Pydantic models used for MCP requests.
 """
 
 from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class VulnerabilityInfo(BaseModel):
@@ -41,10 +41,8 @@ class VulnerabilityInfo(BaseModel):
         None, description="Code snippet around the vulnerability"
     )
 
-    class Config:
-        """Pydantic model configuration."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "rule_name": "PickleDeserialization",
                 "rule_id": "PICKLE-001",
@@ -72,6 +70,7 @@ class VulnerabilityInfo(BaseModel):
                 "code_snippet": "def deserialize(data):\n    return pickle.loads(data)  # Insecure!",
             }
         }
+    )
 
 
 class AnalysisRequest(BaseModel):
