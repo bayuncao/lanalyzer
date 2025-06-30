@@ -7,8 +7,8 @@ aggregating functionality from specialized handler modules.
 
 import logging
 
-from .config import ConfigMCPHandler
 from .analysis import AnalysisMCPHandler
+from .config import ConfigMCPHandler
 from .explanation import ExplanationMCPHandler
 
 logger = logging.getLogger(__name__)

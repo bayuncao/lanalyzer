@@ -22,9 +22,9 @@ The analysis module is organized as follows:
 from lanalyzer.analysis.base import BaseAnalyzer
 from lanalyzer.analysis.core import (
     ASTProcessor,
+    EnhancedTaintTracker,
     ParentNodeVisitor,
     TaintAnalysisVisitor,
-    EnhancedTaintTracker,
 )
 from lanalyzer.analysis.models import (
     CallGraphNode,
@@ -32,21 +32,17 @@ from lanalyzer.analysis.models import (
     DefUseChain,
     PathNode,
 )
-from lanalyzer.analysis.utils import (
-    AnalysisHelpers,
-    DescriptionFormatter,
-)
+from lanalyzer.analysis.utils import AnalysisHelpers, DescriptionFormatter
+from lanalyzer.logger import error, info
 
 # Utility functions
 from lanalyzer.utils.ast_utils import (
     contains_sink_patterns,
     extract_call_targets,
     extract_function_calls,
-    parse_file as parse_ast,
 )
+from lanalyzer.utils.ast_utils import parse_file as parse_ast
 from lanalyzer.utils.fs_utils import get_python_files_in_directory as get_python_files
-
-from lanalyzer.logger import info, error
 
 
 def analyze_file(
@@ -98,7 +94,9 @@ def analyze_file(
         vulnerabilities = tracker.analyze_multiple_files(file_paths)
     else:
         # Single file analysis
-        vulnerabilities, _ = tracker.analyze_file(target_path)  # Ignore call_chains for now
+        vulnerabilities, _ = tracker.analyze_file(
+            target_path
+        )  # Ignore call_chains for now
 
     # Get summary (use new method name)
     summary = tracker.get_summary()
@@ -108,7 +106,7 @@ def analyze_file(
         result_data = {
             "vulnerabilities": vulnerabilities,
             "summary": summary,
-            "imports": tracker.all_imports  # Add detailed import information
+            "imports": tracker.all_imports,  # Add detailed import information
         }
 
         with open(output_path, "w") as f:
@@ -126,7 +124,9 @@ def analyze_file(
         info(f"Functions found: {summary.get('functions_found', 0)}")
         info(f"Sources found: {summary.get('sources_found', 0)}")
         info(f"Sinks found: {summary.get('sinks_found', 0)}")
-        info(f"Vulnerabilities found: {summary.get('vulnerabilities_found', len(vulnerabilities))}")
+        info(
+            f"Vulnerabilities found: {summary.get('vulnerabilities_found', len(vulnerabilities))}"
+        )
         info(f"Tainted variables: {summary.get('tainted_variables', 0)}")
         info("=" * 80)
 
@@ -139,20 +139,16 @@ __all__ = [
     "TaintAnalysisVisitor",
     "ASTProcessor",
     "ParentNodeVisitor",
-
     # Data structures
     "CallGraphNode",
     "DataStructureNode",
     "DefUseChain",
     "PathNode",
-
     # Utilities
     "AnalysisHelpers",
     "DescriptionFormatter",
-
     # Public API functions
     "analyze_file",
-
     # Base components
     "BaseAnalyzer",
     "parse_ast",

@@ -4,8 +4,9 @@ MCP data models for Lanalyzer (requests).
 This module defines the Pydantic models used for MCP requests.
 """
 
-from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class VulnerabilityInfo(BaseModel):

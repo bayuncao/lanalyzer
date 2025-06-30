@@ -10,7 +10,7 @@ from .path import PathNode
 
 __all__ = [
     "CallGraphNode",
-    "DataStructureNode", 
+    "DataStructureNode",
     "DefUseChain",
     "PathNode",
 ]

@@ -6,12 +6,12 @@ visitor pattern implementation, and taint tracking.
 """
 
 from .ast_processor import ASTProcessor, ParentNodeVisitor
-from .visitor import TaintAnalysisVisitor
 from .tracker import EnhancedTaintTracker
+from .visitor import TaintAnalysisVisitor
 
 __all__ = [
     "ASTProcessor",
-    "ParentNodeVisitor", 
+    "ParentNodeVisitor",
     "TaintAnalysisVisitor",
     "EnhancedTaintTracker",
 ]

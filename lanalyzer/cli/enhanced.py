@@ -6,26 +6,16 @@ Provides the command-line interface for enhanced taint analysis with
 complete propagation and call chains.
 """
 
-import sys
-import os
 import argparse
+import os
+import sys
 from typing import List, Optional
 
 from lanalyzer.analysis import EnhancedTaintTracker
-from lanalyzer.logger import (
-    LogTee,
-    setup_application_logging,
-    info,
-    error,
-    debug,
-    warning,
-)
-from lanalyzer.cli.file_utils import list_target_files, gather_target_files
-from lanalyzer.cli.config_utils import load_configuration, save_output
-from lanalyzer.cli.analysis_utils import (
-    analyze_files_with_logging,
-    print_summary,
-)
+from lanalyzer.cli.analysis_utils import analyze_files_with_logging, print_summary
+from lanalyzer.cli.config_utils import load_configuration
+from lanalyzer.cli.file_utils import gather_target_files, list_target_files
+from lanalyzer.logger import LogTee, error, info, setup_application_logging
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -146,7 +136,7 @@ def enhanced_cli_main() -> int:
 
     if args.command == "mcp":
         try:
-            from lanalyzer.mcp.mcpserver import create_mcp_server, server
+            from lanalyzer.mcp.mcpserver import create_mcp_server
 
             info("Starting Lanalyzer MCP server using FastMCP")
 
@@ -300,10 +290,12 @@ def run_analysis(args) -> int:
     try:
         config = load_configuration(config_path, debug_mode)
         tracker = EnhancedTaintTracker.from_config(config, debug_mode)
-        vulnerabilities, call_chains = analyze_files_with_logging(tracker, target_files, debug_mode)
+        vulnerabilities, call_chains = analyze_files_with_logging(
+            tracker, target_files, debug_mode
+        )
 
-        # Print a comprehensive summary
-        summary = tracker.get_summary()
+        # Print a comprehensive summary with call chains and vulnerabilities information
+        summary = tracker.get_summary(call_chains, vulnerabilities)
 
         if output_path:
             # Create enhanced result data with imports and call chains information
@@ -311,12 +303,13 @@ def run_analysis(args) -> int:
                 "vulnerabilities": vulnerabilities,
                 "call_chains": call_chains,  # Add detailed call chain information
                 "summary": summary,
-                "imports": tracker.all_imports  # Add detailed import information
+                "imports": tracker.all_imports,  # Add detailed import information
             }
 
             # Save enhanced output instead of just vulnerabilities
             try:
                 import json
+
                 output_dir = os.path.dirname(output_path)
                 if output_dir and not os.path.exists(output_dir):
                     os.makedirs(output_dir)

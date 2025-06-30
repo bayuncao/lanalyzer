@@ -6,6 +6,6 @@ Correct usage involves importing specific modules rather than executing the pack
 """
 
 
-from lanalyzer.cli.enhanced import main, enhanced_cli_main
+from lanalyzer.cli.enhanced import enhanced_cli_main, main
 
 __all__ = ["main", "enhanced_cli_main"]

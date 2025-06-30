@@ -4,17 +4,17 @@ Analysis MCP handler for Lanalyzer.
 This module implements the analysis handlers for MCP requests to Lanalyzer.
 """
 
+import json
+import logging
 import os
+import subprocess
 import sys
 import tempfile
-import subprocess
-import json
 import time
-import logging
-from typing import Dict, List, Any
 
 from lanalyzer.analysis import EnhancedTaintTracker
 from lanalyzer.cli.config_utils import load_configuration
+
 from ..models import (
     AnalysisRequest,
     AnalysisResponse,
@@ -72,7 +72,9 @@ class AnalysisMCPHandler(BaseMCPHandler):
                 tracker = EnhancedTaintTracker(config, debug=self.debug)
 
                 # Analyze the file
-                vulnerabilities, _ = tracker.analyze_file(temp_file_path)  # Ignore call_chains for now
+                vulnerabilities, _ = tracker.analyze_file(
+                    temp_file_path
+                )  # Ignore call_chains for now
 
                 # Convert vulnerabilities to response format
                 vuln_info_list = self._convert_vulnerabilities(
