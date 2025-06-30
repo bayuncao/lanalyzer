@@ -233,3 +233,113 @@ result = client.call({
     "output_path": "/path/to/output.json"  # Optional
 })
 ```
+
+## 📊 Analysis Results Format
+
+The analysis results are returned in JSON format with the following structure:
+
+#### Root Level Fields
+
+- **`vulnerabilities`** (Array): List of detected vulnerabilities
+- **`call_chains`** (Array): Data flow paths from sources to sinks
+- **`summary`** (Object): Analysis statistics and overview
+- **`imports`** (Object): Import information for analyzed files
+
+#### Vulnerabilities Array
+
+Each vulnerability object contains:
+
+- **`type`** (String): Vulnerability type (e.g., "UnsafeDeserialization", "PathTraversal", "CodeInjection")
+- **`severity`** (String): Risk level ("High", "Medium", "Low")
+- **`detection_method`** (String): How the vulnerability was detected ("sink_detection", "taint_flow")
+- **`sink`** (Object): Information about the dangerous operation
+  - **`name`** (String): Sink type name
+  - **`line`** (Number): Line number where the sink occurs
+  - **`file`** (String): File path containing the sink
+  - **`function_name`** (String): Function containing the sink
+  - **`full_name`** (String): Full qualified name of the sink
+- **`argument`** (String): The argument passed to the sink
+- **`argument_index`** (Number): Index of the dangerous argument (-1 if unknown)
+- **`description`** (String): Human-readable description of the vulnerability
+- **`recommendation`** (String): Suggested mitigation steps
+
+#### Call Chains Array
+
+Each call chain represents a data flow path:
+
+- **`id`** (Number): Unique identifier for the call chain
+- **`source`** (Object): Information about the data source
+  - **`type`** (String): Source type (e.g., "NetworkInput", "UserInput")
+  - **`line`** (Number): Line number of the source
+  - **`file`** (String): File path containing the source
+  - **`function`** (String): Function containing the source
+- **`sink`** (Object): Information about the data sink
+  - **`type`** (String): Sink type (e.g., "PickleDeserialization", "FileWrite")
+  - **`line`** (Number): Line number of the sink
+  - **`file`** (String): File path containing the sink
+  - **`function`** (String): Function containing the sink
+  - **`full_name`** (String): Full qualified name of the sink
+- **`tainted_variable`** (String): Name of the variable carrying tainted data
+- **`vulnerability_type`** (String): Type of vulnerability this flow represents
+- **`flow_description`** (String): Human-readable description of the data flow
+- **`path_analysis`** (Object): Analysis of the flow path
+  - **`path_length`** (Number): Number of steps in the flow
+  - **`confidence`** (Number): Confidence score (0.0 to 1.0)
+  - **`intermediate_steps`** (Number): Number of intermediate processing steps
+  - **`complexity`** (String): Path complexity ("low", "medium", "high")
+- **`intermediate_nodes`** (Array): List of intermediate processing steps
+
+#### Summary Object
+
+- **`files_analyzed`** (Number): Number of files processed
+- **`functions_found`** (Number): Total functions discovered
+- **`tainted_variables`** (Number): Variables involved in taint flows
+- **`sources_found`** (Number): Total data sources identified
+- **`sinks_found`** (Number): Total data sinks identified
+- **`vulnerabilities_found`** (Number): Total vulnerabilities detected
+- **`imports`** (Object): Import statistics
+  - **`total_imports`** (Number): Total import statements
+  - **`unique_stdlib_modules`** (Number): Unique standard library modules
+  - **`unique_third_party_modules`** (Number): Unique third-party modules
+  - **`unique_functions`** (Number): Unique imported functions
+  - **`unique_classes`** (Number): Unique imported classes
+  - **`stdlib_modules`** (Array): List of standard library modules
+  - **`third_party_modules`** (Array): List of third-party modules
+  - **`imported_functions`** (Array): List of imported functions
+  - **`imported_classes`** (Array): List of imported classes
+- **`call_chains`** (Object): Call chain statistics
+  - **`total_paths`** (Number): Total number of data flow paths
+  - **`average_path_length`** (Number): Average length of flow paths
+  - **`high_confidence_paths`** (Number): Number of high-confidence paths
+  - **`complex_paths`** (Number): Number of complex paths
+  - **`tracked_variables`** (Number): Variables tracked in flows
+  - **`tracked_functions`** (Number): Functions involved in flows
+  - **`data_flow_edges`** (Number): Total data flow connections
+
+#### Imports Object
+
+Per-file import information:
+
+- **`<file_path>`** (Object): Import details for each analyzed file
+  - **`total_imports`** (Number): Total imports in this file
+  - **`unique_modules`** (Number): Unique modules imported
+  - **`standard_library_modules`** (Array): Standard library modules used
+  - **`third_party_modules`** (Array): Third-party modules used
+  - **`imported_functions`** (Array): Functions imported
+  - **`imported_classes`** (Array): Classes imported
+  - **`detailed_imports`** (Array): Detailed import information
+    - **`type`** (String): Import type ("import", "from_import")
+    - **`module`** (String): Module name
+    - **`imported_name`** (String|null): Specific imported name
+    - **`alias`** (String|null): Import alias
+    - **`line`** (Number): Line number of import
+    - **`col`** (Number): Column number of import
+    - **`is_stdlib`** (Boolean): Whether it's a standard library module
+    - **`root_module`** (String): Root module name
+
+---
+
+## 🌐 Language Versions
+
+- **English**: [README.md](README.md) (Current)
+- **中文**: [README.zh.md](README.zh.md)
