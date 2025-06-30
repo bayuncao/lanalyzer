@@ -638,7 +638,7 @@ wheels = [
 
 [[package]]
 name = "lanalyzer"
-version = "0.1.5"
+version = "0.1.6"
 source = { editable = "." }
 dependencies = [
     { name = "astroid" },
@@ -670,12 +670,6 @@ mcp = [
     { name = "pydantic" },
     { name = "uvicorn", extra = ["standard"] },
 ]
-test = [
-    { name = "httpx" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-]
 
 [package.dev-dependencies]
 dev = [
@@ -703,25 +697,21 @@ requires-dist = [
     { name = "fastmcp", marker = "extra == 'mcp'", specifier = ">=2.0.0,<3.0.0" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=6.1.0,<7.0.0" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.24.0,<1.0.0" },
-    { name = "httpx", marker = "extra == 'test'", specifier = ">=0.24.0,<1.0.0" },
     { name = "isort", marker = "extra == 'dev'", specifier = ">=5.12.0,<6.0.0" },
     { name = "jinja2", specifier = ">=3.1.3,<4" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.5.1,<2.0.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.2.0" },
     { name = "pydantic", marker = "extra == 'mcp'", specifier = ">=2.4.0,<3.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.0,<9.0.0" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=7.0.0,<9.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0,<1.0.0" },
-    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.21.0,<1.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0,<6.0.0" },
-    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0.0,<6.0.0" },
     { name = "pyyaml", specifier = ">=6.0.1,<7" },
     { name = "requests", specifier = ">=2.32.3,<3" },
     { name = "rich", specifier = ">=13.7.0,<14" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'mcp'", specifier = ">=0.23.2,<0.30.0" },
 ]
-provides-extras = ["mcp", "dev", "test"]
+provides-extras = ["mcp", "dev"]
 
 [package.metadata.requires-dev]
 dev = [

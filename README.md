@@ -1,5 +1,4 @@
-[//]: # (Banner placeholder - replace with your actual banner URL)
-![Lanalyzer Banner](https://via.placeholder.com/1200x300.png?text=Lanalyzer+Static+Analysis)
+![Lanalyzer](./image/banner.png)
 
 # Lanalyzer
 
@@ -14,27 +13,40 @@
 
 Lanalyzer is an advanced Python static taint analysis tool designed to detect potential security vulnerabilities in Python projects. It identifies data flows from untrusted sources (Sources) to sensitive operations (Sinks) and provides detailed insights into potential risks.
 
+<p align="center">
+  <a href="./README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
+  <a href="./README_CN.md"><img alt="简体中文版自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
+</p>
+
 ## 📖 Table of Contents
 
-- [✨ Features](#-features)
-- [🚀 Getting Started](#-getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-- [💻 Usage](#-usage)
-  - [Basic Analysis](#basic-analysis)
-  - [Command-Line Options](#command-line-options)
-  - [Example](#example)
-- [🧩 Model Context Protocol (MCP) Support](#-model-context-protocol-mcp-support)
-  - [Installing MCP Dependencies](#installing-mcp-dependencies)
-  - [Starting the MCP Server](#starting-the-mcp-server)
-  - [MCP Server Features](#mcp-server-features)
-  - [Integration with AI Tools](#integration-with-ai-tools)
-  - [Using in Cursor](#using-in-cursor)
-  - [MCP Command-Line Options](#mcp-command-line-options)
-  - [Advanced MCP Usage](#advanced-mcp-usage)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
-- [📞 Contact](#-contact)
+- [Lanalyzer](#lanalyzer)
+  - [📖 Table of Contents](#-table-of-contents)
+  - [✨ Features](#-features)
+  - [🚀 Getting Started](#-getting-started)
+    - [Prerequisites](#prerequisites)
+    - [Installation](#installation)
+      - [Option 1: Install from PyPI (Recommended)](#option-1-install-from-pypi-recommended)
+      - [Option 2: Install from Source](#option-2-install-from-source)
+  - [💻 Usage](#-usage)
+    - [Basic Analysis](#basic-analysis)
+    - [Command-Line Options](#command-line-options)
+    - [Example](#example)
+  - [🤝 Contributing](#-contributing)
+  - [📄 License](#-license)
+  - [📞 Contact](#-contact)
+    - [Contact](#contact)
+  - [🧩 Model Context Protocol (MCP) Support](#-model-context-protocol-mcp-support)
+    - [Installing MCP Dependencies](#installing-mcp-dependencies)
+    - [Starting the MCP Server](#starting-the-mcp-server)
+    - [MCP Server Features](#mcp-server-features)
+    - [Integration with AI Tools](#integration-with-ai-tools)
+    - [Using in Cursor](#using-in-cursor)
+    - [MCP Command-Line Options](#mcp-command-line-options)
+    - [Advanced MCP Usage](#advanced-mcp-usage)
+      - [Custom Configurations](#custom-configurations)
+      - [Batch File Analysis](#batch-file-analysis)
+  - [📊 Analysis Results Format](#-analysis-results-format)
 
 
 ## ✨ Features
@@ -76,13 +88,16 @@ uv add lanalyzer[mcp]
 2. Install dependencies:
    ```bash
    # Install basic dependencies
-   uv sync
+   make install
 
    # Install with development dependencies
-   uv sync --group dev
+   make install-dev
 
    # Install with MCP support
-   uv sync --extra mcp
+   make install-mcp
+
+   # Install everything (dev + MCP)
+   make install-all
    ```
 
 ## 💻 Usage
@@ -139,7 +154,7 @@ pip install "lanalyzer[mcp]"
 If you're using uv:
 
 ```bash
-uv pip install -e ".[mcp]"
+uv add lanalyzer[mcp]
 ```
 
 ### Starting the MCP Server
@@ -152,8 +167,8 @@ There are multiple ways to start the MCP server:
 # View help information
 python -m lanalyzer.mcp --help
 
-# Start the server
-python -m lanalyzer.mcp run --host 0.0.0.0 --port 8000 --debug
+# Start the server (default port 8001)
+python -m lanalyzer.mcp run --port 8001 --debug
 ```
 
 2. **Using the lanalyzer Command-Line Tool**:
@@ -162,11 +177,24 @@ python -m lanalyzer.mcp run --host 0.0.0.0 --port 8000 --debug
 # View help information
 lanalyzer mcp --help
 
-# Start the server
-lanalyzer mcp run --host 0.0.0.0 --port 8000 --debug
+# Start the server (default port 8000)
+lanalyzer mcp run --port 8000 --debug
 
-# Use FastMCP development mode (if applicable, verify this command)
-# lanalyzer mcp dev
+# Use development mode
+lanalyzer mcp dev
+```
+
+3. **Using Makefile (Recommended for Development)**:
+
+```bash
+# Start MCP server
+make mcp-server
+
+# Start MCP server with debug mode
+make mcp-server-debug
+
+# Test MCP CLI
+make mcp-test
 ```
 
 ### MCP Server Features
@@ -178,6 +206,8 @@ The MCP server provides the following core functionalities:
 3. **Path Analysis**: Analyze entire directories or projects for security vulnerabilities
 4. **Vulnerability Explanation**: Provide detailed explanations of discovered vulnerabilities
 5. **Configuration Management**: Get, validate, and create analysis configurations
+
+For detailed MCP API documentation, see [MCP Tools Reference](docs/MCP_TOOLS.md).
 
 ### Integration with AI Tools
 
@@ -214,8 +244,14 @@ Please use lanalyzer to analyze the current file for security vulnerabilities an
 
 The MCP server supports the following command-line options:
 
+**For `python -m lanalyzer.mcp run`**:
 - `--debug`: Enable debug mode with detailed logging
 - `--host`: Set the server listening address (default: 127.0.0.1)
+- `--port`: Set the server listening port (default: 8001)
+- `--transport`: Transport protocol (sse or streamable-http)
+
+**For `lanalyzer mcp run`**:
+- `--debug`: Enable debug mode
 - `--port`: Set the server listening port (default: 8000)
 
 ### Advanced MCP Usage
@@ -253,110 +289,11 @@ result = client.call({
 
 ## 📊 Analysis Results Format
 
-The analysis results are returned in JSON format with the following structure:
+The analysis results are returned in JSON format with the following main sections:
 
-#### Root Level Fields
+- **`vulnerabilities`**: List of detected security vulnerabilities
+- **`call_chains`**: Data flow paths from sources to sinks
+- **`summary`**: Analysis statistics and overview
+- **`imports`**: Import information for analyzed files
 
-- **`vulnerabilities`** (Array): List of detected vulnerabilities
-- **`call_chains`** (Array): Data flow paths from sources to sinks
-- **`summary`** (Object): Analysis statistics and overview
-- **`imports`** (Object): Import information for analyzed files
-
-#### Vulnerabilities Array
-
-Each vulnerability object contains:
-
-- **`type`** (String): Vulnerability type (e.g., "UnsafeDeserialization", "PathTraversal", "CodeInjection")
-- **`severity`** (String): Risk level ("High", "Medium", "Low")
-- **`detection_method`** (String): How the vulnerability was detected ("sink_detection", "taint_flow")
-- **`sink`** (Object): Information about the dangerous operation
-  - **`name`** (String): Sink type name
-  - **`line`** (Number): Line number where the sink occurs
-  - **`file`** (String): File path containing the sink
-  - **`function_name`** (String): Function containing the sink
-  - **`full_name`** (String): Full qualified name of the sink
-- **`argument`** (String): The argument passed to the sink
-- **`argument_index`** (Number): Index of the dangerous argument (-1 if unknown)
-- **`description`** (String): Human-readable description of the vulnerability
-- **`recommendation`** (String): Suggested mitigation steps
-
-#### Call Chains Array
-
-Each call chain represents a data flow path:
-
-- **`id`** (Number): Unique identifier for the call chain
-- **`source`** (Object): Information about the data source
-  - **`type`** (String): Source type (e.g., "NetworkInput", "UserInput")
-  - **`line`** (Number): Line number of the source
-  - **`file`** (String): File path containing the source
-  - **`function`** (String): Function containing the source
-- **`sink`** (Object): Information about the data sink
-  - **`type`** (String): Sink type (e.g., "PickleDeserialization", "FileWrite")
-  - **`line`** (Number): Line number of the sink
-  - **`file`** (String): File path containing the sink
-  - **`function`** (String): Function containing the sink
-  - **`full_name`** (String): Full qualified name of the sink
-- **`tainted_variable`** (String): Name of the variable carrying tainted data
-- **`vulnerability_type`** (String): Type of vulnerability this flow represents
-- **`flow_description`** (String): Human-readable description of the data flow
-- **`path_analysis`** (Object): Analysis of the flow path
-  - **`path_length`** (Number): Number of steps in the flow
-  - **`confidence`** (Number): Confidence score (0.0 to 1.0)
-  - **`intermediate_steps`** (Number): Number of intermediate processing steps
-  - **`complexity`** (String): Path complexity ("low", "medium", "high")
-- **`intermediate_nodes`** (Array): List of intermediate processing steps
-
-#### Summary Object
-
-- **`files_analyzed`** (Number): Number of files processed
-- **`functions_found`** (Number): Total functions discovered
-- **`tainted_variables`** (Number): Variables involved in taint flows
-- **`sources_found`** (Number): Total data sources identified
-- **`sinks_found`** (Number): Total data sinks identified
-- **`vulnerabilities_found`** (Number): Total vulnerabilities detected
-- **`imports`** (Object): Import statistics
-  - **`total_imports`** (Number): Total import statements
-  - **`unique_stdlib_modules`** (Number): Unique standard library modules
-  - **`unique_third_party_modules`** (Number): Unique third-party modules
-  - **`unique_functions`** (Number): Unique imported functions
-  - **`unique_classes`** (Number): Unique imported classes
-  - **`stdlib_modules`** (Array): List of standard library modules
-  - **`third_party_modules`** (Array): List of third-party modules
-  - **`imported_functions`** (Array): List of imported functions
-  - **`imported_classes`** (Array): List of imported classes
-- **`call_chains`** (Object): Call chain statistics
-  - **`total_paths`** (Number): Total number of data flow paths
-  - **`average_path_length`** (Number): Average length of flow paths
-  - **`high_confidence_paths`** (Number): Number of high-confidence paths
-  - **`complex_paths`** (Number): Number of complex paths
-  - **`tracked_variables`** (Number): Variables tracked in flows
-  - **`tracked_functions`** (Number): Functions involved in flows
-  - **`data_flow_edges`** (Number): Total data flow connections
-
-#### Imports Object
-
-Per-file import information:
-
-- **`<file_path>`** (Object): Import details for each analyzed file
-  - **`total_imports`** (Number): Total imports in this file
-  - **`unique_modules`** (Number): Unique modules imported
-  - **`standard_library_modules`** (Array): Standard library modules used
-  - **`third_party_modules`** (Array): Third-party modules used
-  - **`imported_functions`** (Array): Functions imported
-  - **`imported_classes`** (Array): Classes imported
-  - **`detailed_imports`** (Array): Detailed import information
-    - **`type`** (String): Import type ("import", "from_import")
-    - **`module`** (String): Module name
-    - **`imported_name`** (String|null): Specific imported name
-    - **`alias`** (String|null): Import alias
-    - **`line`** (Number): Line number of import
-    - **`col`** (Number): Column number of import
-    - **`is_stdlib`** (Boolean): Whether it's a standard library module
-    - **`root_module`** (String): Root module name
-
----
-
-## 🌐 Language Versions
-
-- **English**: [README.md](README.md) (Current)
-- **中文**: [README.zh.md](README.zh.md)
+For detailed format specification, see [Output Format Documentation](docs/OUTPUT_FORMAT.md).

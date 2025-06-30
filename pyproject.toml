@@ -1,8 +1,8 @@
 [project]
 name = "lanalyzer"
-version = "0.1.5"
+version = "0.1.6"
 description = "Python Taint Analysis Tool for finding security vulnerabilities"
-authors = [{ name = "Lanalyzer Team", email = "support@mx-crafts.com" }]
+authors = [{ name = "Lanalyzer Author", email = "8533596@gmail.com" }]
 requires-python = "~=3.10"
 readme = "README.md"
 license = "AGPL-3.0-only"
@@ -34,17 +34,17 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/yourusername/lanalyzer"
+Repository = "https://github.com/bayuncao/lanalyzer"
 
 [project.scripts]
 lanalyzer = "lanalyzer.main:run_lanalyzer"
 
 [project.optional-dependencies]
 mcp = [
-    "fastapi>=0.103.0,<0.115.0",  # Expanded version range for better compatibility
-    "uvicorn[standard]>=0.23.2,<0.30.0",  # Expanded version range
+    "fastapi>=0.103.0,<0.115.0",
+    "uvicorn[standard]>=0.23.2,<0.30.0",
     "pydantic>=2.4.0,<3.0.0",
-    "fastmcp>=2.0.0,<3.0.0",  # Added upper bound for stability
+    "fastmcp>=2.0.0,<3.0.0",
 ]
 dev = [
     "pytest>=7.4.0,<9.0.0",
@@ -59,13 +59,6 @@ dev = [
     "twine>=4.0.0",
     "httpx>=0.24.0,<1.0.0",
 ]
-test = [
-    "pytest>=7.0.0,<9.0.0",
-    "pytest-asyncio>=0.21.0,<1.0.0",
-    "pytest-cov>=4.0.0,<6.0.0",
-    "httpx>=0.24.0,<1.0.0",  # For testing HTTP clients
-]
-
 
 [dependency-groups]
 dev = [
@@ -83,13 +76,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.sdist]
-include = [
-    "/lanalyzer",
-    "/rules",
-    "/examples",
-    "/README.md",
-    "/LICENSE",
-]
+include = ["/lanalyzer", "/rules", "/examples", "/README.md", "/LICENSE"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["lanalyzer"]
@@ -124,7 +111,7 @@ known_first_party = ["lanalyzer"]
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 
 [tool.mypy]
-python_version = "0.1.5"
+python_version = "0.1.6"
 warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = false
@@ -169,12 +156,7 @@ asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["lanalyzer"]
-omit = [
-    "*/tests/*",
-    "*/test_*",
-    "*/__pycache__/*",
-    "*/examples/*",
-]
+omit = ["*/tests/*", "*/test_*", "*/__pycache__/*", "*/examples/*"]
 
 [tool.coverage.report]
 exclude_lines = [
