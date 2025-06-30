@@ -8,12 +8,9 @@ This module consolidates all AST-related functionality including:
 """
 
 import ast
-import os
 from typing import Any, Dict, List, Optional, Tuple
 
-from lanalyzer.logger import get_logger, debug
-from ..import_tracker import ImportTracker
-from ..source_sink_classifier import SourceSinkClassifier
+from lanalyzer.logger import debug, get_logger
 
 logger = get_logger("lanalyzer.analysis.core.ast_processor")
 
@@ -43,25 +40,29 @@ class ASTProcessor:
         self.debug = debug_mode
         self.logger = logger
 
-    def parse_file(self, file_path: str) -> Tuple[Optional[ast.AST], Optional[List[str]], Dict[ast.AST, ast.AST]]:
+    def parse_file(
+        self, file_path: str
+    ) -> Tuple[Optional[ast.AST], Optional[List[str]], Dict[ast.AST, ast.AST]]:
         """
         Parse a Python file and return AST, source lines, and parent map.
-        
+
         Args:
             file_path: Path to the Python file
-            
+
         Returns:
             Tuple of (AST tree, source lines, parent map)
         """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 code = f.read()
-                source_lines = f.readlines() if f.seekable() else code.splitlines(keepends=True)
-                
+                source_lines = (
+                    f.readlines() if f.seekable() else code.splitlines(keepends=True)
+                )
+
             # Reset file pointer and read lines properly
             with open(file_path, "r", encoding="utf-8") as f:
                 source_lines = f.readlines()
-                
+
         except Exception as e:
             if self.debug:
                 self.logger.error(f"Failed to read file {file_path}: {e}")
@@ -81,24 +82,23 @@ class ASTProcessor:
         parent_visitor.visit(tree)
 
         if self.debug:
-            self.logger.debug(f"Successfully parsed {file_path} with {len(source_lines)} lines")
+            self.logger.debug(
+                f"Successfully parsed {file_path} with {len(source_lines)} lines"
+            )
 
         return tree, source_lines, parent_visitor.parent_map
 
     def get_statement_at_line(
-        self, 
-        source_lines: List[str], 
-        line: int, 
-        context_lines: int = 0
+        self, source_lines: List[str], line: int, context_lines: int = 0
     ) -> Dict[str, Any]:
         """
         Extract statement at specified line with optional context.
-        
+
         Args:
             source_lines: List of source code lines
             line: Target line number (1-based)
             context_lines: Number of context lines to include
-            
+
         Returns:
             Dictionary containing statement and context information
         """
@@ -124,19 +124,19 @@ class ASTProcessor:
         }
 
     def extract_operation_at_line(
-        self, 
-        source_lines: List[str], 
+        self,
+        source_lines: List[str],
         line: int,
-        dangerous_patterns: Optional[Dict[str, List[str]]] = None
+        dangerous_patterns: Optional[Dict[str, List[str]]] = None,
     ) -> Optional[str]:
         """
         Extract operation string at specified line for pattern matching.
-        
+
         Args:
             source_lines: List of source code lines
             line: Target line number (1-based)
             dangerous_patterns: Dictionary of dangerous patterns to match
-            
+
         Returns:
             Operation string if found, None otherwise
         """
@@ -146,12 +146,17 @@ class ASTProcessor:
             return None
 
         line_content = source_lines[line - 1].strip()
-        
+
         # Extract right-hand side of assignment or full line
-        operation = line_content.split("=", 1)[1].strip() if "=" in line_content else line_content
-        
+        operation = (
+            line_content.split("=", 1)[1].strip()
+            if "=" in line_content
+            else line_content
+        )
+
         # Clean up comments and semicolons
         import re
+
         operation = re.sub(r"[;].*$", "", operation)
         operation = re.sub(r"#.*$", "", operation).strip()
 
@@ -163,13 +168,15 @@ class ASTProcessor:
 
         return operation or None
 
-    def get_func_name_with_module(self, func_node: ast.expr) -> Tuple[Optional[str], Optional[str]]:
+    def get_func_name_with_module(
+        self, func_node: ast.expr
+    ) -> Tuple[Optional[str], Optional[str]]:
         """
         Extract function name and full module path from function call node.
-        
+
         Args:
             func_node: AST node representing function call
-            
+
         Returns:
             Tuple of (function name, full module path)
         """
@@ -189,5 +196,5 @@ class ASTProcessor:
                     parts.append(current.id)
                     full_name = ".".join(reversed(parts))
                     return func_node.attr, full_name
-        
+
         return None, None

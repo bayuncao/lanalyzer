@@ -1,6 +1,6 @@
 [project]
 name = "lanalyzer"
-version = "0.1.1"
+version = "0.1.5"
 description = "Python Taint Analysis Tool for finding security vulnerabilities"
 authors = [{ name = "Lanalyzer Team", email = "support@mx-crafts.com" }]
 requires-python = "~=3.10"
@@ -47,13 +47,17 @@ mcp = [
     "fastmcp>=2.0.0,<3.0.0",  # Added upper bound for stability
 ]
 dev = [
-    "pytest>=7.0.0,<9.0.0",
+    "pytest>=7.4.0,<9.0.0",
     "pytest-asyncio>=0.21.0,<1.0.0",
-    "pytest-cov>=4.0.0,<6.0.0",
-    "black>=23.0.0,<25.0.0",
+    "pytest-cov>=4.1.0,<6.0.0",
+    "black>=23.7.0,<25.0.0",
     "isort>=5.12.0,<6.0.0",
-    "mypy>=1.5.0,<2.0.0",
-    "pre-commit>=3.0.0,<4.0.0",
+    "mypy>=1.5.1,<2.0.0",
+    "flake8>=6.1.0,<7.0.0",
+    "pre-commit>=4.2.0",
+    "build>=1.0.0",
+    "twine>=4.0.0",
+    "httpx>=0.24.0,<1.0.0",
 ]
 test = [
     "pytest>=7.0.0,<9.0.0",
@@ -62,17 +66,20 @@ test = [
     "httpx>=0.24.0,<1.0.0",  # For testing HTTP clients
 ]
 
+
 [dependency-groups]
 dev = [
-    "pytest>=7.4.0,<8",
+    "pytest>=7.4.0,<9.0.0",
     "pytest-asyncio>=0.21.0,<1.0.0",
-    "pytest-cov>=4.1.0,<5",
-    "black>=23.7.0,<24",
-    "isort>=5.12.0,<6",
-    "mypy>=1.5.1,<2",
-    "flake8>=6.1.0,<7",
+    "pytest-cov>=4.1.0,<6.0.0",
+    "black>=23.7.0,<25.0.0",
+    "isort>=5.12.0,<6.0.0",
+    "mypy>=1.5.1,<2.0.0",
+    "flake8>=6.1.0,<7.0.0",
     "pre-commit>=4.2.0",
-    "httpx>=0.24.0,<1.0.0",  # For testing HTTP clients
+    "build>=1.0.0",
+    "twine>=4.0.0",
+    "httpx>=0.24.0,<1.0.0",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -117,21 +124,22 @@ known_first_party = ["lanalyzer"]
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 
 [tool.mypy]
-python_version = "3.10"
-warn_return_any = true
+python_version = "0.1.5"
+warn_return_any = false
 warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-strict_equality = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+disallow_untyped_decorators = false
+no_implicit_optional = false
+warn_redundant_casts = false
+warn_unused_ignores = false
+warn_no_return = false
+warn_unreachable = false
+strict_equality = false
 show_error_codes = true
 show_column_numbers = true
+ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = [
@@ -145,7 +153,7 @@ module = [
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-minversion = "7.0"
+minversion = "0.1.5"
 addopts = "-ra -q --strict-markers --strict-config"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]

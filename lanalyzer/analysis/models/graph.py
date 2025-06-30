@@ -27,17 +27,17 @@ class CallGraphNode:
         self.file_path: Optional[str] = file_path
         self.line_no: int = line_no
         self.end_line_no: int = end_line_no if end_line_no > 0 else line_no
-        
+
         # Call relationships
         self.callers: List["CallGraphNode"] = []  # Functions that call this function
         self.callees: List["CallGraphNode"] = []  # Functions that this function calls
-        
+
         # Function metadata
         self.parameters: List[str] = []  # Parameter names
         self.tainted_parameters: Set[int] = set()  # Tainted parameter indices
         self.return_tainted: bool = False  # Whether function returns tainted data
         self.return_taint_sources: List[Any] = []  # Sources of return taint
-        
+
         # Call point information
         self.call_line: int = 0  # Most recent call line
         self.call_points: List[Dict[str, Any]] = []  # All call points
@@ -73,25 +73,23 @@ class DataStructureNode:
     def __init__(self, name: str, node_type: str):
         self.name = name
         self.node_type = node_type  # 'dict', 'list', 'tuple', 'object', etc.
-        
+
         # Taint tracking
         self.tainted = False
         self.tainted_keys: Set[Any] = set()  # For dictionaries
         self.tainted_indices: Set[int] = set()  # For lists/tuples
         self.tainted_attributes: Set[str] = set()  # For objects
-        
+
         # Source and propagation tracking
         self.source_info: Optional[Dict[str, Any]] = None
         self.propagation_history: List[str] = []
-        
+
         # Structure relationships
         self.parent_structures: Set[str] = set()
         self.child_structures: Set[str] = set()
 
     def mark_tainted(
-        self, 
-        source_info: Dict[str, Any], 
-        propagation_step: Optional[str] = None
+        self, source_info: Dict[str, Any], propagation_step: Optional[str] = None
     ) -> None:
         """Mark the data structure as tainted with the given source info."""
         self.tainted = True
@@ -186,7 +184,7 @@ class DefUseChain:
         self.name = name
         self.definitions: List[tuple[ast.AST, int]] = []  # (ast_node, line_no) pairs
         self.uses: List[tuple[ast.AST, int]] = []  # (ast_node, line_no) pairs
-        
+
         # Taint tracking
         self.tainted = False
         self.taint_sources: List[Any] = []

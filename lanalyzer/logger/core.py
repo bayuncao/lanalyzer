@@ -4,10 +4,10 @@ Core logging utilities
 Provides a consistent logging interface for the entire application.
 """
 
+import datetime
 import logging
 import sys
-import datetime
-from typing import Optional, TextIO, Union, Any
+from typing import Any, Optional, TextIO, Union
 
 # Configure default logger
 logger = logging.getLogger("lanalyzer")

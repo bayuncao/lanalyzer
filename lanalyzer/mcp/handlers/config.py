@@ -4,16 +4,14 @@ Configuration MCP handler for Lanalyzer.
 This module implements the configuration handlers for MCP requests to Lanalyzer.
 """
 
-import os
 import json
 import logging
-from typing import Dict, List, Any, Optional
+import os
+from typing import Any, Dict, Optional
 
 from lanalyzer.cli.config_utils import load_configuration, validate_configuration
-from ..models import (
-    ConfigurationRequest,
-    ConfigurationResponse,
-)
+
+from ..models import ConfigurationRequest, ConfigurationResponse
 from .base import BaseMCPHandler
 
 logger = logging.getLogger(__name__)

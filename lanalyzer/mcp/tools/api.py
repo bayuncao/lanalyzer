@@ -7,17 +7,17 @@ through the MCP server interface.
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from fastmcp import Context
 
+from ..exceptions import MCPValidationError, handle_exception
 from ..models import (
     AnalysisRequest,
-    FileAnalysisRequest,
     ConfigurationRequest,
     ExplainVulnerabilityRequest,
+    FileAnalysisRequest,
 )
-from ..exceptions import MCPToolError, MCPValidationError, handle_exception
 
 
 # Tool implementations
@@ -69,23 +69,27 @@ async def analyze_code(
         if not isinstance(actual_code, str):
             raise MCPValidationError(
                 "Code parameter must be a string",
-                field_errors=[{"field": "code", "error": "Invalid type"}]
+                field_errors=[{"field": "code", "error": "Invalid type"}],
             )
         if not isinstance(actual_file_path, str):
             raise MCPValidationError(
                 "File path parameter must be a string",
-                field_errors=[{"field": "file_path", "error": "Invalid type"}]
+                field_errors=[{"field": "file_path", "error": "Invalid type"}],
             )
         if not isinstance(actual_config_path, str):
             raise MCPValidationError(
                 "Config path parameter must be a string",
-                field_errors=[{"field": "config_path", "error": "Invalid type"}]
+                field_errors=[{"field": "config_path", "error": "Invalid type"}],
             )
     except MCPValidationError as e:
         error_info = e.to_dict()
         if ctx:
             await ctx.error(error_info["message"])
-        return {"success": False, "errors": [error_info["message"]], "validation_errors": error_info["field_errors"]}
+        return {
+            "success": False,
+            "errors": [error_info["message"]],
+            "validation_errors": error_info["field_errors"],
+        }
 
     try:
         if ctx:
@@ -116,7 +120,7 @@ async def analyze_code(
             "success": False,
             "errors": [error_info.get("message", str(e))],
             "vulnerabilities": [],
-            "summary": {}
+            "summary": {},
         }
 
 
@@ -318,24 +322,32 @@ async def analyze_path(
 
     # Handle nested parameter situations
     if isinstance(target_path, dict):
-        logging.warning(f"Nested parameter situation (target_path is dict): {target_path}")
+        logging.warning(
+            f"Nested parameter situation (target_path is dict): {target_path}"
+        )
         actual_target_path = target_path.get("target_path", actual_target_path)
         actual_config_path = target_path.get("config_path", actual_config_path)
     elif isinstance(config_path, dict):
-        logging.warning(f"Nested parameter situation (config_path is dict): {config_path}")
+        logging.warning(
+            f"Nested parameter situation (config_path is dict): {config_path}"
+        )
         actual_config_path = config_path.get("config_path", actual_config_path)
         if "target_path" in config_path:
             actual_target_path = config_path.get("target_path")
 
     # Parameter validation
     if not isinstance(actual_target_path, str):
-        error_msg = f"Target path must be a string, received: {type(actual_target_path)}"
+        error_msg = (
+            f"Target path must be a string, received: {type(actual_target_path)}"
+        )
         if ctx:
             await ctx.error(error_msg)
         return {"success": False, "errors": [error_msg]}
 
     if not isinstance(actual_config_path, str):
-        error_msg = f"Configuration path must be a string, received: {type(actual_config_path)}"
+        error_msg = (
+            f"Configuration path must be a string, received: {type(actual_config_path)}"
+        )
         if ctx:
             await ctx.error(error_msg)
         return {"success": False, "errors": [error_msg]}
@@ -388,7 +400,9 @@ async def explain_vulnerabilities(
 
     # Handle nested parameter situations
     if isinstance(analysis_file, dict):
-        logging.warning(f"Nested parameter situation (analysis_file is dict): {analysis_file}")
+        logging.warning(
+            f"Nested parameter situation (analysis_file is dict): {analysis_file}"
+        )
         actual_analysis_file = analysis_file.get("analysis_file", actual_analysis_file)
         actual_format = analysis_file.get("format", actual_format)
         actual_level = analysis_file.get("level", actual_level)
@@ -417,14 +431,14 @@ async def explain_vulnerabilities(
         await ctx.info(f"Format: {actual_format}, Level: {actual_level}")
 
     request_obj = ExplainVulnerabilityRequest(
-        analysis_file=actual_analysis_file,
-        format=actual_format,
-        level=actual_level
+        analysis_file=actual_analysis_file, format=actual_format, level=actual_level
     )
     result = await handler.explain_vulnerabilities(request_obj)
 
     if ctx and result.success:
-        await ctx.info(f"Generated explanation for {result.vulnerabilities_count} vulnerabilities")
+        await ctx.info(
+            f"Generated explanation for {result.vulnerabilities_count} vulnerabilities"
+        )
     elif ctx and not result.success:
         await ctx.error(f"Failed to explain vulnerabilities: {result.errors}")
 

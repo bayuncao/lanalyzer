@@ -10,7 +10,7 @@ extracting alias mappings, etc.
 from __future__ import annotations
 
 import ast
-from typing import Dict, Set, Optional, List, Any
+from typing import Any, Dict, List, Optional, Set
 
 from lanalyzer.logger import get_logger
 from lanalyzer.utils.stdlib_detector import get_stdlib_detector
@@ -50,14 +50,15 @@ class ImportTracker(ast.NodeVisitor):
 
     # --- ast.NodeVisitor overrides -------------------------------------------------
 
-    def visit_Import(self, node: ast.Import) -> None:  # noqa: N802 (consistent with ast API)
+    def visit_Import(
+        self, node: ast.Import
+    ) -> None:  # noqa: N802 (consistent with ast API)
         """Record `import xxx as yyy` and direct import situations."""
         for name in node.names:
             if self.debug:
                 logger.debug(
-                    f"[ImportTracker] Processing import: {name.name}" + (
-                        f" as {name.asname}" if name.asname else ""
-                    )
+                    f"[ImportTracker] Processing import: {name.name}"
+                    + (f" as {name.asname}" if name.asname else "")
                 )
 
             # Record import information
@@ -79,8 +80,8 @@ class ImportTracker(ast.NodeVisitor):
                 module_name=name.name,
                 imported_name=None,
                 alias=name.asname,
-                line_number=getattr(node, 'lineno', 0),
-                col_offset=getattr(node, 'col_offset', 0)
+                line_number=getattr(node, "lineno", 0),
+                col_offset=getattr(node, "col_offset", 0),
             )
 
         # Continue to traverse child nodes (import statements usually have no children, but consistent)
@@ -111,8 +112,8 @@ class ImportTracker(ast.NodeVisitor):
                     module_name=node.module,
                     imported_name=imported_name,
                     alias=name.asname,
-                    line_number=getattr(node, 'lineno', 0),
-                    col_offset=getattr(node, 'col_offset', 0)
+                    line_number=getattr(node, "lineno", 0),
+                    col_offset=getattr(node, "col_offset", 0),
                 )
         else:
             # Handle relative imports (from . import xxx)
@@ -122,8 +123,8 @@ class ImportTracker(ast.NodeVisitor):
                     module_name=".",
                     imported_name=name.name,
                     alias=name.asname,
-                    line_number=getattr(node, 'lineno', 0),
-                    col_offset=getattr(node, 'col_offset', 0)
+                    line_number=getattr(node, "lineno", 0),
+                    col_offset=getattr(node, "col_offset", 0),
                 )
 
         self.generic_visit(node)
@@ -136,13 +137,18 @@ class ImportTracker(ast.NodeVisitor):
         """Try to resolve the full module name corresponding to an alias."""
         return self.import_aliases.get(alias) or self.from_imports.get(alias)
 
-    def _record_detailed_import(self, import_type: str, module_name: str,
-                               imported_name: Optional[str] = None,
-                               alias: Optional[str] = None,
-                               line_number: int = 0, col_offset: int = 0) -> None:
+    def _record_detailed_import(
+        self,
+        import_type: str,
+        module_name: str,
+        imported_name: Optional[str] = None,
+        alias: Optional[str] = None,
+        line_number: int = 0,
+        col_offset: int = 0,
+    ) -> None:
         """Record detailed import information."""
         # Determine the root module name (for standard library/third-party library judgment)
-        root_module = module_name.split('.')[0] if module_name else ""
+        root_module = module_name.split(".")[0] if module_name else ""
 
         # Judge whether it is a standard library
         is_stdlib = self._is_standard_library(root_module)

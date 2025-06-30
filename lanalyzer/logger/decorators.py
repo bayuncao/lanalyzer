@@ -7,7 +7,7 @@ import inspect
 import os
 from typing import Any, Callable, TypeVar, cast
 
-from lanalyzer.logger.core import debug, info, warning, error, critical
+from lanalyzer.logger.core import critical, debug, error, info, warning
 
 # Type variable for various types of functions
 F = TypeVar("F", bound=Callable[..., Any])

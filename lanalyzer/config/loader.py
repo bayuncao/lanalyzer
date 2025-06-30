@@ -6,10 +6,9 @@ This module provides functionality for loading and validating configuration file
 
 import json
 import os
-import sys
 from typing import Any, Dict
 
-from lanalyzer.logger import info, debug, warning, error
+from lanalyzer.logger import debug, error, info
 
 
 class ConfigLoader:
