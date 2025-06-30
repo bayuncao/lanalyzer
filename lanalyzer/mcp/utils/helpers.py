@@ -4,7 +4,6 @@ Utility functions for MCP server.
 """
 
 import logging
-import functools
 
 
 def debug_tool_args(func):

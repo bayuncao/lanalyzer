@@ -5,13 +5,10 @@ This module provides the base handler functionality for MCP requests to Lanalyze
 """
 
 import logging
-from typing import Dict, List, Any, Optional, Union
+from typing import Any, Dict, List
 
-from ..models import (
-    ServerInfoResponse,
-    VulnerabilityInfo,
-)
-from ..exceptions import MCPError, handle_exception
+from ..exceptions import handle_exception
+from ..models import ServerInfoResponse, VulnerabilityInfo
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +110,9 @@ class BaseMCPHandler:
                 # Continue processing other vulnerabilities
             except Exception as e:
                 error_info = handle_exception(e)
-                logger.error(f"Unexpected error converting vulnerability: {error_info} - Data: {vuln}")
+                logger.error(
+                    f"Unexpected error converting vulnerability: {error_info} - Data: {vuln}"
+                )
                 # Continue processing other vulnerabilities
 
         return vuln_info_list

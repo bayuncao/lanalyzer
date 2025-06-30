@@ -22,29 +22,28 @@ class SourceSinkClassifier:
         self._sinks = []
         self.config = None
 
-
     def configure(self, sources, sinks, config=None):
         """Configure source and sink definitions (for new architecture)"""
         self._sources = sources or []
         self._sinks = sinks or []
         self.config = config
         # Also update visitor attributes for compatibility
-        if hasattr(self.visitor, 'sources'):
+        if hasattr(self.visitor, "sources"):
             self.visitor.sources = self._sources
-        if hasattr(self.visitor, 'sinks'):
+        if hasattr(self.visitor, "sinks"):
             self.visitor.sinks = self._sinks
 
     @property
     def sources(self):
         """Get source configuration"""
-        if hasattr(self.visitor, 'sources') and self.visitor.sources:
+        if hasattr(self.visitor, "sources") and self.visitor.sources:
             return self.visitor.sources
         return self._sources
 
     @property
     def sinks(self):
         """Get sink configuration"""
-        if hasattr(self.visitor, 'sinks') and self.visitor.sinks:
+        if hasattr(self.visitor, "sinks") and self.visitor.sinks:
             return self.visitor.sinks
         return self._sinks
 
@@ -80,7 +79,9 @@ class SourceSinkClassifier:
                 normalized_pattern = pattern.rstrip("(")
 
                 # Direct match with normalized pattern
-                if normalized_pattern == func_name or (full_name and normalized_pattern == full_name):
+                if normalized_pattern == func_name or (
+                    full_name and normalized_pattern == full_name
+                ):
                     return True
 
                 # Check if pattern is contained in full_name
@@ -110,7 +111,9 @@ class SourceSinkClassifier:
                 normalized_pattern = pattern.rstrip("(")
 
                 # Direct match with normalized pattern
-                if normalized_pattern == func_name or (full_name and normalized_pattern == full_name):
+                if normalized_pattern == func_name or (
+                    full_name and normalized_pattern == full_name
+                ):
                     return item.get("name", "Unknown")
 
                 # Check if pattern is contained in full_name

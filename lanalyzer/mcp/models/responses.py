@@ -4,8 +4,10 @@ MCP data models for Lanalyzer (responses).
 This module defines the Pydantic models used for MCP responses.
 """
 
-from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 from .requests import VulnerabilityInfo
 
 

@@ -3,16 +3,17 @@
 CLI commands for MCP server.
 """
 
+import logging
 import os
+import subprocess
 import sys
 import time
-import logging
+
 import click
-import subprocess
 
 from lanalyzer.__version__ import __version__
-from lanalyzer.mcp.utils import generate_client_code_example
 from lanalyzer.mcp.settings import MCPServerSettings, TransportType
+from lanalyzer.mcp.utils import generate_client_code_example
 
 
 @click.group()
@@ -114,16 +115,10 @@ def run(debug, host, port, transport, json_response, show_client):
     # Now start the server with the appropriate transport
     # Pass runtime settings to run() method as recommended by FastMCP
     if transport == "streamable-http":
-        current_run_server.run(
-            transport="streamable-http",
-            **run_kwargs
-        )
+        current_run_server.run(transport="streamable-http", **run_kwargs)
     else:
         # Use regular SSE transport
-        current_run_server.run(
-            transport="sse",
-            **run_kwargs
-        )
+        current_run_server.run(transport="sse", **run_kwargs)
 
 
 @cli.command(name="mcp")
@@ -140,7 +135,9 @@ def run(debug, host, port, transport, json_response, show_client):
 def mcpcmd(command_args, debug, transport):
     """Run the server using FastMCP command-line tool (e.g., dev, run, install)."""
     # Get the absolute path of mcpserver.py file
-    script_path = os.path.join(os.path.dirname(__file__), "..", "server", "mcpserver.py")
+    script_path = os.path.join(
+        os.path.dirname(__file__), "..", "server", "mcpserver.py"
+    )
     script_path = os.path.abspath(script_path)
 
     # Build FastMCP command

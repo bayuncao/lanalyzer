@@ -4,15 +4,12 @@ Explanation MCP handler for Lanalyzer.
 This module implements the explanation handlers for MCP requests to Lanalyzer.
 """
 
-import os
 import json
 import logging
-from typing import Dict, List, Any
+import os
+from typing import Any, Dict, List
 
-from ..models import (
-    ExplainVulnerabilityRequest,
-    ExplainVulnerabilityResponse,
-)
+from ..models import ExplainVulnerabilityRequest, ExplainVulnerabilityResponse
 from .base import BaseMCPHandler
 
 logger = logging.getLogger(__name__)

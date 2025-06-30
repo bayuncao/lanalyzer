@@ -4,6 +4,14 @@ Utility function package, providing general utility functions required by LanaLy
 This package contains various utility functions to support the core functionalities of the LanaLyzer tool.
 """
 
+# AST analysis utilities
+from lanalyzer.utils.ast_utils import (
+    contains_sink_patterns,
+    extract_call_targets,
+    extract_function_calls,
+    parse_file,
+)
+
 # File utilities
 from lanalyzer.utils.fs_utils import (
     ensure_directory_exists,
@@ -11,14 +19,6 @@ from lanalyzer.utils.fs_utils import (
     get_python_files_in_directory,
     get_relative_path,
     is_python_file,
-)
-
-# AST analysis utilities
-from lanalyzer.utils.ast_utils import (
-    parse_file,
-    contains_sink_patterns,
-    extract_call_targets,
-    extract_function_calls,
 )
 
 __all__ = [

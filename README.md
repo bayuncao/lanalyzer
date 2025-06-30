@@ -52,22 +52,37 @@ Lanalyzer is an advanced Python static taint analysis tool designed to detect po
 - Python 3.10 or higher
 - [uv](https://github.com/astral-sh/uv) (recommended for dependency management)
 
-### Steps
+### Installation
+
+#### Option 1: Install from PyPI (Recommended)
+```bash
+# Using pip
+pip install lanalyzer
+
+# Using uv (recommended)
+uv add lanalyzer
+
+# With MCP support
+uv add lanalyzer[mcp]
+```
+
+#### Option 2: Install from Source
 1. Clone the repository:
    ```bash
    git clone https://github.com/mxcrafts/lanalyzer.git
    cd lanalyzer
    ```
 
-2. Create a virtual environment and install dependencies:
+2. Install dependencies:
    ```bash
-   uv venv
-   uv pip sync pyproject.toml --all-extras
-   ```
+   # Install basic dependencies
+   uv sync
 
-3. Activate the virtual environment:
-   ```bash
-   source .venv/bin/activate
+   # Install with development dependencies
+   uv sync --group dev
+
+   # Install with MCP support
+   uv sync --extra mcp
    ```
 
 ## 💻 Usage
@@ -95,6 +110,8 @@ lanalyzer --target example.py --config rules/sql_injection.json --pretty --outpu
 ## 🤝 Contributing
 
 We welcome contributions! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines on how to contribute to Lanalyzer.
+
+For development setup, building, and publishing instructions, see [DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## 📄 License
 

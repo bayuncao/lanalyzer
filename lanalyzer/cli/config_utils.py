@@ -2,10 +2,10 @@
 Configuration Utilities Module - Provides configuration loading and result saving functionalities.
 """
 
+import ast
 import json
 import os
-import ast
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def load_configuration(

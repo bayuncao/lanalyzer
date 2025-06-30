@@ -5,48 +5,47 @@ Provides Model Context Protocol (MCP) functionality for lanalyzer.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 try:
     # Import FastMCP core components
-    from fastmcp import FastMCP, Context
+    from fastmcp import Context, FastMCP
 
     # Check if streamable HTTP support is available
     try:
-        from fastmcp.transport.streamable_http import StreamableHTTPTransport
-        from fastmcp.storage.memory import InMemoryEventStore
+        import fastmcp.transport.streamable_http  # noqa: F401
 
         STREAMABLE_HTTP_AVAILABLE = True
     except ImportError:
         STREAMABLE_HTTP_AVAILABLE = False
 except ImportError:
     from ..exceptions import MCPDependencyError
+
     raise MCPDependencyError(
         "FastMCP dependency not found.",
         missing_packages=["fastmcp"],
-        install_command="pip install lanalyzer[mcp] or pip install fastmcp"
+        install_command="pip install lanalyzer[mcp] or pip install fastmcp",
     )
 
 from lanalyzer.__version__ import __version__
+from lanalyzer.mcp.cli import cli
+from lanalyzer.mcp.exceptions import MCPInitializationError, handle_exception
 from lanalyzer.mcp.handlers import LanalyzerMCPHandler
+from lanalyzer.mcp.settings import MCPServerSettings
 from lanalyzer.mcp.tools import (
     analyze_code,
     analyze_file,
     analyze_path,
-    get_config,
-    validate_config,
     create_config,
     explain_vulnerabilities,
+    get_config,
+    validate_config,
 )
-from lanalyzer.mcp.cli import cli
 from lanalyzer.mcp.utils import debug_tool_args
-from lanalyzer.mcp.settings import MCPServerSettings, TransportType
-from lanalyzer.mcp.exceptions import MCPError, MCPInitializationError, handle_exception
 
 
 def create_mcp_server(
-    settings: Optional[MCPServerSettings] = None,
-    debug: Optional[bool] = None
+    settings: Optional[MCPServerSettings] = None, debug: Optional[bool] = None
 ) -> FastMCP:
     """
     Create FastMCP server instance.
@@ -411,7 +410,9 @@ def create_mcp_server(
                     "files_affected": ["/path/to/vulnerable_file.py"]
                 }
             """
-            return await explain_vulnerabilities(analysis_file, format, level, handler, ctx)
+            return await explain_vulnerabilities(
+                analysis_file, format, level, handler, ctx
+            )
 
         # Apply debug decorators if debug mode is enabled
         if settings.enable_tool_debugging and settings.debug:
@@ -421,7 +422,9 @@ def create_mcp_server(
             get_config_wrapper = debug_tool_args(get_config_wrapper)
             validate_config_wrapper = debug_tool_args(validate_config_wrapper)
             create_config_wrapper = debug_tool_args(create_config_wrapper)
-            explain_vulnerabilities_wrapper = debug_tool_args(explain_vulnerabilities_wrapper)
+            explain_vulnerabilities_wrapper = debug_tool_args(
+                explain_vulnerabilities_wrapper
+            )
 
         logging.info(f"MCP server '{settings.name}' created successfully")
         return mcp_instance
@@ -430,8 +433,7 @@ def create_mcp_server(
         error_info = handle_exception(e)
         logging.error(f"Failed to create MCP server: {error_info}")
         raise MCPInitializationError(
-            f"Server initialization failed: {str(e)}",
-            details=error_info
+            f"Server initialization failed: {str(e)}", details=error_info
         )
 
 

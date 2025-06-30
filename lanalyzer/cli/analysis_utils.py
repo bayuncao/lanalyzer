@@ -9,7 +9,7 @@ import traceback
 from typing import Any, Dict, List
 
 from lanalyzer.analysis import EnhancedTaintTracker
-from lanalyzer.logger import info, warning, error
+from lanalyzer.logger import error, info, warning
 
 
 def analyze_files_with_logging(
@@ -97,9 +97,7 @@ def analyze_files_with_logging(
             info(
                 f"{progress} Number of vulnerabilities found: {len(file_vulnerabilities)}"
             )
-            info(
-                f"{progress} Number of call chains found: {len(file_call_chains)}"
-            )
+            info(f"{progress} Number of call chains found: {len(file_call_chains)}")
 
             sources_count = 0
             sinks_count = 0
