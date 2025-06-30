@@ -1,5 +1,4 @@
-[//]: # (Banner placeholder - replace with your actual banner URL)
-![Lanalyzer Banner](https://via.placeholder.com/1200x300.png?text=Lanalyzer+Static+Analysis)
+![Lanalyzer](./image/banner.png)
 
 # Lanalyzer
 
@@ -14,27 +13,40 @@
 
 Lanalyzer is an advanced Python static taint analysis tool designed to detect potential security vulnerabilities in Python projects. It identifies data flows from untrusted sources (Sources) to sensitive operations (Sinks) and provides detailed insights into potential risks.
 
+<p align="center">
+  <a href="./README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
+  <a href="./README_CN.md"><img alt="简体中文版自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
+</p>
+
 ## 📖 Table of Contents
 
-- [✨ Features](#-features)
-- [🚀 Getting Started](#-getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-- [💻 Usage](#-usage)
-  - [Basic Analysis](#basic-analysis)
-  - [Command-Line Options](#command-line-options)
-  - [Example](#example)
-- [🧩 Model Context Protocol (MCP) Support](#-model-context-protocol-mcp-support)
-  - [Installing MCP Dependencies](#installing-mcp-dependencies)
-  - [Starting the MCP Server](#starting-the-mcp-server)
-  - [MCP Server Features](#mcp-server-features)
-  - [Integration with AI Tools](#integration-with-ai-tools)
-  - [Using in Cursor](#using-in-cursor)
-  - [MCP Command-Line Options](#mcp-command-line-options)
-  - [Advanced MCP Usage](#advanced-mcp-usage)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
-- [📞 Contact](#-contact)
+- [Lanalyzer](#lanalyzer)
+  - [📖 Table of Contents](#-table-of-contents)
+  - [✨ Features](#-features)
+  - [🚀 Getting Started](#-getting-started)
+    - [Prerequisites](#prerequisites)
+    - [Installation](#installation)
+      - [Option 1: Install from PyPI (Recommended)](#option-1-install-from-pypi-recommended)
+      - [Option 2: Install from Source](#option-2-install-from-source)
+  - [💻 Usage](#-usage)
+    - [Basic Analysis](#basic-analysis)
+    - [Command-Line Options](#command-line-options)
+    - [Example](#example)
+  - [🤝 Contributing](#-contributing)
+  - [📄 License](#-license)
+  - [📞 Contact](#-contact)
+    - [Contact](#contact)
+  - [🧩 Model Context Protocol (MCP) Support](#-model-context-protocol-mcp-support)
+    - [Installing MCP Dependencies](#installing-mcp-dependencies)
+    - [Starting the MCP Server](#starting-the-mcp-server)
+    - [MCP Server Features](#mcp-server-features)
+    - [Integration with AI Tools](#integration-with-ai-tools)
+    - [Using in Cursor](#using-in-cursor)
+    - [MCP Command-Line Options](#mcp-command-line-options)
+    - [Advanced MCP Usage](#advanced-mcp-usage)
+      - [Custom Configurations](#custom-configurations)
+      - [Batch File Analysis](#batch-file-analysis)
+  - [📊 Analysis Results Format](#-analysis-results-format)
 
 
 ## ✨ Features
@@ -52,22 +64,40 @@ Lanalyzer is an advanced Python static taint analysis tool designed to detect po
 - Python 3.10 or higher
 - [uv](https://github.com/astral-sh/uv) (recommended for dependency management)
 
-### Steps
+### Installation
+
+#### Option 1: Install from PyPI (Recommended)
+```bash
+# Using pip
+pip install lanalyzer
+
+# Using uv (recommended)
+uv add lanalyzer
+
+# With MCP support
+uv add lanalyzer[mcp]
+```
+
+#### Option 2: Install from Source
 1. Clone the repository:
    ```bash
    git clone https://github.com/mxcrafts/lanalyzer.git
    cd lanalyzer
    ```
 
-2. Create a virtual environment and install dependencies:
+2. Install dependencies:
    ```bash
-   uv venv
-   uv pip sync pyproject.toml --all-extras
-   ```
+   # Install basic dependencies
+   make install
 
-3. Activate the virtual environment:
-   ```bash
-   source .venv/bin/activate
+   # Install with development dependencies
+   make install-dev
+
+   # Install with MCP support
+   make install-mcp
+
+   # Install everything (dev + MCP)
+   make install-all
    ```
 
 ## 💻 Usage
@@ -96,6 +126,8 @@ lanalyzer --target example.py --config rules/sql_injection.json --pretty --outpu
 
 We welcome contributions! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines on how to contribute to Lanalyzer.
 
+For development setup, building, and publishing instructions, see [DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
 ## 📄 License
 
 This project is licensed under the GNU Affero General Public License v3.0. See the [LICENSE](LICENSE) file for details.
@@ -122,7 +154,7 @@ pip install "lanalyzer[mcp]"
 If you're using uv:
 
 ```bash
-uv pip install -e ".[mcp]"
+uv add lanalyzer[mcp]
 ```
 
 ### Starting the MCP Server
@@ -135,8 +167,8 @@ There are multiple ways to start the MCP server:
 # View help information
 python -m lanalyzer.mcp --help
 
-# Start the server
-python -m lanalyzer.mcp run --host 0.0.0.0 --port 8000 --debug
+# Start the server (default port 8001)
+python -m lanalyzer.mcp run --port 8001 --debug
 ```
 
 2. **Using the lanalyzer Command-Line Tool**:
@@ -145,11 +177,24 @@ python -m lanalyzer.mcp run --host 0.0.0.0 --port 8000 --debug
 # View help information
 lanalyzer mcp --help
 
-# Start the server
-lanalyzer mcp run --host 0.0.0.0 --port 8000 --debug
+# Start the server (default port 8000)
+lanalyzer mcp run --port 8000 --debug
 
-# Use FastMCP development mode (if applicable, verify this command)
-# lanalyzer mcp dev
+# Use development mode
+lanalyzer mcp dev
+```
+
+3. **Using Makefile (Recommended for Development)**:
+
+```bash
+# Start MCP server
+make mcp-server
+
+# Start MCP server with debug mode
+make mcp-server-debug
+
+# Test MCP CLI
+make mcp-test
 ```
 
 ### MCP Server Features
@@ -161,6 +206,8 @@ The MCP server provides the following core functionalities:
 3. **Path Analysis**: Analyze entire directories or projects for security vulnerabilities
 4. **Vulnerability Explanation**: Provide detailed explanations of discovered vulnerabilities
 5. **Configuration Management**: Get, validate, and create analysis configurations
+
+For detailed MCP API documentation, see [MCP Tools Reference](docs/MCP_TOOLS.md).
 
 ### Integration with AI Tools
 
@@ -197,8 +244,14 @@ Please use lanalyzer to analyze the current file for security vulnerabilities an
 
 The MCP server supports the following command-line options:
 
+**For `python -m lanalyzer.mcp run`**:
 - `--debug`: Enable debug mode with detailed logging
 - `--host`: Set the server listening address (default: 127.0.0.1)
+- `--port`: Set the server listening port (default: 8001)
+- `--transport`: Transport protocol (sse or streamable-http)
+
+**For `lanalyzer mcp run`**:
+- `--debug`: Enable debug mode
 - `--port`: Set the server listening port (default: 8000)
 
 ### Advanced MCP Usage
@@ -233,3 +286,14 @@ result = client.call({
     "output_path": "/path/to/output.json"  # Optional
 })
 ```
+
+## 📊 Analysis Results Format
+
+The analysis results are returned in JSON format with the following main sections:
+
+- **`vulnerabilities`**: List of detected security vulnerabilities
+- **`call_chains`**: Data flow paths from sources to sinks
+- **`summary`**: Analysis statistics and overview
+- **`imports`**: Import information for analyzed files
+
+For detailed format specification, see [Output Format Documentation](docs/OUTPUT_FORMAT.md).

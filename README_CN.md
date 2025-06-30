@@ -1,5 +1,4 @@
-[//]: # (横幅占位符 - 请替换为您的实际横幅图片URL)
-![Lanalyzer 横幅](https://via.placeholder.com/1200x300.png?text=Lanalyzer+%E9%9D%99%E6%80%81%E5%88%86%E6%9E%90)
+![Lanalyzer](./image/banner.png)
 
 # Lanalyzer
 
@@ -14,27 +13,43 @@
 
 Lanalyzer 是一个高级的 Python 静态污点分析工具，旨在检测 Python 项目中的潜在安全漏洞。它通过分析从不受信任的数据源（Sources）到敏感操作点（Sinks）的数据流动，提供详细的风险洞察。
 
+<p align="center">
+  <a href="./README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
+  <a href="./README_CN.md"><img alt="简体中文版自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
+</p>
+
 ## 📖 目录
 
-- [✨ 功能特点](#-功能特点)
-- [🚀 开始使用](#-开始使用)
-  - [前置要求](#前置要求)
-  - [安装步骤](#安装步骤)
-- [💻 使用方法](#-使用方法)
-  - [基本分析](#基本分析)
-  - [命令行选项](#命令行选项)
-  - [示例](#示例)
-- [🧩 MCP 模块使用指南](#-mcp-模块使用指南)
-  - [安装 MCP 依赖](#安装-mcp-依赖)
-  - [MCP 服务器启动方式](#mcp-服务器启动方式)
-  - [MCP 服务器功能](#mcp-服务器功能)
-  - [与 AI 工具集成](#与-ai-工具集成)
-  - [在 Cursor 中使用](#在-cursor-中使用)
-  - [MCP 命令行选项](#mcp-命令行选项)
-  - [高级用法](#高级用法)
-- [🤝 贡献](#-贡献)
-- [📄 许可证](#-许可证)
-- [📞 联系方式](#-联系方式)
+- [Lanalyzer](#lanalyzer)
+  - [📖 目录](#-目录)
+  - [✨ 功能特点](#-功能特点)
+  - [🚀 开始使用](#-开始使用)
+    - [前置要求](#前置要求)
+    - [安装步骤](#安装步骤)
+  - [💻 使用方法](#-使用方法)
+    - [基本分析](#基本分析)
+    - [命令行选项](#命令行选项)
+    - [示例](#示例)
+  - [🤝 贡献](#-贡献)
+  - [📄 许可证](#-许可证)
+  - [📞 联系方式](#-联系方式)
+    - [联系方式](#联系方式)
+  - [🧩 MCP 模块使用指南](#-mcp-模块使用指南)
+    - [安装 MCP 依赖](#安装-mcp-依赖)
+    - [MCP 服务器启动方式](#mcp-服务器启动方式)
+    - [MCP 服务器功能](#mcp-服务器功能)
+    - [与 AI 工具集成](#与-ai-工具集成)
+    - [在 Cursor 中使用](#在-cursor-中使用)
+    - [MCP 命令行选项](#mcp-命令行选项)
+    - [高级用法](#高级用法)
+      - [自定义配置](#自定义配置)
+      - [批量文件分析](#批量文件分析)
+  - [📊 分析结果格式](#-分析结果格式)
+    - [根级字段](#根级字段)
+    - [漏洞数组](#漏洞数组)
+    - [调用链数组](#调用链数组)
+    - [摘要对象](#摘要对象)
+    - [导入对象](#导入对象)
 
 ## ✨ 功能特点
 
@@ -52,21 +67,39 @@ Lanalyzer 是一个高级的 Python 静态污点分析工具，旨在检测 Pyth
 - [uv](https://github.com/astral-sh/uv)（推荐用于依赖管理）
 
 ### 安装步骤
+
+#### 选项 1：从 PyPI 安装（推荐）
+```bash
+# 使用 pip
+pip install lanalyzer
+
+# 使用 uv（推荐）
+uv add lanalyzer
+
+# 包含 MCP 支持
+uv add lanalyzer[mcp]
+```
+
+#### 选项 2：从源码安装
 1. 克隆仓库：
    ```bash
    git clone https://github.com/mxcrafts/lanalyzer.git
    cd lanalyzer
    ```
 
-2. 创建虚拟环境并安装依赖：
+2. 安装依赖：
    ```bash
-   uv venv
-   uv pip sync pyproject.toml --all-extras
-   ```
+   # 安装基本依赖
+   make install
 
-3. 激活虚拟环境：
-   ```bash
-   source .venv/bin/activate
+   # 安装开发依赖
+   make install-dev
+
+   # 安装 MCP 支持
+   make install-mcp
+
+   # 安装所有依赖（开发 + MCP）
+   make install-all
    ```
 
 ## 💻 使用方法
@@ -121,7 +154,7 @@ pip install "lanalyzer[mcp]"
 如果您使用的是 uv：
 
 ```bash
-uv pip install -e ".[mcp]"
+uv add lanalyzer[mcp]
 ```
 
 ### MCP 服务器启动方式
@@ -134,11 +167,11 @@ uv pip install -e ".[mcp]"
 # 查看帮助信息
 lanalyzer mcp --help
 
-# 启动服务器
-lanalyzer mcp run --host 0.0.0.0 --port 8000 --debug
+# 启动服务器（默认端口 8000）
+lanalyzer mcp run --port 8000 --debug
 
-# 使用 FastMCP 开发模式 (如适用，请验证此命令)
-# lanalyzer mcp dev
+# 使用开发模式
+lanalyzer mcp dev
 ```
 
 2. **使用 Python 模块方式**:
@@ -147,8 +180,21 @@ lanalyzer mcp run --host 0.0.0.0 --port 8000 --debug
 # 查看帮助信息
 python -m lanalyzer.mcp --help
 
-# 启动服务器
-python -m lanalyzer.mcp run --host 0.0.0.0 --port 8000 --debug
+# 启动服务器（默认端口 8001）
+python -m lanalyzer.mcp run --port 8001 --debug
+```
+
+3. **使用 Makefile（开发推荐）**:
+
+```bash
+# 启动 MCP 服务器
+make mcp-server
+
+# 启动 MCP 服务器（调试模式）
+make mcp-server-debug
+
+# 测试 MCP CLI
+make mcp-test
 ```
 
 ### MCP 服务器功能
@@ -160,6 +206,8 @@ MCP 服务器提供以下核心功能：
 3. **路径分析**：分析整个目录或项目中的安全漏洞
 4. **漏洞解释**：提供对发现漏洞的详细解释
 5. **配置管理**：获取、验证和创建分析配置
+
+详细的 MCP API 文档请参见 [MCP 工具参考](docs/MCP_TOOLS.md)。
 
 ### 与 AI 工具集成
 
@@ -196,8 +244,14 @@ print(result)
 
 MCP 服务器支持以下命令行选项：
 
+**对于 `python -m lanalyzer.mcp run`**：
 - `--debug`: 启用调试模式，显示详细日志
 - `--host`: 设置服务器监听地址（默认：127.0.0.1）
+- `--port`: 设置服务器监听端口（默认：8001）
+- `--transport`: 传输协议（sse 或 streamable-http）
+
+**对于 `lanalyzer mcp run`**：
+- `--debug`: 启用调试模式
 - `--port`: 设置服务器监听端口（默认：8000）
 
 ### 高级用法
@@ -232,3 +286,14 @@ result = client.call({
     "output_path": "/path/to/output.json"  # 可选
 })
 ```
+
+## 📊 分析结果格式
+
+分析结果以 JSON 格式返回，包含以下主要部分：
+
+- **`vulnerabilities`**: 检测到的安全漏洞列表
+- **`call_chains`**: 从源到汇的数据流路径
+- **`summary`**: 分析统计信息和概览
+- **`imports`**: 分析文件的导入信息
+
+详细格式规范请参见 [输出格式文档](docs/OUTPUT_FORMAT_CN.md)。

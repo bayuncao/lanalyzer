@@ -15,28 +15,25 @@ __author_email__ = "mx@crafts.com"
 __license__ = "MIT"
 
 # Export main interface
-from lanalyzer.analysis import analyze_file, BaseAnalyzer, EnhancedTaintTracker
+from lanalyzer.analysis import BaseAnalyzer, EnhancedTaintTracker, analyze_file
 
 # Export logging tools
-from lanalyzer.logger import (
-    # Core logging functions
-    configure_logger,
-    get_logger,
-    debug,
-    info,
-    warning,
-    error,
-    critical,
-    # Logging decorators
-    log_function,
-    log_analysis_file,
-    log_result,
+from lanalyzer.logger import (  # Core logging functions; Logging decorators; Configuration utilities
     conditional_log,
+    configure_logger,
+    critical,
+    debug,
+    error,
+    get_logger,
+    info,
+    log_analysis_file,
+    log_function,
+    log_result,
     log_vulnerabilities,
-    # Configuration utilities
-    setup_file_logging,
-    setup_console_logging,
     setup_application_logging,
+    setup_console_logging,
+    setup_file_logging,
+    warning,
 )
 
 __all__ = [

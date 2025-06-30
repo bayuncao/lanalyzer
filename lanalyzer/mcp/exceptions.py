@@ -5,23 +5,23 @@ This module provides specific exception classes for better error handling
 and debugging in the MCP server implementation.
 """
 
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 
 class MCPError(Exception):
     """Base exception class for MCP-related errors."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         error_code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None
+        details: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(message)
         self.message = message
         self.error_code = error_code
         self.details = details or {}
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert exception to dictionary for JSON serialization."""
         return {
@@ -34,26 +34,28 @@ class MCPError(Exception):
 
 class MCPConfigurationError(MCPError):
     """Raised when there's a configuration-related error."""
+
     pass
 
 
 class MCPAnalysisError(MCPError):
     """Raised when there's an error during analysis."""
+
     pass
 
 
 class MCPValidationError(MCPError):
     """Raised when input validation fails."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         field_errors: Optional[List[Dict[str, str]]] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(message, **kwargs)
         self.field_errors = field_errors or []
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert exception to dictionary including field errors."""
         result = super().to_dict()
@@ -63,28 +65,30 @@ class MCPValidationError(MCPError):
 
 class MCPTransportError(MCPError):
     """Raised when there's a transport-related error."""
+
     pass
 
 
 class MCPInitializationError(MCPError):
     """Raised when server initialization fails."""
+
     pass
 
 
 class MCPToolError(MCPError):
     """Raised when a tool execution fails."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         tool_name: Optional[str] = None,
         tool_args: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(message, **kwargs)
         self.tool_name = tool_name
         self.tool_args = tool_args or {}
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert exception to dictionary including tool information."""
         result = super().to_dict()
@@ -95,18 +99,18 @@ class MCPToolError(MCPError):
 
 class MCPDependencyError(MCPError):
     """Raised when required dependencies are missing."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         missing_packages: Optional[List[str]] = None,
         install_command: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(message, **kwargs)
         self.missing_packages = missing_packages or []
         self.install_command = install_command
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert exception to dictionary including dependency information."""
         result = super().to_dict()
@@ -117,18 +121,18 @@ class MCPDependencyError(MCPError):
 
 class MCPFileError(MCPError):
     """Raised when there's a file-related error."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         file_path: Optional[str] = None,
         operation: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(message, **kwargs)
         self.file_path = file_path
         self.operation = operation
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert exception to dictionary including file information."""
         result = super().to_dict()
@@ -140,45 +144,41 @@ class MCPFileError(MCPError):
 def handle_exception(exc: Exception) -> Dict[str, Any]:
     """
     Convert any exception to a standardized error response.
-    
+
     Args:
         exc: The exception to handle
-        
+
     Returns:
         Dict containing error information
     """
     if isinstance(exc, MCPError):
         return exc.to_dict()
-    
+
     # Handle common Python exceptions
     if isinstance(exc, FileNotFoundError):
         return MCPFileError(
-            message=str(exc),
-            error_code="FILE_NOT_FOUND",
-            operation="read"
+            message=str(exc), error_code="FILE_NOT_FOUND", operation="read"
         ).to_dict()
-    
+
     if isinstance(exc, PermissionError):
         return MCPFileError(
             message=str(exc),
             error_code="PERMISSION_DENIED",
         ).to_dict()
-    
+
     if isinstance(exc, ValueError):
         return MCPValidationError(
-            message=str(exc),
-            error_code="INVALID_VALUE"
+            message=str(exc), error_code="INVALID_VALUE"
         ).to_dict()
-    
+
     if isinstance(exc, ImportError):
         return MCPDependencyError(
-            message=str(exc),
-            error_code="MISSING_DEPENDENCY"
+            message=str(exc), error_code="MISSING_DEPENDENCY"
         ).to_dict()
-    
+
     # Generic exception handling
     return MCPError(
         message=str(exc),
         error_code="INTERNAL_ERROR",
-        details={"exception_type": exc.__class__.__name__}
+        details={"exception_type": exc.__class__.__name__},
     ).to_dict()

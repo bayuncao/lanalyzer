@@ -7,18 +7,18 @@ Provides the abstract base class for all analyzers.
 import abc
 import os
 import time
-from typing import (
+from typing import (  # Added Set for self.analyzed_files
     Any,
     Dict,
     List,
+    Set,
     Type,
     TypeVar,
-    Set,
-)  # Added Set for self.analyzed_files
+)
 
+from lanalyzer.logger import debug, info
 from lanalyzer.models import AnalysisResults, Vulnerability
 from lanalyzer.utils.fs_utils import get_python_files_in_directory
-from lanalyzer.logger import debug, info
 
 # Type variable for better type hinting
 T = TypeVar("T", bound="BaseAnalyzer")
