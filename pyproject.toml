@@ -111,7 +111,7 @@ known_first_party = ["lanalyzer"]
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 
 [tool.mypy]
-python_version = "0.1.7"
+python_version = "0.1.8"
 warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = false
@@ -140,7 +140,7 @@ module = [
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-minversion = "0.1.7"
+minversion = "0.1.8"
 addopts = "-ra -q --strict-markers --strict-config"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]

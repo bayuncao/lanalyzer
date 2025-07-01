@@ -43,7 +43,7 @@ def get_current_version():
 
 
 def update_version(version_type):
-    """Update version in pyproject.toml."""
+    """Update version in pyproject.toml and lanalyzer/__version__.py."""
     current_version = get_current_version()
     parts = current_version.split(".")
 
@@ -67,6 +67,20 @@ def update_version(version_type):
     content = pyproject_path.read_text()
     new_content = re.sub(r'version = "[^"]+"', f'version = "{new_version}"', content)
     pyproject_path.write_text(new_content)
+
+    # Update lanalyzer/__version__.py
+    version_file_path = Path("lanalyzer/__version__.py")
+    if version_file_path.exists():
+        version_content = version_file_path.read_text()
+        new_version_content = re.sub(
+            r'__version__ = "[^"]+"',
+            f'__version__ = "{new_version}"',
+            version_content
+        )
+        version_file_path.write_text(new_version_content)
+        print(f"Updated lanalyzer/__version__.py to {new_version}")
+    else:
+        print("Warning: lanalyzer/__version__.py not found")
 
     print(f"Version updated from {current_version} to {new_version}")
     return new_version
