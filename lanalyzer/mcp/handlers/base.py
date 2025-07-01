@@ -4,13 +4,14 @@ Base MCP handler for Lanalyzer.
 This module provides the base handler functionality for MCP requests to Lanalyzer.
 """
 
-import logging
 from typing import Any, Dict, List
+
+from lanalyzer.logger import get_logger
 
 from ..exceptions import handle_exception
 from ..models import ServerInfoResponse, VulnerabilityInfo
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class BaseMCPHandler:

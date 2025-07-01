@@ -5,7 +5,6 @@ This module implements the analysis handlers for MCP requests to Lanalyzer.
 """
 
 import json
-import logging
 import os
 import subprocess
 import sys
@@ -14,6 +13,7 @@ import time
 
 from lanalyzer.analysis import EnhancedTaintTracker
 from lanalyzer.cli.config_utils import load_configuration
+from lanalyzer.logger import get_logger
 
 from ..models import (
     AnalysisRequest,
@@ -23,7 +23,7 @@ from ..models import (
 )
 from .base import BaseMCPHandler
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class AnalysisMCPHandler(BaseMCPHandler):

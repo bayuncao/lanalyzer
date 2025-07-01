@@ -3,7 +3,6 @@
 CLI commands for MCP server.
 """
 
-import logging
 import os
 import subprocess
 import sys
@@ -12,6 +11,7 @@ import time
 import click
 
 from lanalyzer.__version__ import __version__
+from lanalyzer.logger import info
 from lanalyzer.mcp.settings import MCPServerSettings, TransportType
 from lanalyzer.mcp.utils import generate_client_code_example
 
@@ -98,7 +98,7 @@ def run(debug, host, port, transport, json_response, show_client):
 
     # Print startup message indicating initialization
     click.echo(f"Starting FastMCP server using {transport} transport")
-    logging.info("Initializing MCP server...")
+    info("Initializing MCP server...")
 
     # Setup pre-server start initialization
     click.echo("\nIMPORTANT CONNECTION INFORMATION:")

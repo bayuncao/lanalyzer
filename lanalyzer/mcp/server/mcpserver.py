@@ -7,6 +7,8 @@ Provides Model Context Protocol (MCP) functionality for lanalyzer.
 import logging
 from typing import Any, Dict, Optional
 
+from lanalyzer.logger import debug, info, warning, error
+
 try:
     # Import FastMCP core components
     from fastmcp import Context, FastMCP
@@ -82,9 +84,9 @@ def create_mcp_server(
         # Check FastMCP version
         try:
             fastmcp_version = __import__("fastmcp").__version__
-            logging.info(f"FastMCP version: {fastmcp_version}")
+            info(f"FastMCP version: {fastmcp_version}")
         except (ImportError, AttributeError):
-            logging.warning("Could not determine FastMCP version")
+            warning("Could not determine FastMCP version")
             fastmcp_version = "unknown"
 
         # Create FastMCP instance with correct API parameters
@@ -105,20 +107,20 @@ def create_mcp_server(
                 @mcp_instance.middleware
                 async def log_requests(request, call_next):
                     """Middleware to log requests and responses"""
-                    logging.debug(f"Received request: {request.method} {request.url}")
+                    debug(f"Received request: {request.method} {request.url}")
                     try:
                         if request.method == "POST":
                             body = await request.json()
-                            logging.debug(f"Request body: {body}")
+                            debug(f"Request body: {body}")
                     except Exception as e:
-                        logging.debug(f"Could not parse request body: {e}")
+                        debug(f"Could not parse request body: {e}")
 
                     response = await call_next(request)
                     return response
 
             except AttributeError:
                 # If FastMCP does not support middleware, log a warning
-                logging.warning(
+                warning(
                     "Current FastMCP version does not support middleware, request logging will be disabled"
                 )
 
@@ -426,12 +428,12 @@ def create_mcp_server(
                 explain_vulnerabilities_wrapper
             )
 
-        logging.info(f"MCP server '{settings.name}' created successfully")
+        info(f"MCP server '{settings.name}' created successfully")
         return mcp_instance
 
     except Exception as e:
         error_info = handle_exception(e)
-        logging.error(f"Failed to create MCP server: {error_info}")
+        error(f"Failed to create MCP server: {error_info}")
         raise MCPInitializationError(
             f"Server initialization failed: {str(e)}", details=error_info
         )
