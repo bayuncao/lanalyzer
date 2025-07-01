@@ -9,10 +9,10 @@ from lanalyzer.__version__ import __version__
 # Set package information
 __title__ = "lanalyzer"
 __description__ = "Python taint analysis tool for security vulnerability detection"
-__url__ = "https://github.com/mxcrafts/lanalyzer"
-__author__ = "mxcrafts"
-__author_email__ = "mx@crafts.com"
-__license__ = "MIT"
+__url__ = "https://github.com/bayuncao/lanalyzer"
+__author__ = "bayuncao"
+__author_email__ = "8533596@gmail.com"
+__license__ = "AGPL-3.0"
 
 # Export main interface
 from lanalyzer.analysis import BaseAnalyzer, EnhancedTaintTracker, analyze_file
