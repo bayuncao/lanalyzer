@@ -91,13 +91,16 @@ mcp-test:
 
 # Version management
 version-patch:
-	uv run python -c "import re; content = open('pyproject.toml').read(); version = re.search(r'version = \"([^\"]+)\"', content).group(1); parts = version.split('.'); parts[2] = str(int(parts[2]) + 1); new_version = '.'.join(parts); open('pyproject.toml', 'w').write(re.sub(r'version = \"[^\"]+\"', f'version = \"{new_version}\"', content)); print(f'Version updated to {new_version}')"
+	uv run python scripts/update_version.py patch
 
 version-minor:
-	uv run python -c "import re; content = open('pyproject.toml').read(); version = re.search(r'version = \"([^\"]+)\"', content).group(1); parts = version.split('.'); parts[1] = str(int(parts[1]) + 1); parts[2] = '0'; new_version = '.'.join(parts); open('pyproject.toml', 'w').write(re.sub(r'version = \"[^\"]+\"', f'version = \"{new_version}\"', content)); print(f'Version updated to {new_version}')"
+	uv run python scripts/update_version.py minor
 
 version-major:
-	uv run python -c "import re; content = open('pyproject.toml').read(); version = re.search(r'version = \"([^\"]+)\"', content).group(1); parts = version.split('.'); parts[0] = str(int(parts[0]) + 1); parts[1] = '0'; parts[2] = '0'; new_version = '.'.join(parts); open('pyproject.toml', 'w').write(re.sub(r'version = \"[^\"]+\"', f'version = \"{new_version}\"', content)); print(f'Version updated to {new_version}')"
+	uv run python scripts/update_version.py major
+
+version-check:
+	@uv run python scripts/check_version.py
 
 # Help
 help:
@@ -129,8 +132,9 @@ help:
 	@echo "  mcp-server    - Start MCP server on port 8001"
 	@echo "  mcp-server-debug - Start MCP server with debug mode"
 	@echo "  mcp-test      - Test MCP CLI"
-	@echo "  version-patch - Bump patch version"
-	@echo "  version-minor - Bump minor version"
-	@echo "  version-major - Bump major version"
+	@echo "  version-patch - Bump patch version (同步更新 pyproject.toml 和 __version__.py)"
+	@echo "  version-minor - Bump minor version (同步更新 pyproject.toml 和 __version__.py)"
+	@echo "  version-major - Bump major version (同步更新 pyproject.toml 和 __version__.py)"
+	@echo "  version-check - Check version synchronization between files"
 
-.PHONY: format lint check pre-commit quality test test-cov clean build test-publish publish publish-patch publish-minor publish-major publish-patch-no-test publish-minor-no-test publish-major-no-test publish-no-test publish-test publish-dry-run install install-dev install-mcp install-all mcp-server mcp-server-debug mcp-test version-patch version-minor version-major help
+.PHONY: format lint check pre-commit quality test test-cov clean build test-publish publish publish-patch publish-minor publish-major publish-patch-no-test publish-minor-no-test publish-major-no-test publish-no-test publish-test publish-dry-run install install-dev install-mcp install-all mcp-server mcp-server-debug mcp-test version-patch version-minor version-major version-check help

@@ -14,12 +14,9 @@ try:
     from fastmcp import Context, FastMCP
 
     # Check if streamable HTTP support is available
-    try:
-        import fastmcp.transport.streamable_http  # noqa: F401
-
-        STREAMABLE_HTTP_AVAILABLE = True
-    except ImportError:
-        STREAMABLE_HTTP_AVAILABLE = False
+    # Note: FastMCP 2.2.8 only supports 'stdio' and 'sse' transports
+    # Streamable HTTP is not available in the current version
+    STREAMABLE_HTTP_AVAILABLE = False
 except ImportError:
     from ..exceptions import MCPDependencyError
 
