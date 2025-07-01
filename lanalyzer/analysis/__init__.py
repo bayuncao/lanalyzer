@@ -66,6 +66,7 @@ def analyze_file(
 
     Returns:
         Tuple of (vulnerabilities, summary)
+        Note: call_chains are included in the output file when output_path is specified
     """
     import json
     import os
@@ -83,6 +84,7 @@ def analyze_file(
 
     # Analyze targets
     vulnerabilities = []
+    call_chains = []
     if os.path.isdir(target_path):
         file_paths = []
         for root, _, files in os.walk(target_path):
@@ -91,20 +93,19 @@ def analyze_file(
                     file_paths.append(os.path.join(root, file))
 
         # Use cross-file analysis for directories
-        vulnerabilities = tracker.analyze_multiple_files(file_paths)
+        vulnerabilities, call_chains = tracker.analyze_multiple_files(file_paths)
     else:
         # Single file analysis
-        vulnerabilities, _ = tracker.analyze_file(
-            target_path
-        )  # Ignore call_chains for now
+        vulnerabilities, call_chains = tracker.analyze_file(target_path)
 
     # Get summary (use new method name)
-    summary = tracker.get_summary()
+    summary = tracker.get_summary(all_call_chains=call_chains, all_vulnerabilities=vulnerabilities)
 
     # Write results to output file if specified
     if output_path:
         result_data = {
             "vulnerabilities": vulnerabilities,
+            "call_chains": call_chains,  # Include call chains in output
             "summary": summary,
             "imports": tracker.all_imports,  # Add detailed import information
         }
@@ -128,6 +129,7 @@ def analyze_file(
             f"Vulnerabilities found: {summary.get('vulnerabilities_found', len(vulnerabilities))}"
         )
         info(f"Tainted variables: {summary.get('tainted_variables', 0)}")
+        info(f"Call chains found: {len(call_chains)}")
         info("=" * 80)
 
     return vulnerabilities, summary

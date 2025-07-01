@@ -63,7 +63,7 @@ class ConfigLoader:
     @staticmethod
     def validate(config: Dict[str, Any], debug: bool = False) -> bool:
         """
-        Validate a configuration.
+        Validate a configuration with enhanced error checking.
 
         Args:
             config: Configuration dictionary to validate
@@ -75,6 +75,12 @@ class ConfigLoader:
         Raises:
             ValueError: If the configuration is invalid
         """
+        if not isinstance(config, dict):
+            error_msg = "Configuration must be a dictionary"
+            if debug:
+                error(error_msg)
+            raise ValueError(error_msg)
+
         # Check for required sections
         required_sections = ["sources", "sinks"]
         for section in required_sections:
@@ -84,10 +90,16 @@ class ConfigLoader:
                     error(error_msg)
                 raise ValueError(error_msg)
 
-        # Validate sources
+        # Validate sources with enhanced checks
         sources = config.get("sources", [])
         if not isinstance(sources, list):
             error_msg = "Sources must be a list"
+            if debug:
+                error(error_msg)
+            raise ValueError(error_msg)
+
+        if not sources:
+            error_msg = "Configuration must contain at least one source"
             if debug:
                 error(error_msg)
             raise ValueError(error_msg)
@@ -105,17 +117,40 @@ class ConfigLoader:
                     error(error_msg)
                 raise ValueError(error_msg)
 
+            # Validate name
+            name = source.get("name")
+            if not isinstance(name, str) or not name.strip():
+                error_msg = f"Source at index {i} name must be a non-empty string"
+                if debug:
+                    error(error_msg)
+                raise ValueError(error_msg)
+
             if "patterns" not in source:
                 error_msg = f"Source at index {i} missing required field: patterns"
                 if debug:
                     error(error_msg)
                 raise ValueError(error_msg)
 
-            if not isinstance(source["patterns"], list):
+            patterns = source.get("patterns", [])
+            if not isinstance(patterns, list):
                 error_msg = f"Source patterns for '{source['name']}' must be a list"
                 if debug:
                     error(error_msg)
                 raise ValueError(error_msg)
+
+            if not patterns:
+                error_msg = f"Source '{source['name']}' must have at least one pattern"
+                if debug:
+                    error(error_msg)
+                raise ValueError(error_msg)
+
+            # Validate each pattern
+            for j, pattern in enumerate(patterns):
+                if not isinstance(pattern, str) or not pattern.strip():
+                    error_msg = f"Source '{source['name']}', pattern at index {j} must be a non-empty string"
+                    if debug:
+                        error(error_msg)
+                    raise ValueError(error_msg)
 
         # Validate sinks
         sinks = config.get("sinks", [])

@@ -126,6 +126,40 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
             "node": node,
             "line": getattr(node, "lineno", 0),
             "args": [arg.arg for arg in node.args.args],
+            "is_async": False,
+        }
+
+        self.functions[node.name] = func_info
+        # Store function definition for cross-function analysis
+        self.function_definitions[node.name] = func_info
+
+        previous_function = self.current_function
+        self.current_function = func_info
+
+        # Check if this function has pending parameter taints from previous calls
+        self._apply_pending_parameter_taints(node.name)
+
+        # Apply reverse inference: analyze sinks in this function to infer parameter sources
+        self._apply_reverse_inference(node.name, func_info)
+
+        # Visit function body
+        self.generic_visit(node)
+
+        # Restore previous function context
+        self.current_function = previous_function
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        """Visit an async function definition node."""
+        if self.debug:
+            debug(f"[VISITOR] Enter async function: {node.name}")
+
+        # Create function node representation
+        func_info = {
+            "name": node.name,
+            "node": node,
+            "line": getattr(node, "lineno", 0),
+            "args": [arg.arg for arg in node.args.args],
+            "is_async": True,
         }
 
         self.functions[node.name] = func_info
@@ -148,10 +182,16 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
         self.current_function = previous_function
 
     def visit_Call(self, node: ast.Call) -> None:
-        """Visit a function call node."""
-        func_name, full_name = self.ast_processor.get_func_name_with_module(node.func)
-        line_no = getattr(node, "lineno", 0)
-        col_offset = getattr(node, "col_offset", 0)
+        """Visit a function call node with enhanced error handling."""
+        try:
+            func_name, full_name = self.ast_processor.get_func_name_with_module(node.func)
+            line_no = getattr(node, "lineno", 0)
+            col_offset = getattr(node, "col_offset", 0)
+        except Exception as e:
+            if self.debug:
+                debug(f"[VISITOR] Error processing call node: {e}")
+            self.generic_visit(node)
+            return
 
         if self.debug:
             current_func_name = (
@@ -193,6 +233,44 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
             self._track_function_call_with_tainted_args(
                 node, func_name, full_name, line_no, col_offset
             )
+
+        # Continue visiting child nodes with error handling
+        try:
+            self.generic_visit(node)
+        except Exception as e:
+            if self.debug:
+                debug(f"[VISITOR] Error in generic_visit for Call node: {e}")
+
+    def visit_Await(self, node: ast.Await) -> None:
+        """Visit an await expression."""
+        if self.debug:
+            debug(f"[VISITOR] Await expression at line {getattr(node, 'lineno', 0)}")
+
+        # Check if the awaited expression is tainted
+        if hasattr(node, 'value') and isinstance(node.value, ast.Call):
+            # This is await func_call()
+            func_name, full_name = self.ast_processor.get_func_name_with_module(node.value.func)
+            line_no = getattr(node, "lineno", 0)
+            col_offset = getattr(node, "col_offset", 0)
+
+            # Track as async call
+            call_info = {
+                "name": func_name,
+                "full_name": full_name,
+                "line": line_no,
+                "col": col_offset,
+                "node": node.value,
+                "function": self.current_function,
+                "is_async": True,
+            }
+            self.call_locations.append(call_info)
+
+            # Check for sources and sinks in async calls
+            if func_name and self._is_source(func_name, full_name):
+                self._handle_source(node.value, func_name, full_name, line_no, col_offset)
+
+            if func_name and self._is_sink(func_name, full_name):
+                self._handle_sink(node.value, func_name, full_name, line_no, col_offset)
 
         # Continue visiting child nodes
         self.generic_visit(node)
