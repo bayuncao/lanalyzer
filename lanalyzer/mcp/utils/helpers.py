@@ -3,24 +3,24 @@
 Utility functions for MCP server.
 """
 
-import logging
+from lanalyzer.logger import debug, error
 
 
 def debug_tool_args(func):
     """Log tool function parameters for debugging"""
 
     async def wrapper(*args, **kwargs):
-        logging.debug(
+        debug(
             f"Calling tool {func.__name__} with args: {args}, kwargs: {kwargs}"
         )
         try:
             result = await func(*args, **kwargs)
             return result
         except Exception as e:
-            logging.error(f"Tool {func.__name__} call failed: {e}")
+            error(f"Tool {func.__name__} call failed: {e}")
             import traceback
 
-            logging.error(traceback.format_exc())
+            error(traceback.format_exc())
             raise
 
     return wrapper

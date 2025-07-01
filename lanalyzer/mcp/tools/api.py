@@ -6,10 +6,10 @@ This module provides the actual tool implementations that are exposed
 through the MCP server interface.
 """
 
-import logging
 from typing import Any, Dict, Optional
 
 from fastmcp import Context
+from lanalyzer.logger import debug, error, warning
 
 from ..exceptions import MCPValidationError, handle_exception
 from ..models import (
@@ -42,7 +42,7 @@ async def analyze_code(
         Analysis results, including detected vulnerability information.
     """
     # Log original parameters to aid debugging
-    logging.debug(
+    debug(
         f"analyze_code original parameters: code=<omitted>, file_path={file_path}, config_path={config_path}"
     )
 
@@ -55,7 +55,7 @@ async def analyze_code(
     if isinstance(config_path, dict) and not isinstance(
         code, str
     ):  # If config_path is a dict, assume it contains all params
-        logging.warning(
+        warning(
             f"Detected nested parameter structure (config_path is dict): {config_path}"
         )
         actual_code = config_path.get("code", actual_code)
@@ -112,7 +112,7 @@ async def analyze_code(
 
     except Exception as e:
         error_info = handle_exception(e)
-        logging.error(f"Code analysis failed: {error_info}")
+        error(f"Code analysis failed: {error_info}")
         if ctx:
             await ctx.error(f"Analysis failed: {error_info.get('message', str(e))}")
 
@@ -143,7 +143,7 @@ async def analyze_file(
         Analysis results, including detected vulnerability information.
     """
     # Log original parameters to aid debugging
-    logging.debug(
+    debug(
         f"analyze_file original parameters: file_path={file_path}, config_path={config_path}"
     )
 
@@ -153,12 +153,12 @@ async def analyze_file(
     # Handle nested parameter situations where arguments might be passed as a single dictionary
     # Scenario 1: file_path is a dict containing all arguments
     if isinstance(file_path, dict):
-        logging.warning(f"Nested parameter situation (file_path is dict): {file_path}")
+        warning(f"Nested parameter situation (file_path is dict): {file_path}")
         actual_file_path = file_path.get("file_path", actual_file_path)
         actual_config_path = file_path.get("config_path", actual_config_path)
     # Scenario 2: config_path is a dict (less common if file_path is also a direct arg, but possible)
     elif isinstance(config_path, dict):
-        logging.warning(
+        warning(
             f"Nested parameter situation (config_path is dict): {config_path}"
         )
         # file_path would be from direct arg, actual_file_path already set
@@ -313,7 +313,7 @@ async def analyze_path(
         Analysis results, including detected vulnerability information.
     """
     # Log original parameters to aid debugging
-    logging.debug(
+    debug(
         f"analyze_path original parameters: target_path={target_path}, config_path={config_path}"
     )
 
@@ -322,13 +322,13 @@ async def analyze_path(
 
     # Handle nested parameter situations
     if isinstance(target_path, dict):
-        logging.warning(
+        warning(
             f"Nested parameter situation (target_path is dict): {target_path}"
         )
         actual_target_path = target_path.get("target_path", actual_target_path)
         actual_config_path = target_path.get("config_path", actual_config_path)
     elif isinstance(config_path, dict):
-        logging.warning(
+        warning(
             f"Nested parameter situation (config_path is dict): {config_path}"
         )
         actual_config_path = config_path.get("config_path", actual_config_path)
@@ -390,7 +390,7 @@ async def explain_vulnerabilities(
         Explanation results with natural language descriptions.
     """
     # Log original parameters to aid debugging
-    logging.debug(
+    debug(
         f"explain_vulnerabilities original parameters: analysis_file={analysis_file}, format={format}, level={level}"
     )
 
@@ -400,7 +400,7 @@ async def explain_vulnerabilities(
 
     # Handle nested parameter situations
     if isinstance(analysis_file, dict):
-        logging.warning(
+        warning(
             f"Nested parameter situation (analysis_file is dict): {analysis_file}"
         )
         actual_analysis_file = analysis_file.get("analysis_file", actual_analysis_file)
