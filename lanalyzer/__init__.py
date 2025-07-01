@@ -1,5 +1,5 @@
 """
-LanaLyzer - Static Taint Analysis Tool for Python Projects
+Lanalyzer - Static Taint Analysis Tool for Python Projects
 
 Provides static taint analysis for Python code to help detect security vulnerabilities.
 """
