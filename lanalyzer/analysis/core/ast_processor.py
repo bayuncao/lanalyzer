@@ -53,19 +53,44 @@ class ASTProcessor:
             Tuple of (AST tree, source lines, parent map)
         """
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                code = f.read()
-                source_lines = (
-                    f.readlines() if f.seekable() else code.splitlines(keepends=True)
-                )
-
-            # Reset file pointer and read lines properly
+            # Read file only once
             with open(file_path, "r", encoding="utf-8") as f:
                 source_lines = f.readlines()
+                code = "".join(source_lines)
 
+        except FileNotFoundError as e:
+            if self.debug:
+                self.logger.error(f"File not found: {file_path}")
+            return None, None, {}
+        except PermissionError as e:
+            if self.debug:
+                self.logger.error(f"Permission denied reading {file_path}: {e}")
+            return None, None, {}
+        except UnicodeDecodeError as e:
+            if self.debug:
+                self.logger.error(f"Unicode decode error reading {file_path}: {e}")
+            # Try with different encodings
+            for encoding in ['latin-1', 'cp1252', 'iso-8859-1']:
+                try:
+                    with open(file_path, "r", encoding=encoding) as f:
+                        source_lines = f.readlines()
+                        code = "".join(source_lines)
+                    if self.debug:
+                        self.logger.info(f"Successfully read {file_path} with {encoding} encoding")
+                    break
+                except Exception:
+                    continue
+            else:
+                if self.debug:
+                    self.logger.error(f"Failed to read {file_path} with any encoding")
+                return None, None, {}
+        except MemoryError as e:
+            if self.debug:
+                self.logger.error(f"Memory error reading {file_path}: file too large")
+            return None, None, {}
         except Exception as e:
             if self.debug:
-                self.logger.error(f"Failed to read file {file_path}: {e}")
+                self.logger.error(f"Unexpected error reading {file_path}: {e}")
             return None, None, {}
 
         try:
@@ -75,6 +100,22 @@ class ASTProcessor:
                 self.logger.error(
                     f"Syntax error in {file_path} at line {e.lineno}, offset {e.offset}: {e.msg}"
                 )
+            return None, source_lines, {}
+        except UnicodeDecodeError as e:
+            if self.debug:
+                self.logger.error(f"Unicode decode error in {file_path}: {e}")
+            return None, source_lines, {}
+        except MemoryError as e:
+            if self.debug:
+                self.logger.error(f"Memory error parsing {file_path}: {e}")
+            return None, source_lines, {}
+        except RecursionError as e:
+            if self.debug:
+                self.logger.error(f"Recursion error parsing {file_path} (file too complex): {e}")
+            return None, source_lines, {}
+        except Exception as e:
+            if self.debug:
+                self.logger.error(f"Unexpected error parsing {file_path}: {e}")
             return None, source_lines, {}
 
         # Add parent references
