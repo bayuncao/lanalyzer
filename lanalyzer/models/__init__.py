@@ -8,7 +8,6 @@ from lanalyzer.models.base import BaseModel, Location
 from lanalyzer.models.results import AnalysisResults
 from lanalyzer.models.sink import Sink
 from lanalyzer.models.source import Source
-from lanalyzer.models.taint import TaintFlow, TaintSink, TaintSource
 from lanalyzer.models.vulnerability import Vulnerability
 
 __all__ = [
@@ -18,7 +17,4 @@ __all__ = [
     "Sink",
     "Vulnerability",
     "AnalysisResults",
-    "TaintSource",
-    "TaintSink",
-    "TaintFlow",
 ]
