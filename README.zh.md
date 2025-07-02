@@ -1,4 +1,4 @@
-![Lanalyzer](./image/banner.png)
+![Lanalyzer](https://private-user-images.githubusercontent.com/126563545/461340415-4fede494-5b84-4928-b664-9303480021dd.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTE0Mjg5NjIsIm5iZiI6MTc1MTQyODY2MiwicGF0aCI6Ii8xMjY1NjM1NDUvNDYxMzQwNDE1LTRmZWRlNDk0LTViODQtNDkyOC1iNjY0LTkzMDM0ODAwMjFkZC5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNzAyJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDcwMlQwMzU3NDJaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT01NjZiYWFkZDg3NGU0ZjZlOTRmOWYxNThlM2UwNTMxM2VjY2M3NmRkZWQ4ZmUwMzUyZTQ5YjMyMjNkMjZlNGM4JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.NxMO7JYy6-B_GO0McpCuRh3tTVAgu61xSCVf5wgYMU0)
 
 # Lanalyzer
 
@@ -26,6 +26,8 @@ Lanalyzer 是一个高级的 Python 静态污点分析工具，旨在检测 Pyth
   - [🚀 开始使用](#-开始使用)
     - [前置要求](#前置要求)
     - [安装步骤](#安装步骤)
+      - [选项 1：从 PyPI 安装（推荐）](#选项-1从-pypi-安装推荐)
+      - [选项 2：从源码安装](#选项-2从源码安装)
   - [💻 使用方法](#-使用方法)
     - [基本分析](#基本分析)
     - [命令行选项](#命令行选项)
@@ -45,11 +47,6 @@ Lanalyzer 是一个高级的 Python 静态污点分析工具，旨在检测 Pyth
       - [自定义配置](#自定义配置)
       - [批量文件分析](#批量文件分析)
   - [📊 分析结果格式](#-分析结果格式)
-    - [根级字段](#根级字段)
-    - [漏洞数组](#漏洞数组)
-    - [调用链数组](#调用链数组)
-    - [摘要对象](#摘要对象)
-    - [导入对象](#导入对象)
 
 ## ✨ 功能特点
 
