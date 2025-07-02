@@ -70,13 +70,15 @@ class ASTProcessor:
             if self.debug:
                 self.logger.error(f"Unicode decode error reading {file_path}: {e}")
             # Try with different encodings
-            for encoding in ['latin-1', 'cp1252', 'iso-8859-1']:
+            for encoding in ["latin-1", "cp1252", "iso-8859-1"]:
                 try:
                     with open(file_path, "r", encoding=encoding) as f:
                         source_lines = f.readlines()
                         code = "".join(source_lines)
                     if self.debug:
-                        self.logger.info(f"Successfully read {file_path} with {encoding} encoding")
+                        self.logger.info(
+                            f"Successfully read {file_path} with {encoding} encoding"
+                        )
                     break
                 except Exception:
                     continue
@@ -111,7 +113,9 @@ class ASTProcessor:
             return None, source_lines, {}
         except RecursionError as e:
             if self.debug:
-                self.logger.error(f"Recursion error parsing {file_path} (file too complex): {e}")
+                self.logger.error(
+                    f"Recursion error parsing {file_path} (file too complex): {e}"
+                )
             return None, source_lines, {}
         except Exception as e:
             if self.debug:

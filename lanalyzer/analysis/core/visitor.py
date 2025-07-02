@@ -115,6 +115,7 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
         if enable and self.path_analyzer is None:
             # Import here to avoid circular imports
             from ..models.path import PathSensitiveAnalyzer
+
             self.path_analyzer = PathSensitiveAnalyzer(debug=self.debug)
 
     def visit_Module(self, node: ast.Module) -> None:
@@ -209,7 +210,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
     def visit_Call(self, node: ast.Call) -> None:
         """Visit a function call node with enhanced error handling."""
         try:
-            func_name, full_name = self.ast_processor.get_func_name_with_module(node.func)
+            func_name, full_name = self.ast_processor.get_func_name_with_module(
+                node.func
+            )
             line_no = getattr(node, "lineno", 0)
             col_offset = getattr(node, "col_offset", 0)
         except Exception as e:
@@ -272,9 +275,11 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
             debug(f"[VISITOR] Await expression at line {getattr(node, 'lineno', 0)}")
 
         # Check if the awaited expression is tainted
-        if hasattr(node, 'value') and isinstance(node.value, ast.Call):
+        if hasattr(node, "value") and isinstance(node.value, ast.Call):
             # This is await func_call()
-            func_name, full_name = self.ast_processor.get_func_name_with_module(node.value.func)
+            func_name, full_name = self.ast_processor.get_func_name_with_module(
+                node.value.func
+            )
             line_no = getattr(node, "lineno", 0)
             col_offset = getattr(node, "col_offset", 0)
 
@@ -292,7 +297,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
 
             # Check for sources and sinks in async calls
             if func_name and self._is_source(func_name, full_name):
-                self._handle_source(node.value, func_name, full_name, line_no, col_offset)
+                self._handle_source(
+                    node.value, func_name, full_name, line_no, col_offset
+                )
 
             if func_name and self._is_sink(func_name, full_name):
                 self._handle_sink(node.value, func_name, full_name, line_no, col_offset)
@@ -544,7 +551,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
                 if self.path_sensitive_enabled and self.current_path_node:
                     is_reachable = self.current_path_node.is_reachable()
                     if self.debug:
-                        debug(f"[VISITOR] Path reachability check: {is_reachable} for sink at line {sink_info.get('line', 0)}")
+                        debug(
+                            f"[VISITOR] Path reachability check: {is_reachable} for sink at line {sink_info.get('line', 0)}"
+                        )
 
                 # Only report vulnerability if path is reachable
                 if is_reachable:
@@ -559,7 +568,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
 
                     # Add path constraint information if available
                     if self.path_sensitive_enabled and self.current_path_node:
-                        vulnerability["path_constraints"] = self.current_path_node.get_constraint_summary()
+                        vulnerability[
+                            "path_constraints"
+                        ] = self.current_path_node.get_constraint_summary()
 
                     # Create detailed taint path if we have call chain tracking
                     if sink_node and hasattr(self, "call_chain_tracker"):
@@ -577,10 +588,8 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
                         else:
                             # If no source in current chain, create a source node from taint_info
                             if taint_info:
-                                source_node = (
-                                    self.call_chain_tracker.create_source_node_from_taint(
-                                        taint_info
-                                    )
+                                source_node = self.call_chain_tracker.create_source_node_from_taint(
+                                    taint_info
                                 )
 
                         if source_node:
@@ -596,7 +605,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
 
                     self.found_vulnerabilities.append(vulnerability)
                 elif self.debug:
-                    debug(f"[VISITOR] Filtered out unreachable vulnerability: {tainted_var} -> {sink_type}")
+                    debug(
+                        f"[VISITOR] Filtered out unreachable vulnerability: {tainted_var} -> {sink_type}"
+                    )
 
                 if self.debug:
                     debug(
@@ -1243,7 +1254,11 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
 
     def visit_If(self, node: ast.If) -> None:
         """Visit If node and handle path-sensitive analysis."""
-        if self.path_sensitive_enabled and self.path_analyzer and self.current_path_node:
+        if (
+            self.path_sensitive_enabled
+            and self.path_analyzer
+            and self.current_path_node
+        ):
             from lanalyzer.logger import debug
 
             # Create path nodes for then and else branches
@@ -1254,7 +1269,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
             self.current_path_node = then_node
 
             if self.debug:
-                debug(f"[VISITOR] Entering 'then' branch at line {getattr(node, 'lineno', 0)}")
+                debug(
+                    f"[VISITOR] Entering 'then' branch at line {getattr(node, 'lineno', 0)}"
+                )
 
             for stmt in node.body:
                 self.visit(stmt)
@@ -1265,7 +1282,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
                 self.current_path_node = else_node
 
                 if self.debug:
-                    debug(f"[VISITOR] Entering 'else' branch at line {getattr(node, 'lineno', 0)}")
+                    debug(
+                        f"[VISITOR] Entering 'else' branch at line {getattr(node, 'lineno', 0)}"
+                    )
 
                 for stmt in node.orelse:
                     self.visit(stmt)
@@ -1278,7 +1297,11 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
 
     def visit_While(self, node: ast.While) -> None:
         """Visit While node and handle path-sensitive analysis."""
-        if self.path_sensitive_enabled and self.path_analyzer and self.current_path_node:
+        if (
+            self.path_sensitive_enabled
+            and self.path_analyzer
+            and self.current_path_node
+        ):
             from lanalyzer.logger import debug
 
             # Create path node for loop body
@@ -1289,7 +1312,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
             self.current_path_node = loop_node
 
             if self.debug:
-                debug(f"[VISITOR] Entering while loop at line {getattr(node, 'lineno', 0)}")
+                debug(
+                    f"[VISITOR] Entering while loop at line {getattr(node, 'lineno', 0)}"
+                )
 
             for stmt in node.body:
                 self.visit(stmt)
@@ -1300,7 +1325,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
                 self.current_path_node = else_node
 
                 if self.debug:
-                    debug(f"[VISITOR] Entering while-else branch at line {getattr(node, 'lineno', 0)}")
+                    debug(
+                        f"[VISITOR] Entering while-else branch at line {getattr(node, 'lineno', 0)}"
+                    )
 
                 for stmt in node.orelse:
                     self.visit(stmt)
@@ -1313,7 +1340,11 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
 
     def visit_For(self, node: ast.For) -> None:
         """Visit For node and handle path-sensitive analysis."""
-        if self.path_sensitive_enabled and self.path_analyzer and self.current_path_node:
+        if (
+            self.path_sensitive_enabled
+            and self.path_analyzer
+            and self.current_path_node
+        ):
             from lanalyzer.logger import debug
 
             # Create path node for loop body
@@ -1325,7 +1356,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
             self.current_path_node = loop_node
 
             if self.debug:
-                debug(f"[VISITOR] Entering for loop at line {getattr(node, 'lineno', 0)}")
+                debug(
+                    f"[VISITOR] Entering for loop at line {getattr(node, 'lineno', 0)}"
+                )
 
             for stmt in node.body:
                 self.visit(stmt)
@@ -1336,7 +1369,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
                 self.current_path_node = else_node
 
                 if self.debug:
-                    debug(f"[VISITOR] Entering for-else branch at line {getattr(node, 'lineno', 0)}")
+                    debug(
+                        f"[VISITOR] Entering for-else branch at line {getattr(node, 'lineno', 0)}"
+                    )
 
                 for stmt in node.orelse:
                     self.visit(stmt)
@@ -1349,12 +1384,18 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
 
     def visit_Try(self, node: ast.Try) -> None:
         """Visit Try node and handle path-sensitive analysis."""
-        if self.path_sensitive_enabled and self.path_analyzer and self.current_path_node:
+        if (
+            self.path_sensitive_enabled
+            and self.path_analyzer
+            and self.current_path_node
+        ):
             from lanalyzer.logger import debug
 
             # Visit try body
             if self.debug:
-                debug(f"[VISITOR] Entering try block at line {getattr(node, 'lineno', 0)}")
+                debug(
+                    f"[VISITOR] Entering try block at line {getattr(node, 'lineno', 0)}"
+                )
 
             for stmt in node.body:
                 self.visit(stmt)
@@ -1362,7 +1403,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
             # Visit exception handlers
             for handler in node.handlers:
                 if self.debug:
-                    debug(f"[VISITOR] Entering except block at line {getattr(handler, 'lineno', 0)}")
+                    debug(
+                        f"[VISITOR] Entering except block at line {getattr(handler, 'lineno', 0)}"
+                    )
 
                 for stmt in handler.body:
                     self.visit(stmt)
@@ -1370,7 +1413,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
             # Visit else clause if it exists
             if node.orelse:
                 if self.debug:
-                    debug(f"[VISITOR] Entering try-else block at line {getattr(node, 'lineno', 0)}")
+                    debug(
+                        f"[VISITOR] Entering try-else block at line {getattr(node, 'lineno', 0)}"
+                    )
 
                 for stmt in node.orelse:
                     self.visit(stmt)
@@ -1378,7 +1423,9 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
             # Visit finally clause if it exists
             if node.finalbody:
                 if self.debug:
-                    debug(f"[VISITOR] Entering finally block at line {getattr(node, 'lineno', 0)}")
+                    debug(
+                        f"[VISITOR] Entering finally block at line {getattr(node, 'lineno', 0)}"
+                    )
 
                 for stmt in node.finalbody:
                     self.visit(stmt)
