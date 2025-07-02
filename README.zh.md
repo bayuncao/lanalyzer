@@ -6,8 +6,8 @@
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![uv](https://img.shields.io/badge/uv-0.1.18+-purple.svg)](https://github.com/astral-sh/uv)
 [![PyPI version](https://img.shields.io/pypi/v/lanalyzer.svg?logo=pypi&label=pypi&color=blue)](https://pypi.org/project/lanalyzer/)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/mxcrafts/lanalyzer/ci.yml?branch=main&style=flat-square)](https://github.com/mxcrafts/lanalyzer/actions)
-[![Code Coverage](https://img.shields.io/codecov/c/github/mxcrafts/lanalyzer.svg?style=flat-square)](https://codecov.io/gh/mxcrafts/lanalyzer)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/bayuncao/lanalyzer/ci.yml?branch=main&style=flat-square)](https://github.com/bayuncao/lanalyzer/actions)
+[![Code Coverage](https://img.shields.io/codecov/c/github/bayuncao/lanalyzer.svg?style=flat-square)](https://codecov.io/gh/bayuncao/lanalyzer)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-orange.svg)](https://modelcontextprotocol.io/)
 
@@ -80,7 +80,7 @@ uv add lanalyzer[mcp]
 #### 选项 2：从源码安装
 1. 克隆仓库：
    ```bash
-   git clone https://github.com/mxcrafts/lanalyzer.git
+   git clone https://github.com/bayuncao/lanalyzer.git
    cd lanalyzer
    ```
 
@@ -133,7 +133,7 @@ lanalyzer --target example.py --config rules/sql_injection.json --pretty --outpu
 
 ### 联系方式
 
-- Issues: [GitHub Issues](https://github.com/mxcrafts/ltrack/issues)
+- Issues: [GitHub Issues](https://github.com/bayuncao/ltrack/issues)
 - Email: support@mx-crafts.com
 
 ## 🧩 MCP 模块使用指南
