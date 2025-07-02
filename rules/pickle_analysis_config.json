@@ -118,5 +118,13 @@
         "to": ["numpy", "tobytes", "pickle.loads", "cloudpickle.loads"]
       }
     }
+  },
+  "path_sensitive_analysis": {
+    "enabled": false,
+    "description": "Enable path-sensitive analysis to filter out unreachable vulnerabilities",
+    "constraint_solver": {
+      "max_iterations": 100,
+      "debug": false
+    }
   }
 }
