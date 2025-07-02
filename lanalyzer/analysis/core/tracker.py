@@ -45,6 +45,9 @@ class EnhancedTaintTracker:
         self.sinks: List[Dict[str, Any]] = config.get("sinks", [])
         self.rules: List[Dict[str, Any]] = config.get("rules", [])
 
+        # Path-sensitive analysis configuration
+        self.path_sensitive_enabled: bool = config.get("path_sensitive_analysis", {}).get("enabled", False)
+
         # Analysis state
         self.analyzed_files: Set[str] = set()
         self.current_file_contents: Optional[str] = None
@@ -148,6 +151,12 @@ class EnhancedTaintTracker:
 
             # Configure visitor with sources and sinks
             visitor.classifier.configure(self.sources, self.sinks, self.config)
+
+            # Enable path-sensitive analysis if configured
+            if self.path_sensitive_enabled:
+                visitor.enable_path_sensitive_analysis(True)
+                if self.debug:
+                    log_debug(f"Enabled path-sensitive analysis for {file_path}")
 
             # Visit the AST
             visitor.visit(tree)
@@ -478,6 +487,9 @@ class EnhancedTaintTracker:
                     "argument_index": vuln.get("arg_index", -1),
                     "description": f"Detected dangerous sink: {sink_info.get('name', 'Unknown')} at line {sink_info.get('line', 0)}",
                     "recommendation": "Review the arguments passed to this function to ensure they are properly validated and sanitized.",
+                    # Path-sensitive analysis information
+                    "path_reachable": vuln.get("path_reachable", True),
+                    "path_constraints": vuln.get("path_constraints", "No constraints"),
                 }
                 vulnerabilities.append(vulnerability)
             else:
@@ -522,6 +534,9 @@ class EnhancedTaintTracker:
                         "vulnerability_type", "Unknown"
                     ),
                     "flow_description": f"{source_info.get('name', 'source')} -> {sink_info.get('name', 'sink')}",
+                    # Path-sensitive analysis information
+                    "path_reachable": vuln.get("path_reachable", True),
+                    "path_constraints": vuln.get("path_constraints", "No constraints"),
                 }
 
                 # Add detailed call chain information if available

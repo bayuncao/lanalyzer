@@ -7,7 +7,7 @@ for determining path reachability in static analysis.
 
 import ast
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set
 
 
 class ConstraintType(Enum):
@@ -89,11 +89,22 @@ class ConstraintSolver:
         Returns:
             True if constraints are satisfiable, False otherwise
         """
-        # For now, implement a simple heuristic-based approach
-        # Most constraints in static analysis are satisfiable unless
-        # there are obvious contradictions
+        # Check for boolean constant constraints first
+        for constraint in constraints:
+            if constraint.constraint_type == ConstraintType.BOOLEAN and constraint.variable is None:
+                # This is a boolean constant constraint (True/False)
+                if constraint.operator == "constant":
+                    expected_value = constraint.value
+                    if constraint.negated:
+                        expected_value = not expected_value
 
-        # Check for obvious contradictions
+                    # If we have a False constant constraint, the path is unsatisfiable
+                    if not expected_value:
+                        if self.debug:
+                            print(f"[CONSTRAINT_SOLVER] Found unsatisfiable boolean constant: {constraint}")
+                        return False
+
+        # Check for obvious contradictions in variable constraints
         variable_constraints = {}
         for constraint in constraints:
             if constraint.variable:

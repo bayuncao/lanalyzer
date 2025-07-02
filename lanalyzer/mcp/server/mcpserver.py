@@ -7,7 +7,7 @@ Provides Model Context Protocol (MCP) functionality for lanalyzer.
 import logging
 from typing import Any, Dict, Optional
 
-from lanalyzer.logger import debug, info, warning, error
+from lanalyzer.logger import info, warning, error
 
 try:
     # Import FastMCP core components
