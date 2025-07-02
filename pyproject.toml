@@ -1,6 +1,6 @@
 [project]
 name = "lanalyzer"
-version = "0.1.7"
+version = "0.1.8"
 description = "Python Taint Analysis Tool for finding security vulnerabilities"
 authors = [{ name = "Lanalyzer Author", email = "8533596@gmail.com" }]
 requires-python = "~=3.10"

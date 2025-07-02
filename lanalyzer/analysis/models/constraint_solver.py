@@ -12,17 +12,18 @@ from typing import Any, Dict, List, Optional, Set
 
 class ConstraintType(Enum):
     """Types of constraints supported by the solver."""
-    BOOLEAN = "boolean"      # x == True, x is None
+
+    BOOLEAN = "boolean"  # x == True, x is None
     COMPARISON = "comparison"  # x > 0, len(x) > 5
     MEMBERSHIP = "membership"  # x in list, hasattr(x, 'attr')
     TYPE_CHECK = "type_check"  # isinstance(x, str)
-    LOGICAL = "logical"      # and, or, not
+    LOGICAL = "logical"  # and, or, not
 
 
 class Constraint:
     """
     Represents a single constraint in the path analysis.
-    
+
     A constraint consists of:
     - constraint_type: The type of constraint (boolean, comparison, etc.)
     - variable: The variable being constrained (if applicable)
@@ -30,7 +31,7 @@ class Constraint:
     - value: The value being compared against
     - ast_node: The original AST node for complex analysis
     """
-    
+
     def __init__(
         self,
         constraint_type: ConstraintType,
@@ -38,7 +39,7 @@ class Constraint:
         operator: Optional[str] = None,
         value: Any = None,
         ast_node: Optional[ast.AST] = None,
-        negated: bool = False
+        negated: bool = False,
     ):
         self.constraint_type = constraint_type
         self.variable = variable
@@ -46,7 +47,7 @@ class Constraint:
         self.value = value
         self.ast_node = ast_node
         self.negated = negated
-    
+
     def __repr__(self) -> str:
         neg_str = "NOT " if self.negated else ""
         if self.variable and self.operator and self.value is not None:
@@ -60,25 +61,25 @@ class Constraint:
 class ConstraintSolver:
     """
     Simple constraint propagation solver for path reachability analysis.
-    
+
     This solver uses basic constraint propagation techniques to determine
     if a set of constraints is satisfiable, which helps determine if a
     code path is reachable.
     """
-    
+
     def __init__(self, debug: bool = False):
         self.debug = debug
         self.variable_domains: Dict[str, Set[Any]] = {}
         self.constraints: List[Constraint] = []
-    
+
     def add_constraint(self, constraint: Constraint) -> None:
         """Add a constraint to the solver."""
         self.constraints.append(constraint)
-        
+
         # Initialize variable domain if needed
         if constraint.variable and constraint.variable not in self.variable_domains:
             self.variable_domains[constraint.variable] = set()
-    
+
     def is_satisfiable(self, constraints: List[Constraint]) -> bool:
         """
         Check if a list of constraints is satisfiable.
@@ -91,7 +92,10 @@ class ConstraintSolver:
         """
         # Check for boolean constant constraints first
         for constraint in constraints:
-            if constraint.constraint_type == ConstraintType.BOOLEAN and constraint.variable is None:
+            if (
+                constraint.constraint_type == ConstraintType.BOOLEAN
+                and constraint.variable is None
+            ):
                 # This is a boolean constant constraint (True/False)
                 if constraint.operator == "constant":
                     expected_value = constraint.value
@@ -101,7 +105,9 @@ class ConstraintSolver:
                     # If we have a False constant constraint, the path is unsatisfiable
                     if not expected_value:
                         if self.debug:
-                            print(f"[CONSTRAINT_SOLVER] Found unsatisfiable boolean constant: {constraint}")
+                            print(
+                                f"[CONSTRAINT_SOLVER] Found unsatisfiable boolean constant: {constraint}"
+                            )
                         return False
 
         # Check for obvious contradictions in variable constraints
@@ -119,41 +125,43 @@ class ConstraintSolver:
 
         # If no obvious contradictions, assume satisfiable
         return True
-    
+
     def _propagate_constraints(self) -> bool:
         """
         Apply constraint propagation algorithm.
-        
+
         Returns:
             True if constraints are consistent, False if contradiction found
         """
         changed = True
         iterations = 0
         max_iterations = 100  # Prevent infinite loops
-        
+
         while changed and iterations < max_iterations:
             changed = False
             iterations += 1
-            
+
             for constraint in self.constraints:
                 if self._apply_constraint(constraint):
                     changed = True
-                    
+
                 # Check for contradictions
                 if self._has_contradiction():
                     if self.debug:
-                        print(f"Contradiction found after applying constraint: {constraint}")
+                        print(
+                            f"Contradiction found after applying constraint: {constraint}"
+                        )
                     return False
-        
+
         return True
-    
+
     def _apply_constraint(self, constraint: Constraint) -> bool:
         """
         Apply a single constraint and update variable domains.
-        
+
         Args:
             constraint: The constraint to apply
-            
+
         Returns:
             True if domains were modified, False otherwise
         """
@@ -167,9 +175,9 @@ class ConstraintSolver:
             return self._apply_type_constraint(constraint)
         elif constraint.constraint_type == ConstraintType.LOGICAL:
             return self._apply_logical_constraint(constraint)
-        
+
         return False
-    
+
     def _apply_boolean_constraint(self, constraint: Constraint) -> bool:
         """Apply boolean constraints like x == True, x is None."""
         if not constraint.variable:
@@ -200,22 +208,22 @@ class ConstraintSolver:
                 return False  # Assume satisfiable
 
         return False
-    
+
     def _apply_comparison_constraint(self, constraint: Constraint) -> bool:
         """Apply comparison constraints like x > 0, len(x) > 5."""
         # For simplicity, we'll handle basic numeric comparisons
         if not constraint.variable or constraint.value is None:
             return False
-        
+
         # This is a simplified implementation
         # In practice, you'd want more sophisticated domain handling
         return False
-    
+
     def _apply_membership_constraint(self, constraint: Constraint) -> bool:
         """Apply membership constraints like x in list, hasattr(x, 'attr')."""
         if not constraint.variable:
             return False
-        
+
         # Simplified implementation for common cases
         if constraint.operator == "in":
             # For 'x in collection', we can't easily propagate without knowing collection
@@ -223,17 +231,17 @@ class ConstraintSolver:
         elif constraint.operator == "hasattr":
             # For hasattr(x, 'attr'), we assume it's satisfiable
             return False
-        
+
         return False
-    
+
     def _apply_type_constraint(self, constraint: Constraint) -> bool:
         """Apply type constraints like isinstance(x, str)."""
         if not constraint.variable:
             return False
-        
+
         # Simplified type constraint handling
         var_domain = self.variable_domains[constraint.variable]
-        
+
         if constraint.operator == "isinstance":
             target_type = constraint.value
             if constraint.negated:
@@ -244,22 +252,22 @@ class ConstraintSolver:
                 # Keep only instances of target_type
                 # This is simplified - in practice you'd need type hierarchy
                 return False
-        
+
         return False
-    
+
     def _apply_logical_constraint(self, constraint: Constraint) -> bool:
         """Apply logical constraints like and, or, not."""
         # Logical constraints are typically handled at a higher level
         # by combining multiple constraints
         return False
-    
+
     def _has_contradiction(self) -> bool:
         """Check if current variable domains contain contradictions."""
         for var, domain in self.variable_domains.items():
             # Only check for contradictions if domain has been explicitly constrained
             # Empty domain at initialization is not a contradiction
-            if len(domain) == 0 and hasattr(self, '_domain_constrained'):
-                if var in getattr(self, '_domain_constrained', set()):
+            if len(domain) == 0 and hasattr(self, "_domain_constrained"):
+                if var in getattr(self, "_domain_constrained", set()):
                     return True
 
         return False
@@ -293,19 +301,21 @@ class ConstraintSolver:
         return False
 
 
-def parse_ast_to_constraint(ast_node: ast.AST, branch_type: str) -> Optional[Constraint]:
+def parse_ast_to_constraint(
+    ast_node: ast.AST, branch_type: str
+) -> Optional[Constraint]:
     """
     Parse an AST node into a constraint.
-    
+
     Args:
         ast_node: The AST node to parse
         branch_type: The type of branch ('then', 'else', 'loop', etc.)
-        
+
     Returns:
         Constraint object if parsing successful, None otherwise
     """
     negated = branch_type == "else"
-    
+
     if isinstance(ast_node, ast.Compare):
         return _parse_comparison(ast_node, negated)
     elif isinstance(ast_node, ast.Call):
@@ -316,7 +326,7 @@ def parse_ast_to_constraint(ast_node: ast.AST, branch_type: str) -> Optional[Con
         return _parse_constant(ast_node, negated)
     elif isinstance(ast_node, ast.BoolOp):
         return _parse_bool_op(ast_node, negated)
-    
+
     return None
 
 
@@ -324,17 +334,17 @@ def _parse_comparison(ast_node: ast.Compare, negated: bool) -> Optional[Constrai
     """Parse comparison nodes like x > 0, x == None."""
     if len(ast_node.comparators) != 1 or len(ast_node.ops) != 1:
         return None
-    
+
     left = ast_node.left
     op = ast_node.ops[0]
     right = ast_node.comparators[0]
-    
+
     # Extract variable name from left side
     if isinstance(left, ast.Name):
         variable = left.id
     else:
         return None
-    
+
     # Extract operator
     op_map = {
         ast.Eq: "==",
@@ -348,11 +358,11 @@ def _parse_comparison(ast_node: ast.Compare, negated: bool) -> Optional[Constrai
         ast.In: "in",
         ast.NotIn: "not in",
     }
-    
+
     operator = op_map.get(type(op))
     if not operator:
         return None
-    
+
     # Extract value from right side
     if isinstance(right, ast.Constant):
         value = right.value
@@ -360,7 +370,7 @@ def _parse_comparison(ast_node: ast.Compare, negated: bool) -> Optional[Constrai
         value = right.id  # Variable reference
     else:
         return None
-    
+
     # Determine constraint type
     if operator in ["==", "!=", "is", "is not"]:
         constraint_type = ConstraintType.BOOLEAN
@@ -370,14 +380,14 @@ def _parse_comparison(ast_node: ast.Compare, negated: bool) -> Optional[Constrai
         constraint_type = ConstraintType.MEMBERSHIP
     else:
         return None
-    
+
     return Constraint(
         constraint_type=constraint_type,
         variable=variable,
         operator=operator,
         value=value,
         ast_node=ast_node,
-        negated=negated
+        negated=negated,
     )
 
 
@@ -385,7 +395,7 @@ def _parse_call(ast_node: ast.Call, negated: bool) -> Optional[Constraint]:
     """Parse function calls like isinstance(x, str), hasattr(x, 'attr')."""
     if isinstance(ast_node.func, ast.Name):
         func_name = ast_node.func.id
-        
+
         if func_name == "isinstance" and len(ast_node.args) == 2:
             # isinstance(x, type)
             if isinstance(ast_node.args[0], ast.Name):
@@ -395,52 +405,54 @@ def _parse_call(ast_node: ast.Call, negated: bool) -> Optional[Constraint]:
                     type_name = ast_node.args[1].id
                 else:
                     return None
-                
+
                 return Constraint(
                     constraint_type=ConstraintType.TYPE_CHECK,
                     variable=variable,
                     operator="isinstance",
                     value=type_name,
                     ast_node=ast_node,
-                    negated=negated
+                    negated=negated,
                 )
-        
+
         elif func_name == "hasattr" and len(ast_node.args) == 2:
             # hasattr(x, 'attr')
-            if isinstance(ast_node.args[0], ast.Name) and isinstance(ast_node.args[1], ast.Constant):
+            if isinstance(ast_node.args[0], ast.Name) and isinstance(
+                ast_node.args[1], ast.Constant
+            ):
                 variable = ast_node.args[0].id
                 attr_name = ast_node.args[1].value
-                
+
                 return Constraint(
                     constraint_type=ConstraintType.MEMBERSHIP,
                     variable=variable,
                     operator="hasattr",
                     value=attr_name,
                     ast_node=ast_node,
-                    negated=negated
+                    negated=negated,
                 )
-    
+
     return None
 
 
 def _parse_name(ast_node: ast.Name, negated: bool) -> Optional[Constraint]:
     """Parse name nodes like x (truthiness test)."""
     variable = ast_node.id
-    
+
     return Constraint(
         constraint_type=ConstraintType.BOOLEAN,
         variable=variable,
         operator="truthiness",
         value=True,
         ast_node=ast_node,
-        negated=negated
+        negated=negated,
     )
 
 
 def _parse_constant(ast_node: ast.Constant, negated: bool) -> Optional[Constraint]:
     """Parse constant nodes like True, False."""
     value = ast_node.value
-    
+
     if isinstance(value, bool):
         return Constraint(
             constraint_type=ConstraintType.BOOLEAN,
@@ -448,9 +460,9 @@ def _parse_constant(ast_node: ast.Constant, negated: bool) -> Optional[Constrain
             operator="constant",
             value=value,
             ast_node=ast_node,
-            negated=negated
+            negated=negated,
         )
-    
+
     return None
 
 
@@ -464,5 +476,5 @@ def _parse_bool_op(ast_node: ast.BoolOp, negated: bool) -> Optional[Constraint]:
         operator="and" if isinstance(ast_node.op, ast.And) else "or",
         value=None,
         ast_node=ast_node,
-        negated=negated
+        negated=negated,
     )

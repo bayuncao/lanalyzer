@@ -10,9 +10,7 @@ def debug_tool_args(func):
     """Log tool function parameters for debugging"""
 
     async def wrapper(*args, **kwargs):
-        debug(
-            f"Calling tool {func.__name__} with args: {args}, kwargs: {kwargs}"
-        )
+        debug(f"Calling tool {func.__name__} with args: {args}, kwargs: {kwargs}")
         try:
             result = await func(*args, **kwargs)
             return result

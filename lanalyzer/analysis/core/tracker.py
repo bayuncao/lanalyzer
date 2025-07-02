@@ -46,7 +46,9 @@ class EnhancedTaintTracker:
         self.rules: List[Dict[str, Any]] = config.get("rules", [])
 
         # Path-sensitive analysis configuration
-        self.path_sensitive_enabled: bool = config.get("path_sensitive_analysis", {}).get("enabled", False)
+        self.path_sensitive_enabled: bool = config.get(
+            "path_sensitive_analysis", {}
+        ).get("enabled", False)
 
         # Analysis state
         self.analyzed_files: Set[str] = set()
@@ -73,7 +75,9 @@ class EnhancedTaintTracker:
         self.visitor: Optional[TaintAnalysisVisitor] = None
 
         # Performance optimization: cache parsed ASTs
-        self._ast_cache: Dict[str, Tuple[ast.AST, List[str], Dict[ast.AST, ast.AST]]] = {}
+        self._ast_cache: Dict[
+            str, Tuple[ast.AST, List[str], Dict[ast.AST, ast.AST]]
+        ] = {}
 
         # Memory management
         self._memory_limit_mb = 1024  # Default 1GB limit
@@ -127,7 +131,9 @@ class EnhancedTaintTracker:
                 if self.debug:
                     log_debug(f"Using cached AST for {file_path}")
             else:
-                tree, source_lines, parent_map = self.ast_processor.parse_file(file_path)
+                tree, source_lines, parent_map = self.ast_processor.parse_file(
+                    file_path
+                )
                 if tree is not None:
                     self._ast_cache[file_path] = (tree, source_lines, parent_map)
                     if self.debug:
@@ -185,7 +191,9 @@ class EnhancedTaintTracker:
                 log_debug(traceback.format_exc())
             return [], []
 
-    def analyze_multiple_files(self, file_paths: List[str]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    def analyze_multiple_files(
+        self, file_paths: List[str]
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         """
         Analyze multiple Python files with cross-file taint propagation.
 
@@ -238,7 +246,7 @@ class EnhancedTaintTracker:
 
         # Fourth pass: collect any new vulnerabilities found through visitor updates
         for file_path in file_paths:
-            if self.visitor and hasattr(self.visitor, 'found_vulnerabilities'):
+            if self.visitor and hasattr(self.visitor, "found_vulnerabilities"):
                 # Check for any new vulnerabilities that might have been discovered
                 new_vulnerabilities, _ = self._convert_vulnerabilities(self.visitor)
                 for vuln in new_vulnerabilities:
@@ -248,7 +256,9 @@ class EnhancedTaintTracker:
                         processed_vulnerabilities_set.add(vuln_key)
 
         if self.debug:
-            log_debug(f"Multi-file analysis completed: {len(all_vulnerabilities)} vulnerabilities, {len(all_call_chains)} call chains")
+            log_debug(
+                f"Multi-file analysis completed: {len(all_vulnerabilities)} vulnerabilities, {len(all_call_chains)} call chains"
+            )
 
         return all_vulnerabilities, all_call_chains
 
@@ -407,26 +417,33 @@ class EnhancedTaintTracker:
         # Build import-to-function mapping for cross-file call resolution
         self._build_import_function_mapping(visitor, file_path)
 
-    def _build_import_function_mapping(self, visitor: TaintAnalysisVisitor, file_path: str) -> None:
+    def _build_import_function_mapping(
+        self, visitor: TaintAnalysisVisitor, file_path: str
+    ) -> None:
         """Build mapping from imported functions to their source files."""
-        if not hasattr(visitor, 'import_tracker'):
+        if not hasattr(visitor, "import_tracker"):
             return
 
         import_tracker = visitor.import_tracker
 
         # Process from imports (from module import function)
         for imported_name, full_name in import_tracker.from_imports.items():
-            if '.' in full_name:
-                module_name, func_name = full_name.rsplit('.', 1)
+            if "." in full_name:
+                module_name, func_name = full_name.rsplit(".", 1)
 
                 # Try to find the source file for this module
                 source_file = self._resolve_module_to_file(module_name)
                 if source_file:
                     # Map (current_file, imported_name) -> (source_file, function_name)
-                    self.import_function_map[(file_path, imported_name)] = (source_file, func_name)
+                    self.import_function_map[(file_path, imported_name)] = (
+                        source_file,
+                        func_name,
+                    )
 
                     if self.debug:
-                        log_debug(f"Mapped import {imported_name} in {file_path} to {func_name} in {source_file}")
+                        log_debug(
+                            f"Mapped import {imported_name} in {file_path} to {func_name} in {source_file}"
+                        )
 
         # Process direct imports (import module)
         for alias, module_name in import_tracker.import_aliases.items():
@@ -434,12 +451,14 @@ class EnhancedTaintTracker:
             if source_file:
                 # For direct imports, we'll resolve function calls at call time
                 if self.debug:
-                    log_debug(f"Mapped module alias {alias} in {file_path} to {source_file}")
+                    log_debug(
+                        f"Mapped module alias {alias} in {file_path} to {source_file}"
+                    )
 
     def _resolve_module_to_file(self, module_name: str) -> Optional[str]:
         """Resolve a module name to its file path."""
         # Simple resolution: check if we have a file with matching name
-        module_basename = module_name.split('.')[-1]
+        module_basename = module_name.split(".")[-1]
 
         # Check in module_map first
         if module_basename in self.module_map:
@@ -447,7 +466,7 @@ class EnhancedTaintTracker:
 
         # Check in analyzed files
         for file_path in self.analyzed_files:
-            file_basename = os.path.basename(file_path).replace('.py', '')
+            file_basename = os.path.basename(file_path).replace(".py", "")
             if file_basename == module_basename:
                 return file_path
 
@@ -648,7 +667,7 @@ class EnhancedTaintTracker:
             # Get current memory usage in MB
             memory_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
             # On macOS, ru_maxrss is in bytes; on Linux, it's in KB
-            if sys.platform == 'darwin':
+            if sys.platform == "darwin":
                 memory_mb = memory_usage / (1024 * 1024)
             else:
                 memory_mb = memory_usage / 1024
@@ -665,7 +684,9 @@ class EnhancedTaintTracker:
             # Check cache size
             if len(self._ast_cache) > self._cache_size_limit:
                 if self.debug:
-                    log_debug(f"AST cache size ({len(self._ast_cache)}) exceeds limit, cleaning up...")
+                    log_debug(
+                        f"AST cache size ({len(self._ast_cache)}) exceeds limit, cleaning up..."
+                    )
                 self._cleanup_ast_cache()
 
         except Exception as e:
@@ -718,7 +739,9 @@ class EnhancedTaintTracker:
         new_vulnerabilities = self._detect_cross_function_vulnerabilities(call_graph)
 
         if self.debug:
-            log_debug(f"Cross-function analysis found {len(new_vulnerabilities)} additional vulnerabilities")
+            log_debug(
+                f"Cross-function analysis found {len(new_vulnerabilities)} additional vulnerabilities"
+            )
 
         return new_vulnerabilities
 
@@ -737,7 +760,7 @@ class EnhancedTaintTracker:
                 "callees": [],
                 "tainted_params": set(),
                 "returns_tainted": False,
-                "taint_sources": []
+                "taint_sources": [],
             }
             for qualified_name, func_info in self.all_functions.items()
         }
@@ -752,7 +775,9 @@ class EnhancedTaintTracker:
 
         return call_graph
 
-    def _analyze_calls_in_file(self, file_path: str, call_graph: Dict[str, Dict[str, Any]]) -> None:
+    def _analyze_calls_in_file(
+        self, file_path: str, call_graph: Dict[str, Dict[str, Any]]
+    ) -> None:
         """Analyze function calls within a specific file to build call relationships."""
         try:
             # Use cached AST if available, otherwise parse the file
@@ -761,7 +786,9 @@ class EnhancedTaintTracker:
                 if self.debug:
                     log_debug(f"Using cached AST for call analysis in {file_path}")
             else:
-                tree, source_lines, parent_map = self.ast_processor.parse_file(file_path)
+                tree, source_lines, parent_map = self.ast_processor.parse_file(
+                    file_path
+                )
                 if tree is not None:
                     self._ast_cache[file_path] = (tree, source_lines, parent_map)
                     if self.debug:
@@ -777,7 +804,7 @@ class EnhancedTaintTracker:
                 self.all_functions,
                 self.debug,
                 self.import_function_map,
-                self.cross_file_function_map
+                self.cross_file_function_map,
             )
             call_analyzer.visit(tree)
 
@@ -831,12 +858,18 @@ class EnhancedTaintTracker:
                     func_data["tainted_params"].add(param_index)
                     param_already_tainted = True
                     if self.debug:
-                        log_debug(f"  Parameter {param_name} (index {param_index}) is directly tainted")
+                        log_debug(
+                            f"  Parameter {param_name} (index {param_index}) is directly tainted"
+                        )
 
                 # If not already tainted, check if the parameter name matches any tainted variable pattern
                 if not param_already_tainted:
                     # Get the file path for this function
-                    file_path = func_qualified_name.split("::")[0] if "::" in func_qualified_name else ""
+                    file_path = (
+                        func_qualified_name.split("::")[0]
+                        if "::" in func_qualified_name
+                        else ""
+                    )
 
                     # Look for tainted variables in the same file that match this parameter
                     for tainted_var_name, taint_info in self.all_tainted_vars.items():
@@ -845,7 +878,11 @@ class EnhancedTaintTracker:
                             continue
 
                         # Extract the variable name from qualified name
-                        var_name = tainted_var_name.split("::")[-1] if "::" in tainted_var_name else tainted_var_name
+                        var_name = (
+                            tainted_var_name.split("::")[-1]
+                            if "::" in tainted_var_name
+                            else tainted_var_name
+                        )
 
                         # If parameter name matches a tainted variable, mark it as tainted
                         if param_name == var_name:
@@ -855,7 +892,7 @@ class EnhancedTaintTracker:
                             taint_source = {
                                 "from_variable": tainted_var_name,
                                 "parameter_index": param_index,
-                                "taint_type": taint_info.get("name", "Unknown")
+                                "taint_type": taint_info.get("name", "Unknown"),
                             }
 
                             # Check if this source is already recorded
@@ -865,21 +902,33 @@ class EnhancedTaintTracker:
                             param_already_tainted = True
 
                             if self.debug:
-                                log_debug(f"  Parameter {param_name} (index {param_index}) matches tainted variable {var_name}")
+                                log_debug(
+                                    f"  Parameter {param_name} (index {param_index}) matches tainted variable {var_name}"
+                                )
                             break  # Only match the first tainted variable with this name
 
             # Check if this function returns tainted data based on its implementation
             # This is a heuristic - if the function calls any sinks, it might return tainted data
-            if self._function_potentially_returns_tainted_data(func_qualified_name, func_info):
+            if self._function_potentially_returns_tainted_data(
+                func_qualified_name, func_info
+            ):
                 func_data["returns_tainted"] = True
                 if self.debug:
-                    log_debug(f"  Function {func_qualified_name} potentially returns tainted data")
+                    log_debug(
+                        f"  Function {func_qualified_name} potentially returns tainted data"
+                    )
 
         if self.debug:
-            tainted_functions = sum(1 for f in call_graph.values() if f["tainted_params"])
-            log_debug(f"Initialized taint state: {tainted_functions} functions have tainted parameters")
+            tainted_functions = sum(
+                1 for f in call_graph.values() if f["tainted_params"]
+            )
+            log_debug(
+                f"Initialized taint state: {tainted_functions} functions have tainted parameters"
+            )
 
-    def _function_potentially_returns_tainted_data(self, func_qualified_name: str, func_info: Dict[str, Any]) -> bool:
+    def _function_potentially_returns_tainted_data(
+        self, func_qualified_name: str, func_info: Dict[str, Any]
+    ) -> bool:
         """Check if a function potentially returns tainted data."""
         # Suppress unused variable warnings
         _ = func_qualified_name
@@ -892,7 +941,9 @@ class EnhancedTaintTracker:
         # and don't call sinks might return tainted data
         return False  # Conservative approach for now
 
-    def _propagate_taint_through_calls(self, call_graph: Dict[str, Dict[str, Any]]) -> None:
+    def _propagate_taint_through_calls(
+        self, call_graph: Dict[str, Dict[str, Any]]
+    ) -> None:
         """Propagate taint through function calls using the call graph."""
         if self.debug:
             log_debug("Propagating taint through function calls...")
@@ -915,7 +966,8 @@ class EnhancedTaintTracker:
 
             # Only process functions that might have new taint information
             functions_to_process = (
-                call_graph.keys() if iteration == 1
+                call_graph.keys()
+                if iteration == 1
                 else [f for f in call_graph.keys() if f not in processed_functions]
             )
 
@@ -927,7 +979,9 @@ class EnhancedTaintTracker:
                 if self._has_tainted_parameters(func_name, func_data):
                     # Propagate taint to callees
                     for callee_info in func_data["callees"]:
-                        if self._propagate_to_callee(func_name, callee_info, call_graph):
+                        if self._propagate_to_callee(
+                            func_name, callee_info, call_graph
+                        ):
                             taint_changed = True
                             func_changed = True
 
@@ -935,7 +989,9 @@ class EnhancedTaintTracker:
                 if func_data["returns_tainted"]:
                     # Propagate taint to callers
                     for caller_info in func_data["callers"]:
-                        if self._propagate_to_caller(func_name, caller_info, call_graph):
+                        if self._propagate_to_caller(
+                            func_name, caller_info, call_graph
+                        ):
                             taint_changed = True
                             func_changed = True
 
@@ -949,13 +1005,19 @@ class EnhancedTaintTracker:
         if self.debug:
             log_debug(f"Taint propagation completed after {iteration} iterations")
 
-    def _has_tainted_parameters(self, func_name: str, func_data: Dict[str, Any]) -> bool:
+    def _has_tainted_parameters(
+        self, func_name: str, func_data: Dict[str, Any]
+    ) -> bool:
         """Check if a function has any tainted parameters."""
         _ = func_name  # Suppress unused variable warning
         return len(func_data["tainted_params"]) > 0
 
-    def _propagate_to_callee(self, caller_name: str, callee_info: Dict[str, Any],
-                           call_graph: Dict[str, Dict[str, Any]]) -> bool:
+    def _propagate_to_callee(
+        self,
+        caller_name: str,
+        callee_info: Dict[str, Any],
+        call_graph: Dict[str, Dict[str, Any]],
+    ) -> bool:
         """Propagate taint from caller to callee through parameters."""
         callee_name = callee_info["name"]
         call_args = callee_info.get("args", [])
@@ -975,15 +1037,19 @@ class EnhancedTaintTracker:
                 taint_source = {
                     "from_function": caller_name,
                     "parameter_index": arg_index,
-                    "call_line": callee_info.get("line", 0)
+                    "call_line": callee_info.get("line", 0),
                 }
                 callee_data["taint_sources"].append(taint_source)
 
         # Return True if new taint was added
         return len(callee_data["tainted_params"]) > len(original_tainted_params)
 
-    def _propagate_to_caller(self, callee_name: str, caller_info: Dict[str, Any],
-                           call_graph: Dict[str, Dict[str, Any]]) -> bool:
+    def _propagate_to_caller(
+        self,
+        callee_name: str,
+        caller_info: Dict[str, Any],
+        call_graph: Dict[str, Dict[str, Any]],
+    ) -> bool:
         """Propagate taint from callee return value to caller."""
         caller_name = caller_info["name"]
 
@@ -1003,7 +1069,7 @@ class EnhancedTaintTracker:
                 self.all_tainted_vars[qualified_var_name] = {
                     "name": "cross_function_return",
                     "line": call_line,
-                    "from_function": callee_name
+                    "from_function": callee_name,
                 }
                 return True
 
@@ -1024,7 +1090,9 @@ class EnhancedTaintTracker:
 
         return False
 
-    def _detect_cross_function_vulnerabilities(self, call_graph: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _detect_cross_function_vulnerabilities(
+        self, call_graph: Dict[str, Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """Detect vulnerabilities that span across function boundaries."""
         vulnerabilities = []
 
@@ -1038,7 +1106,9 @@ class EnhancedTaintTracker:
 
                 for sink_call in sink_calls:
                     # Check if tainted parameters flow to sink arguments
-                    if self._tainted_params_flow_to_sink(func_data["tainted_params"], sink_call):
+                    if self._tainted_params_flow_to_sink(
+                        func_data["tainted_params"], sink_call
+                    ):
                         vulnerability = self._create_cross_function_vulnerability(
                             func_name, func_data, sink_call
                         )
@@ -1046,7 +1116,9 @@ class EnhancedTaintTracker:
 
         return vulnerabilities
 
-    def _find_sink_calls_in_function(self, func_name: str, func_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _find_sink_calls_in_function(
+        self, func_name: str, func_data: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """Find sink function calls within a specific function."""
         sink_calls = []
 
@@ -1075,7 +1147,9 @@ class EnhancedTaintTracker:
             if self.debug and sink_calls:
                 log_debug(f"Found {len(sink_calls)} sink calls in function {func_name}")
                 for sink in sink_calls:
-                    log_debug(f"  - {sink.get('name', 'Unknown')} at line {sink.get('line', 0)}")
+                    log_debug(
+                        f"  - {sink.get('name', 'Unknown')} at line {sink.get('line', 0)}"
+                    )
 
         except Exception as e:
             if self.debug:
@@ -1083,7 +1157,9 @@ class EnhancedTaintTracker:
 
         return sink_calls
 
-    def _tainted_params_flow_to_sink(self, tainted_params: set, sink_call: Dict[str, Any]) -> bool:
+    def _tainted_params_flow_to_sink(
+        self, tainted_params: set, sink_call: Dict[str, Any]
+    ) -> bool:
         """Check if tainted parameters flow to sink arguments."""
         # This is a simplified check - in a full implementation, this would
         # perform more sophisticated data flow analysis
@@ -1096,7 +1172,9 @@ class EnhancedTaintTracker:
 
         return False
 
-    def _argument_uses_tainted_params(self, arg: Dict[str, Any], tainted_params: set) -> bool:
+    def _argument_uses_tainted_params(
+        self, arg: Dict[str, Any], tainted_params: set
+    ) -> bool:
         """Check if a sink argument uses any tainted parameters."""
         # Simple heuristic: check if argument name matches any parameter
         _ = arg.get("name", "")  # Suppress unused variable warning
@@ -1109,8 +1187,9 @@ class EnhancedTaintTracker:
         # Additional checks could be added here for more complex expressions
         return False
 
-    def _create_cross_function_vulnerability(self, func_name: str, func_data: Dict[str, Any],
-                                           sink_call: Dict[str, Any]) -> Dict[str, Any]:
+    def _create_cross_function_vulnerability(
+        self, func_name: str, func_data: Dict[str, Any], sink_call: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Create a vulnerability record for cross-function taint flow."""
         # Find the original taint source
         taint_sources = func_data.get("taint_sources", [])
@@ -1142,10 +1221,15 @@ class EnhancedTaintTracker:
 class CallGraphAnalyzer(ast.NodeVisitor):
     """AST visitor for analyzing function calls to build call graph."""
 
-    def __init__(self, file_path: str, call_graph: Dict[str, Dict[str, Any]],
-                 all_functions: Dict[str, Any], debug: bool = False,
-                 import_function_map: Dict[Tuple[str, str], Tuple[str, str]] = None,
-                 cross_file_function_map: Dict[str, str] = None):
+    def __init__(
+        self,
+        file_path: str,
+        call_graph: Dict[str, Dict[str, Any]],
+        all_functions: Dict[str, Any],
+        debug: bool = False,
+        import_function_map: Dict[Tuple[str, str], Tuple[str, str]] = None,
+        cross_file_function_map: Dict[str, str] = None,
+    ):
         self.file_path = file_path
         self.call_graph = call_graph
         self.all_functions = all_functions
@@ -1207,7 +1291,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                 "line": getattr(node, "lineno", 0),
                 "args": self._extract_call_arguments(node),
                 "is_recursive": callee_qualified_name == self.current_function,
-                "call_type": self._determine_call_type(node)
+                "call_type": self._determine_call_type(node),
             }
 
             if callee_info not in caller_data["callees"]:
@@ -1217,15 +1301,21 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             caller_info = {
                 "name": self.current_function,
                 "line": getattr(node, "lineno", 0),
-                "is_recursive": callee_qualified_name == self.current_function
+                "is_recursive": callee_qualified_name == self.current_function,
             }
 
             if caller_info not in callee_data["callers"]:
                 callee_data["callers"].append(caller_info)
 
             if self.debug:
-                call_type = "recursive" if callee_qualified_name == self.current_function else "normal"
-                log_debug(f"Added {call_type} call relationship: {self.current_function} -> {callee_qualified_name}")
+                call_type = (
+                    "recursive"
+                    if callee_qualified_name == self.current_function
+                    else "normal"
+                )
+                log_debug(
+                    f"Added {call_type} call relationship: {self.current_function} -> {callee_qualified_name}"
+                )
 
         self.generic_visit(node)
 
@@ -1241,12 +1331,14 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             # Track as method call for enhanced analysis
             if isinstance(node.func.value, ast.Name):
                 obj_name = node.func.value.id
-                self.method_calls.append({
-                    'object': obj_name,
-                    'method': method_name,
-                    'line': getattr(node, 'lineno', 0),
-                    'node': node
-                })
+                self.method_calls.append(
+                    {
+                        "object": obj_name,
+                        "method": method_name,
+                        "line": getattr(node, "lineno", 0),
+                        "node": node,
+                    }
+                )
 
                 if self.debug:
                     log_debug(f"Tracked method call: {obj_name}.{method_name}")
@@ -1254,32 +1346,35 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             return method_name
         elif isinstance(node.func, ast.Subscript):
             # Dynamic function call: funcs[key]() or globals()['func']()
-            self.dynamic_calls.append({
-                'type': 'subscript',
-                'line': getattr(node, 'lineno', 0),
-                'node': node
-            })
+            self.dynamic_calls.append(
+                {"type": "subscript", "line": getattr(node, "lineno", 0), "node": node}
+            )
 
             if self.debug:
-                log_debug(f"Tracked dynamic subscript call at line {getattr(node, 'lineno', 0)}")
+                log_debug(
+                    f"Tracked dynamic subscript call at line {getattr(node, 'lineno', 0)}"
+                )
 
             return "dynamic_subscript_call"
         elif isinstance(node.func, ast.Call):
             # Dynamic function call: getattr(obj, 'method')()
-            if (isinstance(node.func.func, ast.Name) and
-                node.func.func.id == 'getattr' and
-                len(node.func.args) >= 2):
-
+            if (
+                isinstance(node.func.func, ast.Name)
+                and node.func.func.id == "getattr"
+                and len(node.func.args) >= 2
+            ):
                 # Extract method name from getattr
                 if isinstance(node.func.args[1], ast.Constant):
                     method_name = node.func.args[1].value
 
-                    self.dynamic_calls.append({
-                        'type': 'getattr',
-                        'method': method_name,
-                        'line': getattr(node, 'lineno', 0),
-                        'node': node
-                    })
+                    self.dynamic_calls.append(
+                        {
+                            "type": "getattr",
+                            "method": method_name,
+                            "line": getattr(node, "lineno", 0),
+                            "node": node,
+                        }
+                    )
 
                     if self.debug:
                         log_debug(f"Tracked dynamic getattr call: {method_name}")
@@ -1287,11 +1382,13 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                     return method_name
 
             # Other dynamic calls
-            self.dynamic_calls.append({
-                'type': 'function_call',
-                'line': getattr(node, 'lineno', 0),
-                'node': node
-            })
+            self.dynamic_calls.append(
+                {
+                    "type": "function_call",
+                    "line": getattr(node, "lineno", 0),
+                    "node": node,
+                }
+            )
 
             return "dynamic_function_call"
 
@@ -1306,8 +1403,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         elif isinstance(node.func, ast.Subscript):
             return "dynamic_subscript_call"
         elif isinstance(node.func, ast.Call):
-            if (isinstance(node.func.func, ast.Name) and
-                node.func.func.id == 'getattr'):
+            if isinstance(node.func.func, ast.Name) and node.func.func.id == "getattr":
                 return "dynamic_getattr_call"
             return "dynamic_function_call"
         else:
@@ -1327,7 +1423,9 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             cross_file_qualified = f"{source_file}::{source_func_name}"
             if cross_file_qualified in self.all_functions:
                 if self.debug:
-                    log_debug(f"Resolved cross-file call: {func_name} -> {cross_file_qualified}")
+                    log_debug(
+                        f"Resolved cross-file call: {func_name} -> {cross_file_qualified}"
+                    )
                 return cross_file_qualified
 
         # Check if function exists in cross-file function map
@@ -1336,14 +1434,18 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             cross_file_qualified = f"{source_file}::{func_name}"
             if cross_file_qualified in self.all_functions:
                 if self.debug:
-                    log_debug(f"Resolved cross-file call via function map: {func_name} -> {cross_file_qualified}")
+                    log_debug(
+                        f"Resolved cross-file call via function map: {func_name} -> {cross_file_qualified}"
+                    )
                 return cross_file_qualified
 
         # Fallback: search in other files (less efficient but comprehensive)
         for qualified_name in self.all_functions.keys():
             if qualified_name.endswith(f"::{func_name}"):
                 if self.debug:
-                    log_debug(f"Resolved cross-file call via search: {func_name} -> {qualified_name}")
+                    log_debug(
+                        f"Resolved cross-file call via search: {func_name} -> {qualified_name}"
+                    )
                 return qualified_name
 
         return None
@@ -1355,7 +1457,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             arg_info = {
                 "index": i,
                 "name": self._get_arg_name(arg),
-                "type": type(arg).__name__
+                "type": type(arg).__name__,
             }
             args.append(arg_info)
         return args
@@ -1388,7 +1490,7 @@ class SinkFinder(ast.NodeVisitor):
                 "name": func_name,
                 "line": getattr(node, "lineno", 0),
                 "args": self._extract_call_arguments(node),
-                "vulnerability_type": self._get_sink_vulnerability_type(func_name)
+                "vulnerability_type": self._get_sink_vulnerability_type(func_name),
             }
             self.found_sinks.append(sink_info)
 
@@ -1423,7 +1525,7 @@ class SinkFinder(ast.NodeVisitor):
             arg_info = {
                 "index": i,
                 "name": self._get_arg_name(arg),
-                "type": type(arg).__name__
+                "type": type(arg).__name__,
             }
             args.append(arg_info)
         return args
@@ -1454,18 +1556,24 @@ class EnhancedSinkFinder(ast.NodeVisitor):
         full_name = self._extract_full_function_name(node)
 
         # Check both simple name and full name against sink patterns
-        if (func_name and self._is_sink(func_name)) or (full_name and self._is_sink(full_name)):
+        if (func_name and self._is_sink(func_name)) or (
+            full_name and self._is_sink(full_name)
+        ):
             sink_info = {
                 "name": func_name or full_name,
                 "full_name": full_name,
                 "line": getattr(node, "lineno", 0),
                 "args": self._extract_call_arguments(node),
-                "vulnerability_type": self._get_sink_vulnerability_type(func_name or full_name)
+                "vulnerability_type": self._get_sink_vulnerability_type(
+                    func_name or full_name
+                ),
             }
             self.found_sinks.append(sink_info)
 
             if self.debug:
-                log_debug(f"Found sink: {func_name or full_name} (full: {full_name}) at line {sink_info['line']}")
+                log_debug(
+                    f"Found sink: {func_name or full_name} (full: {full_name}) at line {sink_info['line']}"
+                )
 
         self.generic_visit(node)
 
@@ -1530,7 +1638,7 @@ class EnhancedSinkFinder(ast.NodeVisitor):
             arg_info = {
                 "index": i,
                 "name": self._get_arg_name(arg),
-                "type": type(arg).__name__
+                "type": type(arg).__name__,
             }
             args.append(arg_info)
         return args

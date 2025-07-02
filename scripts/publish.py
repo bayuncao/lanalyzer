@@ -73,9 +73,7 @@ def update_version(version_type):
     if version_file_path.exists():
         version_content = version_file_path.read_text()
         new_version_content = re.sub(
-            r'__version__ = "[^"]+"',
-            f'__version__ = "{new_version}"',
-            version_content
+            r'__version__ = "[^"]+"', f'__version__ = "{new_version}"', version_content
         )
         version_file_path.write_text(new_version_content)
         print(f"Updated lanalyzer/__version__.py to {new_version}")

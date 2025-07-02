@@ -99,7 +99,9 @@ def analyze_file(
         vulnerabilities, call_chains = tracker.analyze_file(target_path)
 
     # Get summary (use new method name)
-    summary = tracker.get_summary(all_call_chains=call_chains, all_vulnerabilities=vulnerabilities)
+    summary = tracker.get_summary(
+        all_call_chains=call_chains, all_vulnerabilities=vulnerabilities
+    )
 
     # Write results to output file if specified
     if output_path:
