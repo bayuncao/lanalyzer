@@ -3,10 +3,26 @@ Path-sensitive analysis models.
 
 This module contains data structures for path-sensitive analysis,
 including PathNode for tracking execution paths and constraints.
+
+The module now includes a constraint propagation algorithm that can
+determine path reachability by analyzing constraint satisfiability.
+
+Supported constraint types:
+- Boolean constraints: x == True, x is None
+- Comparison constraints: x > 0, x <= 5
+- Membership constraints: x in list, hasattr(x, 'attr')
+- Type constraints: isinstance(x, str)
+- Logical combinations: and, or, not
+
+The constraint solver uses a simplified propagation algorithm that
+focuses on detecting obvious contradictions while maintaining good
+performance for static analysis scenarios.
 """
 
 import ast
 from typing import Any, Dict, List, Optional, Tuple
+
+from .constraint_solver import ConstraintSolver
 
 
 class PathNode:
@@ -47,15 +63,35 @@ class PathNode:
         """
         Check if this path is reachable based on constraints.
 
-        This is a simplified version. In a full implementation,
-        this would involve constraint solving to determine satisfiability.
+        Uses constraint propagation to determine if the path constraints
+        are satisfiable, indicating whether the path is reachable.
 
         Returns:
             True if the path is potentially reachable, False otherwise
         """
-        # For now, assume all paths are reachable
-        # TODO: Implement proper constraint solving
-        return True
+        from .constraint_solver import ConstraintSolver, parse_ast_to_constraint
+
+        # Get all constraints along the path
+        all_constraints = self.get_all_constraints()
+
+        if not all_constraints:
+            # No constraints means path is always reachable
+            return True
+
+        # Convert AST constraints to solver constraints
+        solver_constraints = []
+        for constraint_type, ast_node in all_constraints:
+            constraint = parse_ast_to_constraint(ast_node, constraint_type)
+            if constraint:
+                solver_constraints.append(constraint)
+
+        if not solver_constraints:
+            # No parseable constraints, assume reachable
+            return True
+
+        # Use constraint solver to check satisfiability
+        solver = ConstraintSolver(debug=False)
+        return solver.is_satisfiable(solver_constraints)
 
     def get_path_to_root(self) -> List["PathNode"]:
         """
