@@ -60,7 +60,7 @@ class ASTProcessor:
 
         except FileNotFoundError as e:
             if self.debug:
-                self.logger.error(f"File not found: {file_path}")
+                self.logger.error(f"File not found: {file_path}: {e}")
             return None, None, {}
         except PermissionError as e:
             if self.debug:
@@ -86,7 +86,7 @@ class ASTProcessor:
                 return None, None, {}
         except MemoryError as e:
             if self.debug:
-                self.logger.error(f"Memory error reading {file_path}: file too large")
+                self.logger.error(f"Memory error reading {file_path}: {e}")
             return None, None, {}
         except Exception as e:
             if self.debug:

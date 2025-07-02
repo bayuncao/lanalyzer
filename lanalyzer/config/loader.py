@@ -300,4 +300,4 @@ def load_config(config_path: str, debug_mode: bool = False) -> Dict[str, Any]:
         FileNotFoundError: If the configuration file does not exist
         json.JSONDecodeError: If the configuration file contains invalid JSON
     """
-    return ConfigLoader.load(config_path, debug=debug_mode)
+    return ConfigLoader.load(config_path, debug_mode=debug_mode)

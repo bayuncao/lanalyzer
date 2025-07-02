@@ -87,6 +87,11 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
         self.def_use_chains: Dict[str, Any] = {}
         self.path_constraints: List[Any] = []
 
+        # Path-sensitive analysis
+        self.path_analyzer: Optional[Any] = None
+        self.current_path_node: Optional[Any] = None
+        self.path_sensitive_enabled: bool = False
+
         # Import and classification handling
         self.import_tracker = ImportTracker(debug_mode=self.debug)
         self.import_aliases = self.import_tracker.import_aliases
@@ -99,12 +104,32 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
         # Call chain tracker for enhanced taint analysis
         self.call_chain_tracker = CallChainTracker(file_path, debug=debug_mode)
 
+    def enable_path_sensitive_analysis(self, enable: bool = True) -> None:
+        """
+        Enable or disable path-sensitive analysis.
+
+        Args:
+            enable: Whether to enable path-sensitive analysis
+        """
+        self.path_sensitive_enabled = enable
+        if enable and self.path_analyzer is None:
+            # Import here to avoid circular imports
+            from ..models.path import PathSensitiveAnalyzer
+            self.path_analyzer = PathSensitiveAnalyzer(debug=self.debug)
+
     def visit_Module(self, node: ast.Module) -> None:
-        """Visit a module node and initialize analysis."""
+        """Visit module node and initialize path-sensitive analysis if enabled."""
         if self.debug:
             debug(
                 f"\n========== Starting analysis of file: {self.file_path} ==========\n"
             )
+
+        # Initialize path-sensitive analysis if enabled
+        if self.path_sensitive_enabled and self.path_analyzer:
+            # Initialize path analysis with the module as root
+            self.current_path_node = self.path_analyzer.initialize_analysis(node)
+            if self.debug:
+                debug("[VISITOR] Initialized path-sensitive analysis")
 
         self.generic_visit(node)
 
@@ -514,47 +539,64 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
                     debug("[VISITOR] No taint found in complex expression")
 
             if taint_info:
-                # Found tainted data flowing to sink
-                vulnerability = {
-                    "source": taint_info,
-                    "sink": sink_info,
-                    "tainted_var": tainted_var,
-                    "arg_index": i,
-                }
-                self.found_vulnerabilities.append(vulnerability)
+                # Check path reachability if path-sensitive analysis is enabled
+                is_reachable = True
+                if self.path_sensitive_enabled and self.current_path_node:
+                    is_reachable = self.current_path_node.is_reachable()
+                    if self.debug:
+                        debug(f"[VISITOR] Path reachability check: {is_reachable} for sink at line {sink_info.get('line', 0)}")
 
-                # Create detailed taint path if we have call chain tracking
-                if sink_node and hasattr(self, "call_chain_tracker"):
-                    # Try to find the source node for this tainted variable
-                    source_node = None
+                # Only report vulnerability if path is reachable
+                if is_reachable:
+                    # Found tainted data flowing to sink
+                    vulnerability = {
+                        "source": taint_info,
+                        "sink": sink_info,
+                        "tainted_var": tainted_var,
+                        "arg_index": i,
+                        "path_reachable": is_reachable,
+                    }
 
-                    # First, check current chain for source nodes
-                    source_nodes = [
-                        node
-                        for node in self.call_chain_tracker.current_chain
-                        if node.node_type == "source"
-                    ]
-                    if source_nodes:
-                        source_node = source_nodes[0]
-                    else:
-                        # If no source in current chain, create a source node from taint_info
-                        if taint_info:
-                            source_node = (
-                                self.call_chain_tracker.create_source_node_from_taint(
-                                    taint_info
+                    # Add path constraint information if available
+                    if self.path_sensitive_enabled and self.current_path_node:
+                        vulnerability["path_constraints"] = self.current_path_node.get_constraint_summary()
+
+                    # Create detailed taint path if we have call chain tracking
+                    if sink_node and hasattr(self, "call_chain_tracker"):
+                        # Try to find the source node for this tainted variable
+                        source_node = None
+
+                        # First, check current chain for source nodes
+                        source_nodes = [
+                            node
+                            for node in self.call_chain_tracker.current_chain
+                            if node.node_type == "source"
+                        ]
+                        if source_nodes:
+                            source_node = source_nodes[0]
+                        else:
+                            # If no source in current chain, create a source node from taint_info
+                            if taint_info:
+                                source_node = (
+                                    self.call_chain_tracker.create_source_node_from_taint(
+                                        taint_info
+                                    )
                                 )
-                            )
 
-                    if source_node:
-                        taint_path = self.call_chain_tracker.create_taint_path(
-                            source_node, sink_node, tainted_var
-                        )
-                        vulnerability["taint_path"] = taint_path
-
-                        if self.debug:
-                            debug(
-                                f"[VISITOR] Created taint path from {source_node.function_name} to {sink_node.function_name}"
+                        if source_node:
+                            taint_path = self.call_chain_tracker.create_taint_path(
+                                source_node, sink_node, tainted_var
                             )
+                            vulnerability["taint_path"] = taint_path
+
+                            if self.debug:
+                                debug(
+                                    f"[VISITOR] Created taint path from {source_node.function_name} to {sink_node.function_name}"
+                                )
+
+                    self.found_vulnerabilities.append(vulnerability)
+                elif self.debug:
+                    debug(f"[VISITOR] Filtered out unreachable vulnerability: {tainted_var} -> {sink_type}")
 
                 if self.debug:
                     debug(
@@ -1196,3 +1238,150 @@ class TaintAnalysisVisitor(ast.NodeVisitor):
                 return True
 
         return False
+
+    # Path-sensitive analysis methods for control flow nodes
+
+    def visit_If(self, node: ast.If) -> None:
+        """Visit If node and handle path-sensitive analysis."""
+        if self.path_sensitive_enabled and self.path_analyzer and self.current_path_node:
+            from lanalyzer.logger import debug
+
+            # Create path nodes for then and else branches
+            then_node = self.path_analyzer.enter_conditional(node.test, "then")
+
+            # Visit then branch
+            previous_path_node = self.current_path_node
+            self.current_path_node = then_node
+
+            if self.debug:
+                debug(f"[VISITOR] Entering 'then' branch at line {getattr(node, 'lineno', 0)}")
+
+            for stmt in node.body:
+                self.visit(stmt)
+
+            # Handle else branch if it exists
+            if node.orelse:
+                else_node = self.path_analyzer.enter_conditional(node.test, "else")
+                self.current_path_node = else_node
+
+                if self.debug:
+                    debug(f"[VISITOR] Entering 'else' branch at line {getattr(node, 'lineno', 0)}")
+
+                for stmt in node.orelse:
+                    self.visit(stmt)
+
+            # Restore previous path node
+            self.current_path_node = previous_path_node
+        else:
+            # Fallback to standard visiting
+            self.generic_visit(node)
+
+    def visit_While(self, node: ast.While) -> None:
+        """Visit While node and handle path-sensitive analysis."""
+        if self.path_sensitive_enabled and self.path_analyzer and self.current_path_node:
+            from lanalyzer.logger import debug
+
+            # Create path node for loop body
+            loop_node = self.path_analyzer.enter_conditional(node.test, "loop")
+
+            # Visit loop body
+            previous_path_node = self.current_path_node
+            self.current_path_node = loop_node
+
+            if self.debug:
+                debug(f"[VISITOR] Entering while loop at line {getattr(node, 'lineno', 0)}")
+
+            for stmt in node.body:
+                self.visit(stmt)
+
+            # Handle else clause if it exists
+            if node.orelse:
+                else_node = self.path_analyzer.enter_conditional(node.test, "loop_else")
+                self.current_path_node = else_node
+
+                if self.debug:
+                    debug(f"[VISITOR] Entering while-else branch at line {getattr(node, 'lineno', 0)}")
+
+                for stmt in node.orelse:
+                    self.visit(stmt)
+
+            # Restore previous path node
+            self.current_path_node = previous_path_node
+        else:
+            # Fallback to standard visiting
+            self.generic_visit(node)
+
+    def visit_For(self, node: ast.For) -> None:
+        """Visit For node and handle path-sensitive analysis."""
+        if self.path_sensitive_enabled and self.path_analyzer and self.current_path_node:
+            from lanalyzer.logger import debug
+
+            # Create path node for loop body
+            # For loops don't have a simple test condition, so we use the iterator
+            loop_node = self.path_analyzer.enter_conditional(node.iter, "for_loop")
+
+            # Visit loop body
+            previous_path_node = self.current_path_node
+            self.current_path_node = loop_node
+
+            if self.debug:
+                debug(f"[VISITOR] Entering for loop at line {getattr(node, 'lineno', 0)}")
+
+            for stmt in node.body:
+                self.visit(stmt)
+
+            # Handle else clause if it exists
+            if node.orelse:
+                else_node = self.path_analyzer.enter_conditional(node.iter, "for_else")
+                self.current_path_node = else_node
+
+                if self.debug:
+                    debug(f"[VISITOR] Entering for-else branch at line {getattr(node, 'lineno', 0)}")
+
+                for stmt in node.orelse:
+                    self.visit(stmt)
+
+            # Restore previous path node
+            self.current_path_node = previous_path_node
+        else:
+            # Fallback to standard visiting
+            self.generic_visit(node)
+
+    def visit_Try(self, node: ast.Try) -> None:
+        """Visit Try node and handle path-sensitive analysis."""
+        if self.path_sensitive_enabled and self.path_analyzer and self.current_path_node:
+            from lanalyzer.logger import debug
+
+            # Visit try body
+            if self.debug:
+                debug(f"[VISITOR] Entering try block at line {getattr(node, 'lineno', 0)}")
+
+            for stmt in node.body:
+                self.visit(stmt)
+
+            # Visit exception handlers
+            for handler in node.handlers:
+                if self.debug:
+                    debug(f"[VISITOR] Entering except block at line {getattr(handler, 'lineno', 0)}")
+
+                for stmt in handler.body:
+                    self.visit(stmt)
+
+            # Visit else clause if it exists
+            if node.orelse:
+                if self.debug:
+                    debug(f"[VISITOR] Entering try-else block at line {getattr(node, 'lineno', 0)}")
+
+                for stmt in node.orelse:
+                    self.visit(stmt)
+
+            # Visit finally clause if it exists
+            if node.finalbody:
+                if self.debug:
+                    debug(f"[VISITOR] Entering finally block at line {getattr(node, 'lineno', 0)}")
+
+                for stmt in node.finalbody:
+                    self.visit(stmt)
+        else:
+            # Fallback to standard visiting
+            self.generic_visit(node)
