@@ -9,10 +9,11 @@ simplifying the architecture.
 import ast
 import gc
 import os
-import psutil
 import resource
 import sys
 from typing import Any, Dict, List, Optional, Set, Tuple, Type, TypeVar
+
+import psutil
 
 from lanalyzer.logger import debug as log_debug
 
@@ -106,9 +107,11 @@ class EnhancedTaintTracker:
             dynamic_limit = max(min_limit, min(dynamic_limit, max_limit))
 
             if self.debug:
-                log_debug(f"System memory - Total: {memory_info.total / (1024**3):.1f}GB, "
-                         f"Available: {available_mb:.0f}MB, "
-                         f"Dynamic limit set to: {dynamic_limit}MB")
+                log_debug(
+                    f"System memory - Total: {memory_info.total / (1024**3):.1f}GB, "
+                    f"Available: {available_mb:.0f}MB, "
+                    f"Dynamic limit set to: {dynamic_limit}MB"
+                )
 
             return dynamic_limit
 
@@ -116,7 +119,9 @@ class EnhancedTaintTracker:
             # Fallback to 1GB if psutil is not available or fails
             fallback_limit = 1024
             if self.debug:
-                log_debug(f"Failed to get system memory info ({e}), using fallback: {fallback_limit}MB")
+                log_debug(
+                    f"Failed to get system memory info ({e}), using fallback: {fallback_limit}MB"
+                )
             return fallback_limit
 
     @classmethod
@@ -701,7 +706,9 @@ class EnhancedTaintTracker:
                 old_limit = self._memory_limit_mb
                 self._memory_limit_mb = self._calculate_dynamic_memory_limit()
                 if self.debug and old_limit != self._memory_limit_mb:
-                    log_debug(f"Memory limit updated: {old_limit}MB -> {self._memory_limit_mb}MB")
+                    log_debug(
+                        f"Memory limit updated: {old_limit}MB -> {self._memory_limit_mb}MB"
+                    )
 
             # Get current process memory usage
             current_process = psutil.Process()
@@ -712,21 +719,27 @@ class EnhancedTaintTracker:
             available_mb = system_memory.available / (1024 * 1024)
 
             if self.debug:
-                log_debug(f"Memory status - Process: {process_memory_mb:.1f}MB, "
-                         f"Available: {available_mb:.0f}MB, "
-                         f"Limit: {self._memory_limit_mb}MB")
+                log_debug(
+                    f"Memory status - Process: {process_memory_mb:.1f}MB, "
+                    f"Available: {available_mb:.0f}MB, "
+                    f"Limit: {self._memory_limit_mb}MB"
+                )
 
             # Check if we're approaching memory limit (80% threshold)
             threshold = self._memory_limit_mb * 0.8
             if process_memory_mb > threshold:
                 if self.debug:
-                    log_debug(f"Memory usage high ({process_memory_mb:.1f}MB > {threshold:.1f}MB), cleaning up...")
+                    log_debug(
+                        f"Memory usage high ({process_memory_mb:.1f}MB > {threshold:.1f}MB), cleaning up..."
+                    )
                 self._cleanup_memory()
 
             # Additional check: if system available memory is getting low (< 1GB)
             elif available_mb < 1024:
                 if self.debug:
-                    log_debug(f"System memory low ({available_mb:.0f}MB available), proactive cleanup...")
+                    log_debug(
+                        f"System memory low ({available_mb:.0f}MB available), proactive cleanup..."
+                    )
                 self._cleanup_memory()
 
             # Check cache size
@@ -750,7 +763,9 @@ class EnhancedTaintTracker:
 
                 if memory_mb > self._memory_limit_mb * 0.8:
                     if self.debug:
-                        log_debug(f"Fallback: Memory usage high ({memory_mb:.2f} MB), cleaning up...")
+                        log_debug(
+                            f"Fallback: Memory usage high ({memory_mb:.2f} MB), cleaning up..."
+                        )
                     self._cleanup_memory()
             except Exception as fallback_error:
                 if self.debug:
