@@ -1,6 +1,6 @@
 [project]
 name = "lanalyzer"
-version = "0.1.8"
+version = "0.1.9"
 description = "Python Taint Analysis Tool for finding security vulnerabilities"
 authors = [{ name = "Lanalyzer Author", email = "8533596@gmail.com" }]
 requires-python = "~=3.10"
@@ -112,7 +112,7 @@ known_first_party = ["lanalyzer"]
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 
 [tool.mypy]
-python_version = "0.1.8"
+python_version = "0.1.9"
 warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = false
@@ -141,7 +141,7 @@ module = [
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-minversion = "0.1.8"
+minversion = "0.1.9"
 addopts = "-ra -q --strict-markers --strict-config"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
