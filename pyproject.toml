@@ -31,6 +31,7 @@ dependencies = [
     "pyyaml>=6.0.1,<7",
     "astroid>=3.0.2,<4",
     "click>=8.1.7,<9",
+    "psutil>=5.9.0,<6",
 ]
 
 [project.urls]

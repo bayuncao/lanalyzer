@@ -1,4 +1,4 @@
-![Lanalyzer](https://private-user-images.githubusercontent.com/126563545/461340415-4fede494-5b84-4928-b664-9303480021dd.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTE0Mjg5NjIsIm5iZiI6MTc1MTQyODY2MiwicGF0aCI6Ii8xMjY1NjM1NDUvNDYxMzQwNDE1LTRmZWRlNDk0LTViODQtNDkyOC1iNjY0LTkzMDM0ODAwMjFkZC5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNzAyJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDcwMlQwMzU3NDJaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT01NjZiYWFkZDg3NGU0ZjZlOTRmOWYxNThlM2UwNTMxM2VjY2M3NmRkZWQ4ZmUwMzUyZTQ5YjMyMjNkMjZlNGM4JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.NxMO7JYy6-B_GO0McpCuRh3tTVAgu61xSCVf5wgYMU0)
+![Lanalyzer](https://raw.githubusercontent.com/bayuncao/lanalyzer/0fe337cfa47121d987b692d621090ca678431c93/image/banner.png)
 
 # Lanalyzer
 
@@ -70,7 +70,10 @@ Lanalyzer 是一个高级的 Python 静态污点分析工具，旨在检测 Pyth
 # 使用 pip
 pip install lanalyzer
 
-# 使用 uv（推荐）
+# 作为工具安装（推荐）
+uv tool install lanalyzer
+
+# 使用 uv
 uv add lanalyzer
 
 # 包含 MCP 支持
