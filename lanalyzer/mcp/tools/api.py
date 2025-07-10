@@ -19,6 +19,7 @@ from ..models import (
     ExplainVulnerabilityRequest,
     FileAnalysisRequest,
 )
+from ..models.vulnerability_report import VulnerabilityReportRequest
 
 
 # Tool implementations
@@ -436,3 +437,83 @@ async def explain_vulnerabilities(
         await ctx.error(f"Failed to explain vulnerabilities: {result.errors}")
 
     return result.model_dump()
+
+
+async def write_vulnerability_report(
+    report_type: str,
+    vulnerability_data: Dict[str, Any],
+    handler,
+    additional_info: Optional[Dict[str, Any]] = None,
+    ctx: Optional[Context] = None,
+    **kwargs
+) -> Dict[str, Any]:
+    """
+    Generate a vulnerability report in the specified format.
+
+    Args:
+        report_type: Type of report to generate ("CVE" or "CNVD").
+        vulnerability_data: Vulnerability analysis results from Lanalyzer.
+        handler: Instance of LanalyzerMCPHandler.
+        additional_info: Optional additional information for report generation.
+        ctx: MCP context.
+        **kwargs: Additional report-specific parameters.
+
+    Returns:
+        Generated vulnerability report response.
+    """
+    # Log original parameters to aid debugging
+    debug(
+        f"write_vulnerability_report original parameters: report_type={report_type}, "
+        f"vulnerability_data keys={list(vulnerability_data.keys()) if vulnerability_data else 'None'}"
+    )
+
+    # Validate report type
+    if report_type not in ["CVE", "CNVD"]:
+        error_msg = f"Unsupported report type: {report_type}. Supported types: CVE, CNVD"
+        error(error_msg)
+        if ctx:
+            await ctx.error(error_msg)
+        raise MCPValidationError(error_msg)
+
+    # Validate vulnerability data
+    if not vulnerability_data:
+        error_msg = "Vulnerability data is required for report generation"
+        error(error_msg)
+        if ctx:
+            await ctx.error(error_msg)
+        raise MCPValidationError(error_msg)
+
+    try:
+        if ctx:
+            await ctx.info(f"Starting {report_type} vulnerability report generation")
+
+        # Prepare request data
+        request_data = {
+            "report_type": report_type,
+            "vulnerability_data": vulnerability_data,
+            "additional_info": additional_info or {}
+        }
+
+        # Add report-specific parameters from kwargs
+        request_data.update(kwargs)
+
+        # Create request object
+        request_obj = VulnerabilityReportRequest(**request_data)
+
+        # Generate report using handler
+        result = await handler.handle_vulnerability_report_request(request_obj)
+
+        if ctx:
+            if result.success:
+                await ctx.info(f"Successfully generated {report_type} vulnerability report")
+            else:
+                await ctx.error(f"Failed to generate {report_type} report: {result.errors}")
+
+        return result.model_dump()
+
+    except Exception as e:
+        error_msg = f"Error generating vulnerability report: {str(e)}"
+        error(error_msg)
+        if ctx:
+            await ctx.error(error_msg)
+        return handle_exception(e, "write_vulnerability_report")

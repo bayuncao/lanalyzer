@@ -10,11 +10,12 @@ import logging
 from .analysis import AnalysisMCPHandler
 from .config import ConfigMCPHandler
 from .explanation import ExplanationMCPHandler
+from .vulnerability_report import VulnerabilityReportMCPHandler
 
 logger = logging.getLogger(__name__)
 
 
-class LanalyzerMCPHandler(ConfigMCPHandler, AnalysisMCPHandler, ExplanationMCPHandler):
+class LanalyzerMCPHandler(ConfigMCPHandler, AnalysisMCPHandler, ExplanationMCPHandler, VulnerabilityReportMCPHandler):
     """
     Handles MCP protocol requests for Lanalyzer.
 
@@ -32,5 +33,6 @@ class LanalyzerMCPHandler(ConfigMCPHandler, AnalysisMCPHandler, ExplanationMCPHa
         ConfigMCPHandler.__init__(self, debug)
         AnalysisMCPHandler.__init__(self, debug)
         ExplanationMCPHandler.__init__(self, debug)
+        VulnerabilityReportMCPHandler.__init__(self, debug)
         # Should match Lanalyzer version, consider importing from __version__
         self.version = getattr(__import__("lanalyzer"), "__version__", "0.0.0")

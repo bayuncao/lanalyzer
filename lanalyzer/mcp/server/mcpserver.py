@@ -39,6 +39,7 @@ from lanalyzer.mcp.tools import (
     explain_vulnerabilities,
     get_config,
     validate_config,
+    write_vulnerability_report,
 )
 from lanalyzer.mcp.utils import debug_tool_args
 
@@ -413,6 +414,133 @@ def create_mcp_server(
                 analysis_file, format, level, handler, ctx
             )
 
+        @mcp_instance.tool()
+        async def write_vulnerability_report_wrapper(
+            report_type: str,
+            vulnerability_data: Dict[str, Any],
+            additional_info: Optional[Dict[str, Any]] = None,
+            # CVE-specific parameters
+            cve_id: Optional[str] = None,
+            cvss_score: Optional[float] = None,
+            cvss_vector: Optional[str] = None,
+            affected_products: Optional[str] = None,
+            vulnerability_type: Optional[str] = None,
+            attack_vector: Optional[str] = None,
+            attack_complexity: Optional[str] = None,
+            privileges_required: Optional[str] = None,
+            user_interaction: Optional[str] = None,
+            scope: Optional[str] = None,
+            confidentiality_impact: Optional[str] = None,
+            integrity_impact: Optional[str] = None,
+            availability_impact: Optional[str] = None,
+            # CNVD-specific parameters
+            cnvd_id: Optional[str] = None,
+            cnnvd_id: Optional[str] = None,
+            threat_level: Optional[str] = None,
+            exploit_difficulty: Optional[str] = None,
+            remote_exploit: Optional[str] = None,
+            local_exploit: Optional[str] = None,
+            poc_available: Optional[str] = None,
+            exploit_available: Optional[str] = None,
+            vendor_patch: Optional[str] = None,
+            third_party_patch: Optional[str] = None,
+            ctx: Optional[Context] = None,
+        ) -> Dict[str, Any]:
+            """
+            Generate a vulnerability report in the specified format (CVE or CNVD).
+
+            This tool creates standardized vulnerability reports based on analysis results from Lanalyzer.
+            It supports two main report formats: CVE (Common Vulnerabilities and Exposures) and CNVD
+            (China National Vulnerability Database).
+
+            Args:
+                report_type (str): Type of report to generate. Supported values: "CVE", "CNVD"
+                vulnerability_data (Dict[str, Any]): Vulnerability analysis results from Lanalyzer containing:
+                    - rule_name: Name of the rule that detected the vulnerability
+                    - message: Description of the vulnerability
+                    - severity: Severity level (CRITICAL, HIGH, MEDIUM, LOW, INFO)
+                    - file_path: Path to the file containing the vulnerability
+                    - line: Line number where vulnerability was found
+                    - source: Information about the vulnerability source
+                    - sink: Information about the vulnerability sink
+                    - code_snippet: Code snippet showing the vulnerability
+                additional_info (Optional[Dict[str, Any]]): Additional information for report generation
+                **kwargs: Report-specific parameters (CVE or CNVD fields)
+
+            Returns:
+                Dict containing:
+                    - success (bool): Whether report generation was successful
+                    - report_content (str): Generated vulnerability report content
+                    - report_type (str): Type of report that was generated
+                    - metadata (Dict): Additional metadata about the generated report
+                    - errors (List[str]): Any errors encountered during report generation
+
+            Example:
+                {
+                    "success": true,
+                    "report_content": "# CVE漏洞报告\\n\\n## 基本信息\\n- **CVE编号**: CVE-2024-0001...",
+                    "report_type": "CVE",
+                    "metadata": {
+                        "cve_id": "CVE-2024-0001",
+                        "cvss_score": 7.5,
+                        "generation_timestamp": "2024-01-01"
+                    },
+                    "errors": []
+                }
+            """
+            # Collect all report-specific parameters
+            kwargs = {}
+            if cve_id is not None:
+                kwargs['cve_id'] = cve_id
+            if cvss_score is not None:
+                kwargs['cvss_score'] = cvss_score
+            if cvss_vector is not None:
+                kwargs['cvss_vector'] = cvss_vector
+            if affected_products is not None:
+                kwargs['affected_products'] = affected_products
+            if vulnerability_type is not None:
+                kwargs['vulnerability_type'] = vulnerability_type
+            if attack_vector is not None:
+                kwargs['attack_vector'] = attack_vector
+            if attack_complexity is not None:
+                kwargs['attack_complexity'] = attack_complexity
+            if privileges_required is not None:
+                kwargs['privileges_required'] = privileges_required
+            if user_interaction is not None:
+                kwargs['user_interaction'] = user_interaction
+            if scope is not None:
+                kwargs['scope'] = scope
+            if confidentiality_impact is not None:
+                kwargs['confidentiality_impact'] = confidentiality_impact
+            if integrity_impact is not None:
+                kwargs['integrity_impact'] = integrity_impact
+            if availability_impact is not None:
+                kwargs['availability_impact'] = availability_impact
+            if cnvd_id is not None:
+                kwargs['cnvd_id'] = cnvd_id
+            if cnnvd_id is not None:
+                kwargs['cnnvd_id'] = cnnvd_id
+            if threat_level is not None:
+                kwargs['threat_level'] = threat_level
+            if exploit_difficulty is not None:
+                kwargs['exploit_difficulty'] = exploit_difficulty
+            if remote_exploit is not None:
+                kwargs['remote_exploit'] = remote_exploit
+            if local_exploit is not None:
+                kwargs['local_exploit'] = local_exploit
+            if poc_available is not None:
+                kwargs['poc_available'] = poc_available
+            if exploit_available is not None:
+                kwargs['exploit_available'] = exploit_available
+            if vendor_patch is not None:
+                kwargs['vendor_patch'] = vendor_patch
+            if third_party_patch is not None:
+                kwargs['third_party_patch'] = third_party_patch
+
+            return await write_vulnerability_report(
+                report_type, vulnerability_data, handler, additional_info, ctx, **kwargs
+            )
+
         # Apply debug decorators if debug mode is enabled
         if settings.enable_tool_debugging and settings.debug:
             analyze_code_wrapper = debug_tool_args(analyze_code_wrapper)
@@ -423,6 +551,9 @@ def create_mcp_server(
             create_config_wrapper = debug_tool_args(create_config_wrapper)
             explain_vulnerabilities_wrapper = debug_tool_args(
                 explain_vulnerabilities_wrapper
+            )
+            write_vulnerability_report_wrapper = debug_tool_args(
+                write_vulnerability_report_wrapper
             )
 
         info(f"MCP server '{settings.name}' created successfully")
