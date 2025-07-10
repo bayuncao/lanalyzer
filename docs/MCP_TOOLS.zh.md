@@ -4,7 +4,7 @@
 
 ## 概述
 
-Lanalyzer 提供 7 个 MCP 工具，涵盖安全漏洞分析的完整工作流程：
+Lanalyzer 提供 8 个 MCP 工具，涵盖安全漏洞分析的完整工作流程：
 
 1. **分析工具**：分析代码中的安全漏洞
    - `analyze_code` - 分析 Python 代码字符串
@@ -18,6 +18,9 @@ Lanalyzer 提供 7 个 MCP 工具，涵盖安全漏洞分析的完整工作流�
 
 3. **解释工具**：生成人类可读的漏洞解释
    - `explain_vulnerabilities` - 生成自然语言解释
+
+4. **报告生成工具**：生成标准化漏洞报告
+   - `write_vulnerability_report` - 生成 CVE 或 CNVD 格式报告
 
 ## 工具详情
 
@@ -257,5 +260,124 @@ Lanalyzer 配置文件应包含：
 - `sinks`: 污点接收器列表（危险函数）
 - `taint_propagation`: 污点在代码中流动的规则
 - `rules`: 特定漏洞类型的检测规则
+
+### 8. write_vulnerability_report
+
+**用途**：基于 Lanalyzer 分析结果生成 CVE 或 CNVD 格式的标准化漏洞报告。
+
+**参数**：
+- `report_type` (str, 必需): 要生成的报告类型（"CVE" 或 "CNVD"）
+- `vulnerability_data` (dict, 必需): 来自 Lanalyzer 的漏洞分析结果
+- `additional_info` (dict, 可选): 报告生成的附加信息
+- `ctx` (Context, 可选): 用于日志记录的 MCP 上下文
+- `**kwargs`: 报告特定参数（见下文）
+
+**CVE 报告参数**（当 report_type="CVE" 时必需）：
+- `cve_id` (str): CVE 标识符（例如："CVE-2024-0001"）
+- `cvss_score` (float): CVSS 评分（0.0-10.0）
+- `cvss_vector` (str): CVSS 向量字符串
+- `affected_products` (str): 受影响产品的描述
+- `vulnerability_type` (str): 漏洞类型
+- `attack_vector` (str): CVSS 攻击向量
+- `attack_complexity` (str): CVSS 攻击复杂度
+- `privileges_required` (str): CVSS 所需权限
+- `user_interaction` (str): CVSS 用户交互
+- `scope` (str): CVSS 影响范围
+- `confidentiality_impact` (str): CVSS 机密性影响
+- `integrity_impact` (str): CVSS 完整性影响
+- `availability_impact` (str): CVSS 可用性影响
+
+**CNVD 报告参数**（当 report_type="CNVD" 时必需）：
+- `cnvd_id` (str): CNVD 标识符
+- `cnnvd_id` (str): CNNVD 标识符
+- `affected_products` (str): 受影响产品的描述
+- `vulnerability_type` (str): 漏洞类型
+- `threat_level` (str): 威胁等级（"超危"、"高危"、"中危"、"低危"）
+- `exploit_difficulty` (str): 漏洞利用难度
+- `remote_exploit` (str): 是否可远程利用
+- `local_exploit` (str): 是否可本地利用
+- `poc_available` (str): 是否有概念验证代码
+- `exploit_available` (str): 是否有利用代码
+- `vendor_patch` (str): 厂商补丁信息
+- `third_party_patch` (str): 第三方补丁信息
+
+**返回值**：
+```json
+{
+  "success": true,
+  "report_content": "# CVE漏洞报告\n\n## 基本信息\n- **CVE编号**: CVE-2024-0001...",
+  "report_type": "CVE",
+  "metadata": {
+    "report_type": "CVE",
+    "template_name": "CVEReportTemplate",
+    "vulnerability_count": 1,
+    "generation_timestamp": "2024-01-01",
+    "cve_id": "CVE-2024-0001",
+    "cvss_score": 7.5
+  },
+  "errors": [],
+  "warnings": []
+}
+```
+
+**使用示例**：
+```python
+# 生成 CVE 报告
+result = await write_vulnerability_report(
+    report_type="CVE",
+    vulnerability_data={
+        "rule_name": "SQLInjection",
+        "message": "检测到潜在的 SQL 注入漏洞",
+        "severity": "HIGH",
+        "file_path": "/app/views.py",
+        "line": 25,
+        "source": {"name": "request.GET", "line": 20},
+        "sink": {"name": "cursor.execute", "line": 25},
+        "code_snippet": "cursor.execute(f'SELECT * FROM users WHERE id = {user_id}')"
+    },
+    cve_id="CVE-2024-0001",
+    cvss_score=7.5,
+    cvss_vector="CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+    affected_products="MyApp 1.0-2.0",
+    vulnerability_type="SQL Injection",
+    attack_vector="Network",
+    attack_complexity="Low",
+    privileges_required="None",
+    user_interaction="None",
+    scope="Unchanged",
+    confidentiality_impact="High",
+    integrity_impact="None",
+    availability_impact="None"
+)
+
+# 生成 CNVD 报告
+result = await write_vulnerability_report(
+    report_type="CNVD",
+    vulnerability_data={
+        "rule_name": "CommandInjection",
+        "message": "检测到命令注入漏洞",
+        "severity": "HIGH",
+        "file_path": "/app/utils.py",
+        "line": 15
+    },
+    cnvd_id="CNVD-2024-0001",
+    cnnvd_id="CNNVD-202400001",
+    affected_products="MyApp 1.0",
+    vulnerability_type="命令注入",
+    threat_level="高危",
+    exploit_difficulty="容易",
+    remote_exploit="是",
+    local_exploit="是",
+    poc_available="是",
+    exploit_available="否",
+    vendor_patch="未发布",
+    third_party_patch="无"
+)
+```
+
+**错误处理**：
+- 如果缺少必需参数，返回 `success: false` 并提供错误详情
+- 验证报告类型和参数完整性
+- 提供详细的错误消息以便故障排除
 
 详细的配置示例请参见 Lanalyzer 主文档。

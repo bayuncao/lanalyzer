@@ -45,6 +45,7 @@ class BaseMCPHandler:
                 "get_config",
                 "validate_config",
                 "create_config",
+                "write_vulnerability_report",
             ],
         )
 

@@ -4,7 +4,7 @@ This document provides comprehensive documentation for all Model Context Protoco
 
 ## Overview
 
-Lanalyzer provides 7 MCP tools that cover the complete workflow of security vulnerability analysis:
+Lanalyzer provides 8 MCP tools that cover the complete workflow of security vulnerability analysis:
 
 1. **Analysis Tools**: Analyze code for security vulnerabilities
    - `analyze_code` - Analyze Python code strings
@@ -18,6 +18,9 @@ Lanalyzer provides 7 MCP tools that cover the complete workflow of security vuln
 
 3. **Explanation Tools**: Generate human-readable vulnerability explanations
    - `explain_vulnerabilities` - Generate natural language explanations
+
+4. **Report Generation Tools**: Generate standardized vulnerability reports
+   - `write_vulnerability_report` - Generate CVE or CNVD format reports
 
 ## Tool Details
 
@@ -257,5 +260,124 @@ Lanalyzer configuration files should contain:
 - `sinks`: List of taint sinks (dangerous functions)
 - `taint_propagation`: Rules for how taint flows through code
 - `rules`: Detection rules for specific vulnerability types
+
+### 8. write_vulnerability_report
+
+**Purpose**: Generate standardized vulnerability reports in CVE or CNVD format based on Lanalyzer analysis results.
+
+**Parameters**:
+- `report_type` (str, required): Type of report to generate ("CVE" or "CNVD")
+- `vulnerability_data` (dict, required): Vulnerability analysis results from Lanalyzer
+- `additional_info` (dict, optional): Additional information for report generation
+- `ctx` (Context, optional): MCP context for logging
+- `**kwargs`: Report-specific parameters (see below)
+
+**CVE Report Parameters** (required when report_type="CVE"):
+- `cve_id` (str): CVE identifier (e.g., "CVE-2024-0001")
+- `cvss_score` (float): CVSS score (0.0-10.0)
+- `cvss_vector` (str): CVSS vector string
+- `affected_products` (str): Description of affected products
+- `vulnerability_type` (str): Type of vulnerability
+- `attack_vector` (str): CVSS Attack Vector
+- `attack_complexity` (str): CVSS Attack Complexity
+- `privileges_required` (str): CVSS Privileges Required
+- `user_interaction` (str): CVSS User Interaction
+- `scope` (str): CVSS Scope
+- `confidentiality_impact` (str): CVSS Confidentiality Impact
+- `integrity_impact` (str): CVSS Integrity Impact
+- `availability_impact` (str): CVSS Availability Impact
+
+**CNVD Report Parameters** (required when report_type="CNVD"):
+- `cnvd_id` (str): CNVD identifier
+- `cnnvd_id` (str): CNNVD identifier
+- `affected_products` (str): Description of affected products
+- `vulnerability_type` (str): Type of vulnerability
+- `threat_level` (str): Threat level ("超危", "高危", "中危", "低危")
+- `exploit_difficulty` (str): Difficulty of exploiting the vulnerability
+- `remote_exploit` (str): Whether remote exploitation is possible
+- `local_exploit` (str): Whether local exploitation is possible
+- `poc_available` (str): Whether proof-of-concept is available
+- `exploit_available` (str): Whether exploit code is available
+- `vendor_patch` (str): Vendor patch information
+- `third_party_patch` (str): Third-party patch information
+
+**Returns**:
+```json
+{
+  "success": true,
+  "report_content": "# CVE漏洞报告\n\n## 基本信息\n- **CVE编号**: CVE-2024-0001...",
+  "report_type": "CVE",
+  "metadata": {
+    "report_type": "CVE",
+    "template_name": "CVEReportTemplate",
+    "vulnerability_count": 1,
+    "generation_timestamp": "2024-01-01",
+    "cve_id": "CVE-2024-0001",
+    "cvss_score": 7.5
+  },
+  "errors": [],
+  "warnings": []
+}
+```
+
+**Example Usage**:
+```python
+# Generate CVE report
+result = await write_vulnerability_report(
+    report_type="CVE",
+    vulnerability_data={
+        "rule_name": "SQLInjection",
+        "message": "Potential SQL injection vulnerability",
+        "severity": "HIGH",
+        "file_path": "/app/views.py",
+        "line": 25,
+        "source": {"name": "request.GET", "line": 20},
+        "sink": {"name": "cursor.execute", "line": 25},
+        "code_snippet": "cursor.execute(f'SELECT * FROM users WHERE id = {user_id}')"
+    },
+    cve_id="CVE-2024-0001",
+    cvss_score=7.5,
+    cvss_vector="CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+    affected_products="MyApp 1.0-2.0",
+    vulnerability_type="SQL Injection",
+    attack_vector="Network",
+    attack_complexity="Low",
+    privileges_required="None",
+    user_interaction="None",
+    scope="Unchanged",
+    confidentiality_impact="High",
+    integrity_impact="None",
+    availability_impact="None"
+)
+
+# Generate CNVD report
+result = await write_vulnerability_report(
+    report_type="CNVD",
+    vulnerability_data={
+        "rule_name": "CommandInjection",
+        "message": "Command injection vulnerability detected",
+        "severity": "HIGH",
+        "file_path": "/app/utils.py",
+        "line": 15
+    },
+    cnvd_id="CNVD-2024-0001",
+    cnnvd_id="CNNVD-202400001",
+    affected_products="MyApp 1.0",
+    vulnerability_type="命令注入",
+    threat_level="高危",
+    exploit_difficulty="容易",
+    remote_exploit="是",
+    local_exploit="是",
+    poc_available="是",
+    exploit_available="否",
+    vendor_patch="未发布",
+    third_party_patch="无"
+)
+```
+
+**Error Handling**:
+- Returns `success: false` with error details if required parameters are missing
+- Validates report type and parameter completeness
+- Provides detailed error messages for troubleshooting
 
 See the main Lanalyzer documentation for detailed configuration examples.

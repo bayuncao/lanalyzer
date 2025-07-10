@@ -6,6 +6,7 @@ from .api import (
     explain_vulnerabilities,
     get_config,
     validate_config,
+    write_vulnerability_report,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "validate_config",
     "create_config",
     "explain_vulnerabilities",
+    "write_vulnerability_report",
 ]

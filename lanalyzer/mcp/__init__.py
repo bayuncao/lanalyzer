@@ -49,6 +49,7 @@ __all__ = [
     "validate_config",
     "create_config",
     "explain_vulnerabilities",
+    "write_vulnerability_report",
     # handlers
     "LanalyzerMCPHandler",
     # models
@@ -61,6 +62,9 @@ __all__ = [
     "ExplainVulnerabilityRequest",
     "ExplainVulnerabilityResponse",
     "ServerInfoResponse",
+    "VulnerabilityReportRequest",
+    "VulnerabilityReportResponse",
+    "ReportType",
     # settings
     "MCPServerSettings",
     "MCPClientSettings",
