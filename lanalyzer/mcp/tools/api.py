@@ -130,7 +130,7 @@ async def analyze_file(
     config_path: str,
     handler,
     ctx: Optional[Context] = None,
-    minimal_output: bool = True,
+    minimal_output: bool = False,
 ) -> Dict[str, Any]:
     """
     Analyze Python code at the specified file path.
@@ -140,7 +140,7 @@ async def analyze_file(
         config_path: Configuration file path (required).
         handler: Instance of LanalyzerMCPHandler.
         ctx: MCP context.
-        minimal_output: Whether to output only vulnerabilities and call_chains (default: True).
+        minimal_output: Whether to output only vulnerabilities and call_chains (default: False).
 
     Returns:
         Analysis results, including detected vulnerability information.
@@ -300,7 +300,7 @@ async def analyze_path(
     config_path: str,
     handler,
     ctx: Optional[Context] = None,
-    minimal_output: bool = True,
+    minimal_output: bool = False,
 ) -> Dict[str, Any]:
     """
     Analyze a file or directory path for security vulnerabilities.
@@ -310,7 +310,7 @@ async def analyze_path(
         config_path: Configuration file path (required).
         handler: Instance of LanalyzerMCPHandler.
         ctx: MCP context.
-        minimal_output: Whether to output only vulnerabilities and call_chains (default: True).
+        minimal_output: Whether to output only vulnerabilities and call_chains (default: False).
 
     Returns:
         Analysis results, including detected vulnerability information.

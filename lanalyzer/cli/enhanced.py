@@ -66,14 +66,8 @@ def create_parser() -> argparse.ArgumentParser:
     analyze_parser.add_argument(
         "--minimal-output",
         action="store_true",
-        default=True,
-        help="Output only vulnerabilities and call_chains fields (default: True). Use --no-minimal-output for full output",
-    )
-    analyze_parser.add_argument(
-        "--no-minimal-output",
-        dest="minimal_output",
-        action="store_false",
-        help="Output full analysis results including summary and imports",
+        default=False,
+        help="Output only vulnerabilities and call_chains fields. Default is full output including summary and imports.",
     )
 
     mcp_parser = subparsers.add_parser("mcp", help="MCP server commands")
@@ -131,14 +125,8 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--minimal-output",
         action="store_true",
-        default=True,
-        help="Output only vulnerabilities and call_chains fields (default: True). Use --no-minimal-output for full output",
-    )
-    parser.add_argument(
-        "--no-minimal-output",
-        dest="minimal_output",
-        action="store_false",
-        help="Output full analysis results including summary and imports",
+        default=False,
+        help="Output only vulnerabilities and call_chains fields. Default is full output including summary and imports.",
     )
     parser.add_argument(
         "--log-file",
@@ -331,7 +319,7 @@ def run_analysis(args) -> int:
                     "call_chains": call_chains,
                 }
             else:
-                # Full output: include all fields (current behavior)
+                # Full output: include all fields (default behavior)
                 result_data = {
                     "vulnerabilities": vulnerabilities,
                     "call_chains": call_chains,  # Add detailed call chain information
