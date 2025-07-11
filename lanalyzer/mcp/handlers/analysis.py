@@ -163,6 +163,8 @@ class AnalysisMCPHandler(BaseMCPHandler):
             ]
             if self.debug:
                 cmd.append("--debug")
+            # Default to minimal output for MCP
+            cmd.append("--minimal-output")
 
             if self.debug:
                 logger.debug(f"Executing command: {' '.join(cmd)}")
@@ -375,6 +377,11 @@ class AnalysisMCPHandler(BaseMCPHandler):
             ]
             if self.debug:
                 cmd.append("--debug")
+            # Use minimal_output setting from request
+            if request.minimal_output:
+                cmd.append("--minimal-output")
+            else:
+                cmd.append("--no-minimal-output")
 
             if self.debug:
                 logger.debug(f"Executing command: {' '.join(cmd)}")
