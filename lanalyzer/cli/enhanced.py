@@ -63,6 +63,18 @@ def create_parser() -> argparse.ArgumentParser:
         "--log-file",
         help="Path to log file for debug and analysis output",
     )
+    analyze_parser.add_argument(
+        "--minimal-output",
+        action="store_true",
+        default=True,
+        help="Output only vulnerabilities and call_chains fields (default: True). Use --no-minimal-output for full output",
+    )
+    analyze_parser.add_argument(
+        "--no-minimal-output",
+        dest="minimal_output",
+        action="store_false",
+        help="Output full analysis results including summary and imports",
+    )
 
     mcp_parser = subparsers.add_parser("mcp", help="MCP server commands")
     mcp_subparsers = mcp_parser.add_subparsers(dest="mcp_command", help="MCP commands")
@@ -115,6 +127,18 @@ def create_parser() -> argparse.ArgumentParser:
         "--list-files",
         action="store_true",
         help="List all Python files that would be analyzed",
+    )
+    parser.add_argument(
+        "--minimal-output",
+        action="store_true",
+        default=True,
+        help="Output only vulnerabilities and call_chains fields (default: True). Use --no-minimal-output for full output",
+    )
+    parser.add_argument(
+        "--no-minimal-output",
+        dest="minimal_output",
+        action="store_false",
+        help="Output full analysis results including summary and imports",
     )
     parser.add_argument(
         "--log-file",
@@ -265,6 +289,7 @@ def run_analysis(args) -> int:
     pretty = args.pretty
     list_files = args.list_files
     log_file = args.log_file
+    minimal_output = args.minimal_output
 
     if list_files:
         list_target_files(target_path)
@@ -298,13 +323,21 @@ def run_analysis(args) -> int:
         summary = tracker.get_summary(call_chains, vulnerabilities)
 
         if output_path:
-            # Create enhanced result data with imports and call chains information
-            result_data = {
-                "vulnerabilities": vulnerabilities,
-                "call_chains": call_chains,  # Add detailed call chain information
-                "summary": summary,
-                "imports": tracker.all_imports,  # Add detailed import information
-            }
+            # Create result data based on minimal_output setting
+            if minimal_output:
+                # Minimal output: only vulnerabilities and call_chains
+                result_data = {
+                    "vulnerabilities": vulnerabilities,
+                    "call_chains": call_chains,
+                }
+            else:
+                # Full output: include all fields (current behavior)
+                result_data = {
+                    "vulnerabilities": vulnerabilities,
+                    "call_chains": call_chains,  # Add detailed call chain information
+                    "summary": summary,
+                    "imports": tracker.all_imports,  # Add detailed import information
+                }
 
             # Save enhanced output instead of just vulnerabilities
             try:

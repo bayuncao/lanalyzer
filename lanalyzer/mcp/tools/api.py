@@ -130,6 +130,7 @@ async def analyze_file(
     config_path: str,
     handler,
     ctx: Optional[Context] = None,
+    minimal_output: bool = True,
 ) -> Dict[str, Any]:
     """
     Analyze Python code at the specified file path.
@@ -139,6 +140,7 @@ async def analyze_file(
         config_path: Configuration file path (required).
         handler: Instance of LanalyzerMCPHandler.
         ctx: MCP context.
+        minimal_output: Whether to output only vulnerabilities and call_chains (default: True).
 
     Returns:
         Analysis results, including detected vulnerability information.
@@ -186,7 +188,7 @@ async def analyze_file(
         await ctx.info(f"Using configuration file: {actual_config_path}")
 
     request_obj = FileAnalysisRequest(
-        target_path=actual_file_path, config_path=actual_config_path
+        target_path=actual_file_path, config_path=actual_config_path, minimal_output=minimal_output
     )
     result = await handler.handle_file_path_analysis(request_obj)
 
@@ -298,6 +300,7 @@ async def analyze_path(
     config_path: str,
     handler,
     ctx: Optional[Context] = None,
+    minimal_output: bool = True,
 ) -> Dict[str, Any]:
     """
     Analyze a file or directory path for security vulnerabilities.
@@ -307,6 +310,7 @@ async def analyze_path(
         config_path: Configuration file path (required).
         handler: Instance of LanalyzerMCPHandler.
         ctx: MCP context.
+        minimal_output: Whether to output only vulnerabilities and call_chains (default: True).
 
     Returns:
         Analysis results, including detected vulnerability information.
@@ -352,7 +356,7 @@ async def analyze_path(
         await ctx.info(f"Using configuration file: {actual_config_path}")
 
     request_obj = FileAnalysisRequest(
-        target_path=actual_target_path, config_path=actual_config_path
+        target_path=actual_target_path, config_path=actual_config_path, minimal_output=minimal_output
     )
     result = await handler.handle_file_path_analysis(request_obj)
 

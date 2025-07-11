@@ -109,6 +109,7 @@ class FileAnalysisRequest(BaseModel):
     target_path: str = Field(..., description="Local file or directory path")
     config_path: str = Field(..., description="Configuration file path")
     output_path: Optional[str] = Field(None, description="Result output path")
+    minimal_output: bool = Field(True, description="Output only vulnerabilities and call_chains (default: True)")
     options: Dict[str, Any] = Field(
         default_factory=dict, description="Analysis options"
     )
