@@ -491,51 +491,51 @@ def create_mcp_server(
             # Collect all report-specific parameters
             kwargs = {}
             if cve_id is not None:
-                kwargs['cve_id'] = cve_id
+                kwargs["cve_id"] = cve_id
             if cvss_score is not None:
-                kwargs['cvss_score'] = cvss_score
+                kwargs["cvss_score"] = cvss_score
             if cvss_vector is not None:
-                kwargs['cvss_vector'] = cvss_vector
+                kwargs["cvss_vector"] = cvss_vector
             if affected_products is not None:
-                kwargs['affected_products'] = affected_products
+                kwargs["affected_products"] = affected_products
             if vulnerability_type is not None:
-                kwargs['vulnerability_type'] = vulnerability_type
+                kwargs["vulnerability_type"] = vulnerability_type
             if attack_vector is not None:
-                kwargs['attack_vector'] = attack_vector
+                kwargs["attack_vector"] = attack_vector
             if attack_complexity is not None:
-                kwargs['attack_complexity'] = attack_complexity
+                kwargs["attack_complexity"] = attack_complexity
             if privileges_required is not None:
-                kwargs['privileges_required'] = privileges_required
+                kwargs["privileges_required"] = privileges_required
             if user_interaction is not None:
-                kwargs['user_interaction'] = user_interaction
+                kwargs["user_interaction"] = user_interaction
             if scope is not None:
-                kwargs['scope'] = scope
+                kwargs["scope"] = scope
             if confidentiality_impact is not None:
-                kwargs['confidentiality_impact'] = confidentiality_impact
+                kwargs["confidentiality_impact"] = confidentiality_impact
             if integrity_impact is not None:
-                kwargs['integrity_impact'] = integrity_impact
+                kwargs["integrity_impact"] = integrity_impact
             if availability_impact is not None:
-                kwargs['availability_impact'] = availability_impact
+                kwargs["availability_impact"] = availability_impact
             if cnvd_id is not None:
-                kwargs['cnvd_id'] = cnvd_id
+                kwargs["cnvd_id"] = cnvd_id
             if cnnvd_id is not None:
-                kwargs['cnnvd_id'] = cnnvd_id
+                kwargs["cnnvd_id"] = cnnvd_id
             if threat_level is not None:
-                kwargs['threat_level'] = threat_level
+                kwargs["threat_level"] = threat_level
             if exploit_difficulty is not None:
-                kwargs['exploit_difficulty'] = exploit_difficulty
+                kwargs["exploit_difficulty"] = exploit_difficulty
             if remote_exploit is not None:
-                kwargs['remote_exploit'] = remote_exploit
+                kwargs["remote_exploit"] = remote_exploit
             if local_exploit is not None:
-                kwargs['local_exploit'] = local_exploit
+                kwargs["local_exploit"] = local_exploit
             if poc_available is not None:
-                kwargs['poc_available'] = poc_available
+                kwargs["poc_available"] = poc_available
             if exploit_available is not None:
-                kwargs['exploit_available'] = exploit_available
+                kwargs["exploit_available"] = exploit_available
             if vendor_patch is not None:
-                kwargs['vendor_patch'] = vendor_patch
+                kwargs["vendor_patch"] = vendor_patch
             if third_party_patch is not None:
-                kwargs['third_party_patch'] = third_party_patch
+                kwargs["third_party_patch"] = third_party_patch
 
             return await write_vulnerability_report(
                 report_type, vulnerability_data, handler, additional_info, ctx, **kwargs

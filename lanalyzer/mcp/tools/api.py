@@ -189,7 +189,9 @@ async def analyze_file(
         await ctx.info(f"Using configuration file: {actual_config_path}")
 
     request_obj = FileAnalysisRequest(
-        target_path=actual_file_path, config_path=actual_config_path, minimal_output=minimal_output
+        target_path=actual_file_path,
+        config_path=actual_config_path,
+        minimal_output=minimal_output,
     )
     result = await handler.handle_file_path_analysis(request_obj)
 
@@ -357,7 +359,9 @@ async def analyze_path(
         await ctx.info(f"Using configuration file: {actual_config_path}")
 
     request_obj = FileAnalysisRequest(
-        target_path=actual_target_path, config_path=actual_config_path, minimal_output=minimal_output
+        target_path=actual_target_path,
+        config_path=actual_config_path,
+        minimal_output=minimal_output,
     )
     result = await handler.handle_file_path_analysis(request_obj)
 
@@ -449,7 +453,7 @@ async def write_vulnerability_report(
     handler,
     additional_info: Optional[Dict[str, Any]] = None,
     ctx: Optional[Context] = None,
-    **kwargs
+    **kwargs,
 ) -> Dict[str, Any]:
     """
     Generate a vulnerability report in the specified format.
@@ -473,7 +477,9 @@ async def write_vulnerability_report(
 
     # Validate report type
     if report_type not in ["CVE", "CNVD"]:
-        error_msg = f"Unsupported report type: {report_type}. Supported types: CVE, CNVD"
+        error_msg = (
+            f"Unsupported report type: {report_type}. Supported types: CVE, CNVD"
+        )
         error(error_msg)
         if ctx:
             await ctx.error(error_msg)
@@ -495,7 +501,7 @@ async def write_vulnerability_report(
         request_data = {
             "report_type": report_type,
             "vulnerability_data": vulnerability_data,
-            "additional_info": additional_info or {}
+            "additional_info": additional_info or {},
         }
 
         # Add report-specific parameters from kwargs
@@ -509,9 +515,13 @@ async def write_vulnerability_report(
 
         if ctx:
             if result.success:
-                await ctx.info(f"Successfully generated {report_type} vulnerability report")
+                await ctx.info(
+                    f"Successfully generated {report_type} vulnerability report"
+                )
             else:
-                await ctx.error(f"Failed to generate {report_type} report: {result.errors}")
+                await ctx.error(
+                    f"Failed to generate {report_type} report: {result.errors}"
+                )
 
         return result.model_dump()
 

@@ -15,7 +15,12 @@ from .vulnerability_report import VulnerabilityReportMCPHandler
 logger = logging.getLogger(__name__)
 
 
-class LanalyzerMCPHandler(ConfigMCPHandler, AnalysisMCPHandler, ExplanationMCPHandler, VulnerabilityReportMCPHandler):
+class LanalyzerMCPHandler(
+    ConfigMCPHandler,
+    AnalysisMCPHandler,
+    ExplanationMCPHandler,
+    VulnerabilityReportMCPHandler,
+):
     """
     Handles MCP protocol requests for Lanalyzer.
 
