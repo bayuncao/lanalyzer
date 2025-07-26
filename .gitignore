@@ -16,4 +16,4 @@ logs/
 *.log
 dev-doc/
 tests/
-vulnerability_learning/
+vulnerability_learning/*.sh
