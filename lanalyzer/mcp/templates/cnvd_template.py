@@ -5,7 +5,7 @@ This module provides the CNVD (China National Vulnerability Database) report
 template for generating standardized vulnerability reports.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from .base_template import BaseReportTemplate
 

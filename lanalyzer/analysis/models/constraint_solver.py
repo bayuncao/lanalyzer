@@ -71,6 +71,8 @@ class ConstraintSolver:
         self.debug = debug
         self.variable_domains: Dict[str, Set[Any]] = {}
         self.constraints: List[Constraint] = []
+        # Track which domains have been explicitly constrained
+        self._domain_constrained: Set[str] = set()
 
     def add_constraint(self, constraint: Constraint) -> None:
         """Add a constraint to the solver."""
@@ -239,20 +241,98 @@ class ConstraintSolver:
         if not constraint.variable:
             return False
 
-        # Simplified type constraint handling
         var_domain = self.variable_domains[constraint.variable]
+        domain_changed = False
 
         if constraint.operator == "isinstance":
             target_type = constraint.value
+
+            # Mark this domain as explicitly constrained
+            self._domain_constrained.add(constraint.variable)
+
             if constraint.negated:
                 # Remove instances of target_type from domain
-                # This is simplified - in practice you'd need type hierarchy
-                return False
+                # For negated isinstance, we filter out values that match the type
+                if var_domain:
+                    # If domain already has values, filter out matching types
+                    original_size = len(var_domain)
+                    var_domain = {
+                        val
+                        for val in var_domain
+                        if not self._matches_type(val, target_type)
+                    }
+                    self.variable_domains[constraint.variable] = var_domain
+                    domain_changed = len(var_domain) != original_size
+                else:
+                    # Empty domain - add a symbolic marker for "not target_type"
+                    var_domain.add(f"NOT_{target_type}")
+                    domain_changed = True
             else:
                 # Keep only instances of target_type
-                # This is simplified - in practice you'd need type hierarchy
+                if var_domain:
+                    # If domain already has values, filter to keep only matching types
+                    original_size = len(var_domain)
+                    var_domain = {
+                        val
+                        for val in var_domain
+                        if self._matches_type(val, target_type)
+                    }
+                    self.variable_domains[constraint.variable] = var_domain
+                    domain_changed = len(var_domain) != original_size
+                else:
+                    # Empty domain - add a symbolic marker for the target type
+                    var_domain.add(target_type)
+                    domain_changed = True
+
+        return domain_changed
+
+    def _matches_type(self, value: Any, type_name: str) -> bool:
+        """
+        Check if a value matches a given type name.
+
+        Args:
+            value: The value to check
+            type_name: The type name to match against (e.g., 'str', 'int', 'list')
+
+        Returns:
+            True if the value matches the type, False otherwise
+        """
+        # Handle symbolic type markers (these are special domain markers, not actual values)
+        if isinstance(value, str):
+            # Check if this is a symbolic type marker (exact match with known types)
+            known_types = {
+                "str",
+                "int",
+                "float",
+                "bool",
+                "list",
+                "dict",
+                "tuple",
+                "set",
+                "NoneType",
+            }
+            if value in known_types:
+                return value == type_name
+            if value.startswith("NOT_") and value[4:] in known_types:
                 return False
 
+        # Handle actual Python types
+        type_mapping = {
+            "str": str,
+            "int": int,
+            "float": float,
+            "bool": bool,
+            "list": list,
+            "dict": dict,
+            "tuple": tuple,
+            "set": set,
+            "NoneType": type(None),
+        }
+
+        if type_name in type_mapping:
+            return isinstance(value, type_mapping[type_name])
+
+        # For unknown types, assume no match
         return False
 
     def _apply_logical_constraint(self, constraint: Constraint) -> bool:

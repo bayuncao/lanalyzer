@@ -1,5 +1,18 @@
 repos:
--   repo: https://github.com/psf/black
+  # Code formatting
+  - repo: https://github.com/psf/black
     rev: 23.7.0
     hooks:
-    -   id: black
+      - id: black
+
+  # Import sorting
+  # - repo: https://github.com/pycqa/isort
+  #   rev: 5.12.0
+  #   hooks:
+  #     - id: isort
+
+  # Linting
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8

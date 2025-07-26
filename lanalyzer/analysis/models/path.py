@@ -22,8 +22,6 @@ performance for static analysis scenarios.
 import ast
 from typing import Any, Dict, List, Optional, Tuple
 
-from .constraint_solver import ConstraintSolver
-
 
 class PathNode:
     """
@@ -100,9 +98,9 @@ class PathNode:
         Returns:
             List of PathNodes from root to this node
         """
-        path = [self]
+        path: List["PathNode"] = [self]
         current = self.parent
-        while current:
+        while current is not None:
             path.append(current)
             current = current.parent
         return path[::-1]  # Reverse to get root-to-node order
