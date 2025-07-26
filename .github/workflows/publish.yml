@@ -1,0 +1,124 @@
+name: Publish to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: "Version bump type"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      target:
+        description: "Publish target"
+        required: true
+        default: "test-pypi"
+        type: choice
+        options:
+          - test-pypi
+          - pypi
+      skip_tests:
+        description: "Skip tests"
+        required: false
+        default: true
+        type: boolean
+      dry_run:
+        description: "Dry run (test without publishing)"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Configure git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Run quality checks
+        if: ${{ !inputs.skip_tests }}
+        run: make quality
+
+      - name: Run tests
+        if: ${{ !inputs.skip_tests }}
+        run: make test
+
+      - name: Publish (dry run)
+        if: ${{ inputs.dry_run }}
+        run: |
+          uv run python scripts/publish.py \
+            --version-bump ${{ inputs.version_bump }} \
+            --skip-tests \
+            --skip-git-check \
+            --dry-run
+
+      - name: Publish to Test PyPI
+        if: ${{ !inputs.dry_run && inputs.target == 'test-pypi' }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        run: |
+          uv run python scripts/publish.py \
+            --version-bump ${{ inputs.version_bump }} \
+            --test-pypi \
+            --skip-tests \
+            --skip-git-check
+
+      - name: Publish to PyPI
+        if: ${{ !inputs.dry_run && inputs.target == 'pypi' }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          uv run python scripts/publish.py \
+            --version-bump ${{ inputs.version_bump }} \
+            --skip-tests \
+            --skip-git-check
+
+      - name: Commit version bump
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git add pyproject.toml lanalyzer/__version__.py
+          git commit -m "Bump version to $(uv run python -c 'from lanalyzer.__version__ import __version__; print(__version__)')" || echo "No changes to commit"
+          git push origin main
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run && inputs.target == 'pypi' }}
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v$(uv run python -c 'from lanalyzer.__version__ import __version__; print(__version__)')
+          release_name: Release v$(uv run python -c 'from lanalyzer.__version__ import __version__; print(__version__)')
+          draft: false
+          prerelease: false
+
+      - name: Upload build artifacts
+        if: ${{ !inputs.dry_run }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: dist/
