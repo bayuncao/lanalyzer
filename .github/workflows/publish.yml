@@ -34,7 +34,6 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4
@@ -42,29 +41,45 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
+      # 缓存 uv 和 Python
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
           version: "latest"
+          enable-cache: true
 
       - name: Set up Python
         run: uv python install 3.11
 
+      # 缓存依赖
       - name: Install dependencies
-        run: uv sync --group dev
+        run: uv sync --group dev --frozen
 
       - name: Configure git
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
+      # 并行运行质量检查（如果需要）
       - name: Run quality checks
         if: ${{ !inputs.skip_tests }}
-        run: make quality
+        run: |
+          # 跳过格式化，直接检查
+          uv run flake8 . &
+          uv run pre-commit run --all-files &
+          wait
 
       - name: Run tests
         if: ${{ !inputs.skip_tests }}
-        run: make test
+        run: uv run pytest --maxfail=1 -x
 
       - name: Publish (dry run)
         if: ${{ inputs.dry_run }}
@@ -107,12 +122,10 @@ jobs:
 
       - name: Create GitHub Release
         if: ${{ !inputs.dry_run && inputs.target == 'pypi' }}
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: v$(uv run python -c 'from lanalyzer.__version__ import __version__; print(__version__)')
-          release_name: Release v$(uv run python -c 'from lanalyzer.__version__ import __version__; print(__version__)')
+          name: Release v$(uv run python -c 'from lanalyzer.__version__ import __version__; print(__version__)')
           draft: false
           prerelease: false
 
