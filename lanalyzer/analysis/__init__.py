@@ -52,6 +52,7 @@ def analyze_file(
     pretty: bool = False,
     debug: bool = False,
     detailed: bool = False,
+    minimal_output: bool = False,
 ):
     """
     Analyze a file or directory for taint vulnerabilities using enhanced analysis.
@@ -63,6 +64,7 @@ def analyze_file(
         pretty: Whether to format the JSON output for readability
         debug: Whether to print debug information
         detailed: Whether to include detailed propagation chains
+        minimal_output: Whether to output only vulnerabilities and call_chains (default: False)
 
     Returns:
         Tuple of (vulnerabilities, summary)
@@ -105,12 +107,20 @@ def analyze_file(
 
     # Write results to output file if specified
     if output_path:
-        result_data = {
-            "vulnerabilities": vulnerabilities,
-            "call_chains": call_chains,  # Include call chains in output
-            "summary": summary,
-            "imports": tracker.all_imports,  # Add detailed import information
-        }
+        if minimal_output:
+            # Minimal output: only vulnerabilities and call_chains
+            result_data = {
+                "vulnerabilities": vulnerabilities,
+                "call_chains": call_chains,
+            }
+        else:
+            # Full output: include all fields
+            result_data = {
+                "vulnerabilities": vulnerabilities,
+                "call_chains": call_chains,  # Include call chains in output
+                "summary": summary,
+                "imports": tracker.all_imports,  # Add detailed import information
+            }
 
         with open(output_path, "w") as f:
             if pretty:

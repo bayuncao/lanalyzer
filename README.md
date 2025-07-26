@@ -119,6 +119,7 @@ lanalyzer --target <target_file> --config <config_file> --pretty --output <outpu
 - `--pretty`: Pretty-print the output.
 - `--detailed`: Show detailed analysis statistics.
 - `--debug`: Enable debug mode with detailed logging.
+- `--minimal-output`: Output only vulnerabilities and call_chains fields. Default is full output including summary and imports.
 
 ### Example
 ```bash

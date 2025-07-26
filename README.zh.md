@@ -118,6 +118,7 @@ lanalyzer --target <目标文件> --config <配置文件> --pretty --output <输
 - `--pretty`：美化输出。
 - `--detailed`：显示详细的分析统计信息。
 - `--debug`：启用调试模式，显示详细日志。
+- `--minimal-output`：仅输出漏洞和调用链信息。默认输出完整的分析结果。
 
 ### 示例
 ```bash
